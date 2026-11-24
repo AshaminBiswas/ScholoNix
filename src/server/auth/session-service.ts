@@ -1,5 +1,4 @@
 import "server-only";
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { generateSecureToken, hashToken } from "@/server/security/crypto";
 import { authRepository, UserRecord, SchoolRecord } from "./auth-repository";

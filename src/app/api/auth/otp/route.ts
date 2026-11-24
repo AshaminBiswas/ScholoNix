@@ -76,8 +76,8 @@ export async function POST(req: NextRequest) {
         expiresInMinutes: result.expiresInMinutes,
       },
     });
-  } catch (error: any) {
-    if (error && error.message && error.message.includes("Please wait")) {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message.includes("Please wait")) {
       return NextResponse.json(
         { success: false, error: { message: error.message } },
         { status: 429 },

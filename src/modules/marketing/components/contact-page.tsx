@@ -5,8 +5,6 @@ import Link from "next/link";
 import {
   Mail,
   Phone,
-  MapPin,
-  Clock,
   Send,
   CheckCircle2,
   MessageSquare,
@@ -19,14 +17,12 @@ import {
   User,
   ShieldCheck,
   Headphones,
-  Calendar,
   AlertCircle,
   Loader2,
   Linkedin,
   Youtube,
   Facebook,
   Instagram,
-  HelpCircle,
 } from "lucide-react";
 import { AtmosphericBackground } from "@/components/ui/atmospheric-background";
 import { BrandLogo } from "@/components/ui/brand-logo";

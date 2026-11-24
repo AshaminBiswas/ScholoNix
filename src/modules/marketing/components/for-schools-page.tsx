@@ -41,7 +41,6 @@ import { BrandLogo } from "@/components/ui/brand-logo";
    ========================================================================= */
 export function SchoolBuildingIllustration({
   className = "w-full max-w-lg mx-auto",
-  compact = false,
 }: {
   className?: string;
   compact?: boolean;

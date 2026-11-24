@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   BookOpen,
   Users,
@@ -36,7 +35,6 @@ type LoginMode = "otp" | "email" | "password" | "otp-verify";
 type OtpChannel = "phone" | "email";
 
 export function SchoolLoginPage() {
-  const router = useRouter();
   const [mode, setMode] = useState<LoginMode>("otp");
   const [otpChannel, setOtpChannel] = useState<OtpChannel>("phone");
   const [countryDialCode, setCountryDialCode] = useState<string>("+91");
@@ -976,7 +974,7 @@ export function SchoolLoginPage() {
             {/* Primary Action Button */}
             <Link
               id="login-success-dashboard-btn"
-              href="/dashboard"
+              href={callbackUrl || "/dashboard"}
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#663CF6] to-[#4F27E8] py-3.5 text-sm font-bold text-white shadow-md shadow-purple-500/25 hover:opacity-95 cursor-pointer"
             >
               <span>Go to Dashboard</span>

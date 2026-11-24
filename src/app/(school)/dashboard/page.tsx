@@ -28,7 +28,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const params = searchParams ? await searchParams : {};
   const requestedSchoolId = params.schoolId;
 
-  let session = token ? await sessionService.verifyToken(token) : null;
+  const session = token ? await sessionService.verifyToken(token) : null;
 
   // If no session is found, enforce login requirement
   if (!session || !session.user) {

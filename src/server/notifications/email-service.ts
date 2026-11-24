@@ -96,7 +96,7 @@ If you did not request this, please ignore this email.
   if (resendApiKey) {
     providerAttempted = true;
     try {
-      const resendBody: Record<string, any> = {
+      const resendBody: Record<string, unknown> = {
         from: fromAddress,
         to: [params.to],
         subject,
@@ -175,7 +175,7 @@ If you did not request this, please ignore this email.
   if (transporter) {
     providerAttempted = true;
     try {
-      const mailOptions: Record<string, any> = {
+      const mailOptions: Record<string, unknown> = {
         from: fromAddress,
         to: params.to,
         subject,

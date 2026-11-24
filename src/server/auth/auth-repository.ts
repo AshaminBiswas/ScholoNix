@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import "server-only";
 import fs from "fs";
 import path from "path";
@@ -117,22 +118,23 @@ function loadStore(): AuthStoreState {
       const raw = fs.readFileSync(STORE_PATH, "utf8");
       const data = JSON.parse(raw);
       // Restore Date objects
-      const restoreDates = (obj: any): any => {
+      const restoreDates = (obj: unknown): unknown => {
         if (!obj || typeof obj !== "object") return obj;
-        for (const [k, v] of Object.entries(obj)) {
+        const record = obj as Record<string, unknown>;
+        for (const [k, v] of Object.entries(record)) {
           if (
             typeof v === "string" &&
             (k.endsWith("At") || k === "expiresAt" || k === "resendAfter") &&
             !isNaN(Date.parse(v))
           ) {
-            obj[k] = new Date(v);
+            record[k] = new Date(v);
           } else if (typeof v === "object") {
             restoreDates(v);
           }
         }
-        return obj;
+        return record;
       };
-      return restoreDates(data);
+      return restoreDates(data) as AuthStoreState;
     }
   } catch (err) {
     console.warn("[AuthRepository] Error loading local store, initializing empty:", err);
@@ -242,8 +244,8 @@ export const authRepository = {
           verificationToken: (created.metadata as any)?.token || null,
           createdAt: created.createdAt,
         };
-      } catch (e) {
-        console.warn("[AuthRepository] Prisma saveOtp failed, falling back to store:", e);
+      } catch {
+        console.warn("[AuthRepository] Prisma saveOtp failed, falling back to store");
       }
     }
 
@@ -288,8 +290,8 @@ export const authRepository = {
           };
         }
         return null;
-      } catch (e) {
-        console.warn("[AuthRepository] Prisma findActiveOtp failed, falling back to store:", e);
+      } catch {
+        console.warn("[AuthRepository] Prisma findActiveOtp failed, falling back to store");
       }
     }
 
@@ -347,7 +349,7 @@ export const authRepository = {
             createdAt: record.createdAt,
           };
         }
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -368,7 +370,7 @@ export const authRepository = {
           data: { attempts: { increment: 1 } },
         });
         return updated.attempts;
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -395,7 +397,7 @@ export const authRepository = {
           },
         });
         return;
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -429,7 +431,7 @@ export const authRepository = {
           },
         });
         return;
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -499,7 +501,7 @@ export const authRepository = {
           include: { school: true },
         });
         if (user) return user as unknown as UserRecord;
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -543,7 +545,7 @@ export const authRepository = {
           include: { school: true },
         });
         if (user) return user as unknown as UserRecord;
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -567,7 +569,7 @@ export const authRepository = {
           where: { id },
         });
         if (school) return school as unknown as SchoolRecord;
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -584,7 +586,7 @@ export const authRepository = {
           orderBy: { name: "asc" },
         });
         if (schools && schools.length > 0) return schools as unknown as SchoolRecord[];
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -702,8 +704,8 @@ export const authRepository = {
           user: { ...(createdUser as unknown as UserRecord), school: createdSchool as any },
           school: createdSchool as unknown as SchoolRecord,
         };
-      } catch (e) {
-        console.warn("[AuthRepository] Prisma create school/user failed, storing locally:", e);
+      } catch {
+        console.warn("[AuthRepository] Prisma create school/user failed, storing locally");
       }
     }
 
@@ -722,7 +724,7 @@ export const authRepository = {
           data: { passwordHash: newPasswordHash },
         });
         return;
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -763,8 +765,8 @@ export const authRepository = {
           saveStore(storeMemory);
           return updated as unknown as UserRecord;
         }
-      } catch (e) {
-        console.warn("[AuthRepository] Prisma updateUserPhoneVerification failed, falling back:", e);
+      } catch {
+        console.warn("[AuthRepository] Prisma updateUserPhoneVerification failed, falling back");
       }
     }
 
@@ -805,7 +807,7 @@ export const authRepository = {
           include: { school: true },
         });
         if (user) return user as unknown as UserRecord;
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -881,7 +883,7 @@ export const authRepository = {
           },
         });
         return created as unknown as SessionRecord;
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -909,7 +911,7 @@ export const authRepository = {
           },
         });
         if (session) return session as unknown as SessionRecord;
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
@@ -942,7 +944,7 @@ export const authRepository = {
           data: { revokedAt: now },
         });
         return;
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }

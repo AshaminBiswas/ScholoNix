@@ -640,6 +640,14 @@ export function RegisterSchoolPage() {
       setErrorMessage(`Please verify both: ${unverified.join(" and ")} before continuing.`);
       return;
     }
+    if (verifiedPhoneNumber && admin.adminPhone.trim() !== verifiedPhoneNumber) {
+      setErrorMessage("Mobile number was changed after verification. Please verify your new number.");
+      return;
+    }
+    if (verifiedEmailAddress && admin.adminEmail.trim().toLowerCase() !== verifiedEmailAddress) {
+      setErrorMessage("Email address was changed after verification. Please verify your new email.");
+      return;
+    }
     setErrorMessage(null);
     goToStep(4);
   };

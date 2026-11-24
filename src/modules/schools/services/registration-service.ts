@@ -140,7 +140,7 @@ export async function registerSchool(
   }
 
   // 3. Generate unique slug and school code
-  let slug = generateSlug(institution.name);
+  const slug = generateSlug(institution.name);
   const code = generateSchoolCode(institution.name, institution.pinCode);
 
   // 4. Hash administrator password

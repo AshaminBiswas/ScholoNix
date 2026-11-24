@@ -22,28 +22,21 @@ import {
   HelpCircle,
   CheckCircle2,
   XCircle,
-  Plus,
   ArrowRight,
   TrendingUp,
-  TrendingDown,
   Mail,
   FileText,
-  Building2,
   School,
   Menu,
   X,
   LogOut,
-  RefreshCw,
   Check,
   UserPlus,
-  Send,
   Sparkles,
-  ShieldCheck,
-  ExternalLink,
+  Loader2,
 } from "lucide-react";
-import { SchoolDashboardData } from "@/server/school/school-dashboard-service";
+import type { SchoolDashboardData } from "@/modules/school/types";
 import { SchoolCampusIllustration } from "./school-campus-illustration";
-import { BrandLogo } from "@/components/ui/brand-logo";
 
 interface SchoolOption {
   id: string;
@@ -199,7 +192,11 @@ export function SchoolDashboard({ initialData, availableSchools, user }: SchoolD
                 <span className="truncate">
                   {data.school.name}
                 </span>
-                <ChevronDown className="h-3 w-3 shrink-0 text-[#4D5072]" />
+                {isLoadingSchool ? (
+                  <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[#663CF6]" />
+                ) : (
+                  <ChevronDown className="h-3 w-3 shrink-0 text-[#4D5072]" />
+                )}
               </button>
 
               {/* School Switcher Dropdown Menu */}

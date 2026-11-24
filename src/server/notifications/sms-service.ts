@@ -121,7 +121,7 @@ export async function sendOtpSms(params: SendOtpSmsParams): Promise<SmsSendResul
 
         // Dedicated Fast2SMS Send OTP endpoint per official reference:
         // https://docs.fast2sms.com/reference/send-otp
-        const payload: Record<string, any> = {
+        const payload: Record<string, unknown> = {
           otp_id: otpId,
           mobile: cleanDigits,
           otp: code,
@@ -386,7 +386,7 @@ export async function sendOtpSms(params: SendOtpSmsParams): Promise<SmsSendResul
         `[SmsService:MSG91] Delivered OTP via SendOTP API to ${maskPhone(normalized)} (ID: ${messageId})`,
       );
       return { success: true, messageId };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`[SmsService:MSG91] Error dispatching to ${maskPhone(normalized)}:`, err);
       if (process.env.NODE_ENV !== "production") {
         return { success: true, messageId: `sim_sms_${Date.now()}`, simulated: true };
@@ -481,12 +481,13 @@ export async function verifyFast2SmsOtp(
       verified: isVerified,
       message,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[SmsService:Fast2SMS] Verify OTP error:`, error);
+    const errMsg = error instanceof Error ? error.message : "Failed to verify OTP with Fast2SMS";
     return {
       success: false,
       verified: false,
-      message: error?.message || "Failed to verify OTP with Fast2SMS",
+      message: errMsg,
     };
   }
 }
@@ -555,12 +556,13 @@ export async function verifyMsg91Otp(
       verified: isVerified,
       message: data.message || (isVerified ? "OTP verified success" : "OTP verification failed"),
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[SmsService:MSG91] Verify OTP error:`, error);
+    const errMsg = error instanceof Error ? error.message : "Failed to verify OTP with MSG91";
     return {
       success: false,
       verified: false,
-      message: error?.message || "Failed to verify OTP with MSG91",
+      message: errMsg,
     };
   }
 }
@@ -612,11 +614,12 @@ export async function resendMsg91Otp(
       success: isSuccess,
       message: data.message || (isSuccess ? "OTP resent successfully" : "Failed to resend OTP"),
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[SmsService:MSG91] Resend OTP error:`, error);
+    const errMsg = error instanceof Error ? error.message : "Failed to resend OTP with MSG91";
     return {
       success: false,
-      message: error?.message || "Failed to resend OTP with MSG91",
+      message: errMsg,
     };
   }
 }

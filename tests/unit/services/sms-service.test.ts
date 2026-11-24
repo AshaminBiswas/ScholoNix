@@ -3,7 +3,6 @@ import {
   sendOtpSms,
   verifyFast2SmsOtp,
   verifyMsg91Otp,
-  resendMsg91Otp,
 } from "@/server/notifications/sms-service";
 
 describe("Fast2SMS Dedicated Send OTP & Verify OTP API", () => {

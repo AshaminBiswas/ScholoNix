@@ -8,7 +8,7 @@ import {
   maskPhone,
   normalizePhone,
 } from "@/server/security/crypto";
-import { authRepository, OtpRecord } from "./auth-repository";
+import { authRepository } from "./auth-repository";
 import { sendOtpEmail } from "@/server/notifications/email-service";
 import { sendOtpSms } from "@/server/notifications/sms-service";
 import { logAuditEvent } from "@/server/security/audit-logger";

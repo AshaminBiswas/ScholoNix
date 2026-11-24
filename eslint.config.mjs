@@ -19,6 +19,7 @@ const eslintConfig = [
       "test-results/**",
       "prisma/migrations/**",
       "next-env.d.ts",
+      "scripts/**",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
