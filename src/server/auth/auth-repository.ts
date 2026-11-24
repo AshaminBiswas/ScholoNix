@@ -185,10 +185,14 @@ storeMemory = loadStore();
  */
 let prismaAvailable: boolean | null = null;
 async function isPrismaWorking(): Promise<boolean> {
+  // In automated test environments, strictly use ephemeral in-memory state
+  if (process.env.NODE_ENV === "test") {
+    return false;
+  }
   if (prismaAvailable !== null) return prismaAvailable;
   try {
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Database connection timeout")), 1500),
+      setTimeout(() => reject(new Error("Database connection timeout")), 8000),
     );
     await Promise.race([db.$queryRaw`SELECT 1`, timeoutPromise]);
     prismaAvailable = true;
