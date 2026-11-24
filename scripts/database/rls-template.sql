@@ -1,0 +1,24 @@
+-- =============================================================================
+-- Multi-Tenant PostgreSQL Row-Level Security (RLS) Template
+-- =============================================================================
+-- This script provides the standard pattern for enabling RLS on tenant-owned tables.
+--
+-- 1. Enable RLS on the table:
+--    ALTER TABLE students ENABLE ROW LEVEL SECURITY;
+--    ALTER TABLE students FORCE ROW LEVEL SECURITY;
+--
+-- 2. Create tenant isolation policy:
+--    CREATE POLICY tenant_isolation_policy ON students
+--      FOR ALL
+--      USING (school_id = NULLIF(current_setting('app.current_school_id', true), '')::uuid)
+--      WITH CHECK (school_id = NULLIF(current_setting('app.current_school_id', true), '')::uuid);
+--
+-- 3. Application connection runtime setup:
+--    Before executing tenant queries within a transaction:
+--    SET LOCAL app.current_school_id = '<current-school-uuid>';
+--
+-- 4. Note on Prisma connection pooling:
+--    Because connection poolers re-use connections across clients, SET LOCAL
+--    ensures the tenant setting is strictly bound to the current transaction
+--    and resets automatically upon COMMIT or ROLLBACK.
+-- =============================================================================

@@ -1,0 +1,389 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* 1. Brand Identity */
+    --brand-primary: #663cf6;
+    --brand-deep: #4f27e8;
+    --brand-light: #8b5cf6;
+    --brand-lavender: #ede7ff;
+
+    /* 2. High-Contrast Typography */
+    --text-heading: #08093b;
+    --text-body: #1b1d45;
+    --text-muted: #4d5072;
+    --text-placeholder: #76799c;
+
+    /* 3. Global Backgrounds */
+    --bg-main: #fcfdfe;
+    --bg-secondary: #f5f7fd;
+    --bg-lavender: #f0ebfe;
+    --bg-blue: #e6f4fe;
+    --bg-card: #ffffff;
+
+    /* 4. Borders & Dividers (Crisp definition) */
+    --border-default: #d6dbf0;
+    --border-input: #cad0eb;
+    --border-hover: #9b76ff;
+    --border-focus: #663cf6;
+    --border-divider: #dfe3f5;
+
+    /* 5. Radii */
+    --radius-input: 10px;
+    --radius-button: 12px;
+    --radius-card: 16px;
+
+    /* 6. Shadows (Enhanced depth & contrast) */
+    --shadow-card: 0 8px 24px rgba(24, 18, 77, 0.08), 0 2px 6px rgba(24, 18, 77, 0.04);
+    --shadow-card-hover: 0 14px 34px rgba(102, 60, 246, 0.16);
+    --shadow-button: 0 4px 14px rgba(102, 60, 246, 0.28);
+
+    /* 7. Backward-compatible shadcn variables */
+    --background: var(--bg-main);
+    --foreground: var(--text-body);
+    --primary: var(--brand-primary);
+    --primary-foreground: #ffffff;
+    --secondary: var(--bg-secondary);
+    --secondary-foreground: var(--brand-deep);
+    --muted: var(--bg-secondary);
+    --muted-foreground: var(--text-muted);
+    --border: var(--border-default);
+    --input: var(--border-input);
+    --ring: var(--brand-primary);
+    --card: var(--bg-card);
+    --card-foreground: var(--text-body);
+  }
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-body);
+  font-family:
+    var(--font-plus-jakarta),
+    "Plus Jakarta Sans",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide default browser side scrollbars across the entire application while preserving scrolling */
+html,
+body {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Reusable utility to hide scrollbars on scrollable containers */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Headings default to dark navy for high contrast */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-heading);
+}
+
+/* 8. Reusable Design System Utility Classes (Enhanced Contrast) */
+.btn-primary {
+  background-color: #663cf6;
+  color: #ffffff;
+  border-radius: 12px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(102, 60, 246, 0.28);
+  transition: all 200ms ease;
+}
+.btn-primary:hover {
+  background-color: #4f27e8;
+  box-shadow: 0 6px 20px rgba(102, 60, 246, 0.38);
+}
+
+.btn-gradient {
+  background: linear-gradient(135deg, #7c3aed 0%, #663cf6 50%, #4f27e8 100%);
+  color: #ffffff;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 200ms ease;
+  box-shadow: 0 4px 16px rgba(102, 60, 246, 0.3);
+}
+.btn-gradient:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #4f27e8 50%, #3730a3 100%);
+  box-shadow: 0 6px 22px rgba(102, 60, 246, 0.42);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #4f27e8;
+  border: 1.5px solid #7c3aed;
+  border-radius: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(102, 60, 246, 0.08);
+  transition: all 200ms ease;
+}
+.btn-secondary:hover {
+  background-color: #f7f4ff;
+  border-color: #4f27e8;
+  box-shadow: 0 4px 12px rgba(102, 60, 246, 0.15);
+}
+
+.card-saas {
+  background-color: #ffffff;
+  border: 1px solid #d6dbf0;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(24, 18, 77, 0.08);
+  transition: all 200ms ease;
+}
+.card-saas-hover:hover {
+  border-color: #9b76ff;
+  box-shadow: 0 14px 34px rgba(102, 60, 246, 0.16);
+  transform: translateY(-2px);
+}
+
+.input-saas {
+  background-color: #ffffff;
+  border: 1px solid #cad0eb;
+  color: #1b1d45;
+  border-radius: 10px;
+  transition: all 150ms ease;
+}
+.input-saas::placeholder {
+  color: #76799c;
+}
+.input-saas:focus {
+  border-color: #663cf6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 60, 246, 0.2);
+}
+
+/* 9. Hero Dashboard Smooth Motion Keyframes */
+@keyframes float-chip-1 {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(-3deg);
+  }
+}
+
+@keyframes float-chip-2 {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(4deg);
+  }
+}
+
+@keyframes float-chip-3 {
+  0%, 100% {
+    transform: translateY(-50%) translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-50%) translateY(8px) rotate(-2deg);
+  }
+}
+
+@keyframes float-chip-4 {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-9px) rotate(3deg);
+  }
+}
+
+@keyframes float-chip-5 {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(7px) rotate(-4deg);
+  }
+}
+
+@keyframes aura-breath {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1.06) rotate(3deg);
+    opacity: 0.85;
+  }
+}
+
+@keyframes card-gentle-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes bar-wave {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.05);
+  }
+}
+
+/* 10. Hero Headline & Button Loading Animation Keyframes */
+@keyframes hero-fade-up {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes hero-btn-pop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes text-gradient-flow {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes btn-shimmer-pass {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  30%, 100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+.animate-hero-headline {
+  animation: hero-fade-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.animate-hero-badge {
+  animation: hero-fade-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.animate-hero-subtitle {
+  animation: hero-fade-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.12s forwards;
+  opacity: 0;
+  animation-fill-mode: forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.animate-hero-btn-primary {
+  animation: hero-btn-pop 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.22s forwards;
+  opacity: 0;
+  animation-fill-mode: forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.animate-hero-btn-secondary {
+  animation: hero-btn-pop 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.30s forwards;
+  opacity: 0;
+  animation-fill-mode: forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.animate-hero-checklist {
+  animation: hero-fade-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.38s forwards;
+  opacity: 0;
+  animation-fill-mode: forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.animate-gradient-flow {
+  background-size: 200% auto;
+  animation: text-gradient-flow 4.5s ease infinite;
+}
+
+.animate-btn-shimmer {
+  animation: btn-shimmer-pass 4.5s ease-in-out infinite;
+}
+
+.animate-float-chip-1 {
+  animation: float-chip-1 3.5s ease-in-out infinite;
+}
+.animate-float-chip-2 {
+  animation: float-chip-2 4.2s ease-in-out infinite;
+}
+.animate-float-chip-3 {
+  animation: float-chip-3 3.8s ease-in-out infinite;
+}
+.animate-float-chip-4 {
+  animation: float-chip-4 4.5s ease-in-out infinite;
+}
+.animate-float-chip-5 {
+  animation: float-chip-5 3.9s ease-in-out infinite;
+}
+.animate-aura-breath {
+  animation: aura-breath 6s ease-in-out infinite;
+}
+.animate-card-float {
+  animation: card-gentle-float 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-chip-1,
+  .animate-float-chip-2,
+  .animate-float-chip-3,
+  .animate-float-chip-4,
+  .animate-float-chip-5,
+  .animate-aura-breath,
+  .animate-card-float,
+  .animate-hero-headline,
+  .animate-hero-badge,
+  .animate-hero-subtitle,
+  .animate-hero-btn-primary,
+  .animate-hero-btn-secondary,
+  .animate-hero-checklist,
+  .animate-gradient-flow,
+  .animate-btn-shimmer {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
