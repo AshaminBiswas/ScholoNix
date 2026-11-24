@@ -27,8 +27,8 @@ cp .env.example .env.local
 
 Edit `.env.local` to configure your connection strings:
 
-- `DATABASE_URL`: Application pooled connection (e.g., `postgresql://school_app:school_dev_password@localhost:5432/school_saas?schema=public`)
-- `DIRECT_URL`: Direct DDL connection for Prisma migrations (e.g., `postgresql://school_migrator:school_dev_password@localhost:5432/school_saas?schema=public`)
+- `DATABASE_URL`: Application pooled connection (e.g., `postgresql://school_app:replace_me@localhost:5432/school_saas?schema=public`)
+- `DIRECT_URL`: Direct DDL connection for Prisma migrations (e.g., `postgresql://school_migrator:replace_me@localhost:5432/school_saas?schema=public`)
 - `REDIS_URL`: Redis connection URL (e.g., `redis://localhost:6379`)
 - `AUTH_SECRET`: Random 32+ character string (generate with `openssl rand -base64 32`)
 

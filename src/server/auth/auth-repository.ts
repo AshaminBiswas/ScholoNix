@@ -97,7 +97,20 @@ function ensureStoreDir(): void {
   }
 }
 
+let storeMemory: AuthStoreState = {
+  otps: {},
+  users: {},
+  schools: {},
+  sessions: {},
+  passwordResets: {},
+};
+
 function loadStore(): AuthStoreState {
+  // In test environment, maintain pure in-memory state and never touch the filesystem
+  if (process.env.NODE_ENV === "test") {
+    return storeMemory;
+  }
+
   try {
     ensureStoreDir();
     if (fs.existsSync(STORE_PATH)) {
@@ -134,6 +147,13 @@ function loadStore(): AuthStoreState {
 }
 
 function saveStore(state: AuthStoreState): void {
+  storeMemory = state;
+
+  // Never write auth state or tokens to disk during automated test runs
+  if (process.env.NODE_ENV === "test") {
+    return;
+  }
+
   try {
     ensureStoreDir();
     const tempPath = `${STORE_PATH}.tmp.${Date.now()}`;
@@ -142,10 +162,13 @@ function saveStore(state: AuthStoreState): void {
       fs.renameSync(tempPath, STORE_PATH);
     } catch {
       fs.copyFileSync(tempPath, STORE_PATH);
-      try {
-        fs.unlinkSync(tempPath);
-      } catch {
-        // ignore temp cleanup
+    } finally {
+      if (fs.existsSync(tempPath)) {
+        try {
+          fs.unlinkSync(tempPath);
+        } catch {
+          // ignore temp cleanup
+        }
       }
     }
   } catch (err) {
@@ -153,7 +176,7 @@ function saveStore(state: AuthStoreState): void {
   }
 }
 
-let storeMemory: AuthStoreState = loadStore();
+storeMemory = loadStore();
 
 /**
  * Checks if Prisma is connected and healthy.

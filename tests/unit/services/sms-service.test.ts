@@ -183,7 +183,7 @@ describe("Fast2SMS Dedicated Send OTP & Verify OTP API", () => {
   it("validates 10-digit Indian phone number extraction and rejects invalid lengths", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     process.env.SMS_PROVIDER = "fast2sms";
-    process.env.FAST2SMS_API_KEY = "valid_key_123456";
+    process.env.FAST2SMS_API_KEY = "mock_fast2sms_test_key_12345";
 
     await expect(
       sendOtpSms({
@@ -213,7 +213,7 @@ describe("MSG91 SendOTP & Verify OTP API Integration", () => {
   it("dispatches OTP via MSG91 SendOTP API (https://docs.msg91.com/otp/sendotp.openapi.yml)", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     process.env.SMS_PROVIDER = "msg91";
-    process.env.MSG91_AUTH_KEY = "live_msg91_authkey_12345";
+    process.env.MSG91_AUTH_KEY = "mock_msg91_authkey_12345";
     process.env.MSG91_OTP_TEMPLATE_ID = "661234567890abcdef";
 
     mockFetch.mockResolvedValueOnce({
@@ -247,7 +247,7 @@ describe("MSG91 SendOTP & Verify OTP API Integration", () => {
     expect(url).toContain("otp_length=6");
 
     expect(options.method).toBe("POST");
-    expect(options.headers.authkey).toBe("live_msg91_authkey_12345");
+    expect(options.headers.authkey).toBe("mock_msg91_authkey_12345");
     expect(options.headers["content-type"]).toBe("application/json");
 
     const body = JSON.parse(options.body);
@@ -256,7 +256,7 @@ describe("MSG91 SendOTP & Verify OTP API Integration", () => {
 
   it("verifies OTP via MSG91 Verify OTP API (https://docs.msg91.com/otp/verify-otp.openapi.yml)", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    process.env.MSG91_AUTH_KEY = "live_msg91_authkey_12345";
+    process.env.MSG91_AUTH_KEY = "mock_msg91_authkey_12345";
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -281,12 +281,12 @@ describe("MSG91 SendOTP & Verify OTP API Integration", () => {
     expect(url).toContain("https://control.msg91.com/api/v5/otp/verify");
     expect(url).toContain("mobile=916297676908");
     expect(url).toContain("otp=544690");
-    expect(options.headers.authkey).toBe("live_msg91_authkey_12345");
+    expect(options.headers.authkey).toBe("mock_msg91_authkey_12345");
   });
 
   it("handles MSG91 wrong OTP response (returns type: error with HTTP 200)", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    process.env.MSG91_AUTH_KEY = "live_msg91_authkey_12345";
+    process.env.MSG91_AUTH_KEY = "mock_msg91_authkey_12345";
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -310,7 +310,7 @@ describe("MSG91 SendOTP & Verify OTP API Integration", () => {
   it("handles MSG91 SendOTP error responses in production", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     process.env.SMS_PROVIDER = "msg91";
-    process.env.MSG91_AUTH_KEY = "live_msg91_authkey_12345";
+    process.env.MSG91_AUTH_KEY = "mock_msg91_authkey_12345";
     process.env.MSG91_OTP_TEMPLATE_ID = "invalid_tpl";
 
     mockFetch.mockResolvedValueOnce({

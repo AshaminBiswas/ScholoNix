@@ -35,6 +35,13 @@ pnpm-debug.log*
 prisma/*.db
 prisma/*.db-journal
 
+# Local runtime data & fallback storage (NEVER commit runtime state or tokens)
+.data/
+/.data/
+*.tmp
+*.tmp.*
+*.json.tmp.*
+
 # OS & editor files
 .DS_Store
 Thumbs.db

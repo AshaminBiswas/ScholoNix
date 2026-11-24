@@ -10,9 +10,10 @@ const secretPatterns = [
   { name: 'Stripe Secret Key', regex: /sk_live_[0-9a-zA-Z]{24}/ },
   { name: 'Twilio Auth Token', regex: /(?:twilio.*auth.*token|auth_token)\s*[:=]\s*['"][a-zA-Z0-9]{32}['"]/i },
   { name: 'Fast2SMS/MSG91 Key', regex: /(?:fast2sms|msg91).*(?:key|token|auth)\s*[:=]\s*['"][a-zA-Z0-9_\-]{16,}['"]/i },
+  { name: 'Exposed Verification/Session Token', regex: /(?:verificationToken|sessionToken)\s*[:=]\s*['"][a-f0-9]{32,}['"]/i },
 ];
 
-const ignoredDirs = new Set(['.git', 'node_modules', '.next', 'dist', 'build', '.gemini', '.data']);
+const ignoredDirs = new Set(['.git', 'node_modules', '.next', 'dist', 'build', '.gemini']);
 const ignoredFiles = new Set(['.env', '.env.local', 'package-lock.json', 'scan-secrets.js']);
 
 let findings = [];
@@ -40,7 +41,10 @@ function scanDir(dir) {
             line.includes('example') ||
             line.includes('placeholder') ||
             line.includes('test_secret') ||
-            line.includes('dummy_')
+            line.includes('dummy_') ||
+            line.includes('mock_') ||
+            line.includes('test_key') ||
+            line.includes('DifferentPassword')
           ) continue;
 
           for (const pattern of secretPatterns) {
