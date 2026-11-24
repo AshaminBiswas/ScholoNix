@@ -16,10 +16,10 @@ export interface SmsSendResult {
 
 /**
  * Pluggable SMS gateway adapter.
- * Supports Indian SMS gateways (Fast2SMS, MSG91, 2Factor) and global (Twilio)
+ * Supports Indian SMS gateways (Renflair, MSG91, 2Factor) and global (Twilio)
  * via standard environment variables:
- * - SMS_PROVIDER: 'fast2sms' | 'msg91' | 'twilio' | 'custom' | 'console'
- * - SMS_API_KEY
+ * - SMS_PROVIDER: 'renflair' | 'msg91' | 'twilio' | 'custom' | 'console'
+ * - RENFLAIR_API_KEY / SMS_API_KEY
  * - SMS_SENDER_ID (DLT header for India, e.g. SCHLNX)
  * - SMS_TEMPLATE_ID (DLT template ID for Indian telecom regulations)
  */
@@ -46,167 +46,97 @@ export async function sendOtpSms(params: SendOtpSmsParams): Promise<SmsSendResul
     };
   }
 
-  // 1. Fast2SMS integration (India's premier high-speed SMS & OTP gateway)
-  const fast2SmsApiKey =
-    process.env.FAST2SMS_API_KEY ||
+  // 1. Renflair SMS integration (https://sms.renflair.in/V1.php)
+  const renflairApiKey =
+    process.env.RENFLAIR_API_KEY ||
     process.env.SMS_API_KEY ||
     process.env.SMS_PROVIDER_API_KEY ||
-    (provider === "fast2sms" ? apiKey : undefined);
+    (provider === "renflair" ? apiKey : undefined);
 
-  const isFast2SmsConfigured =
-    Boolean(fast2SmsApiKey) &&
-    !fast2SmsApiKey?.includes("your_fast2sms_api_key") &&
-    !fast2SmsApiKey?.includes("replace_me") &&
-    fast2SmsApiKey!.trim().length > 5;
+  const isRenflairConfigured =
+    Boolean(renflairApiKey) &&
+    !renflairApiKey?.includes("your_renflair_api_key") &&
+    !renflairApiKey?.includes("replace_me") &&
+    renflairApiKey!.trim().length > 5;
 
-  if (provider === "fast2sms") {
-    if (!isFast2SmsConfigured) {
+  if (provider === "renflair" || (!process.env.SMS_PROVIDER && isRenflairConfigured)) {
+    if (!isRenflairConfigured) {
       if (process.env.NODE_ENV !== "production") {
         console.warn(
-          `[SmsService:Fast2SMS] SMS_PROVIDER is set to "fast2sms", but FAST2SMS_API_KEY is not configured or contains placeholder values. Configure FAST2SMS_API_KEY in .env.local to send live SMS to your mobile. Falling back to simulated OTP in development.`,
+          `[SmsService:Renflair] SMS_PROVIDER is set to "renflair", but RENFLAIR_API_KEY is not configured or contains placeholder values. Configure RENFLAIR_API_KEY in .env.local to send live SMS to your mobile. Falling back to simulated OTP in development.`,
         );
         return { success: true, messageId: `sim_sms_${Date.now()}`, simulated: true };
       }
       console.error(
-        `[SmsService:Fast2SMS] SMS_PROVIDER is set to "fast2sms", but FAST2SMS_API_KEY is missing or invalid in production.`,
+        `[SmsService:Renflair] SMS_PROVIDER is set to "renflair", but RENFLAIR_API_KEY is missing or invalid in production.`,
       );
-      throw new Error("Fast2SMS API key is not configured.");
+      throw new Error("Renflair API key is not configured.");
     }
 
     try {
-      // Fast2SMS operates strictly on 10-digit Indian mobile numbers without country code or leading zeros
+      // Renflair operates strictly on 10-digit Indian mobile numbers without country code or leading zeros
       const cleanDigits = normalized.replace(/\D/g, "").slice(-10);
       if (cleanDigits.length !== 10) {
         throw new Error(
-          `Fast2SMS requires a valid 10-digit Indian mobile number. Received: ${maskPhone(normalized)}`,
+          `Renflair requires a valid 10-digit Indian mobile number. Received: ${maskPhone(normalized)}`,
         );
       }
 
-      const route = (process.env.FAST2SMS_ROUTE || "otp_api").toLowerCase();
-      let response: Response;
+      // Renflair SMS API Endpoint: https://sms.renflair.in/V1.php?API={API}&PHONE={PHONE}&OTP={OTP}
+      const url = new URL("https://sms.renflair.in/V1.php");
+      url.searchParams.set("API", renflairApiKey!.trim());
+      url.searchParams.set("PHONE", cleanDigits);
+      url.searchParams.set("OTP", code);
 
-      // Check for Fast2SMS Dedicated Send OTP API (https://docs.fast2sms.com/reference/send-otp)
-      // When route is default or "otp_api" or "otp" or "smart_otp"
-      if (route !== "dlt" && route !== "bulk" && route !== "q") {
-        const otpId = (
-          process.env.FAST2SMS_OTP_ID ||
-          process.env.FAST2SMS_TEMPLATE_ID ||
-          ""
-        ).trim();
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          accept: "application/json, text/plain, */*",
+        },
+      });
 
-        const isOtpIdConfigured =
-          Boolean(otpId) &&
-          !otpId.includes("your_otp_id") &&
-          !otpId.includes("replace_me") &&
-          otpId.length >= 3;
-
-        if (!isOtpIdConfigured) {
-          if (process.env.NODE_ENV !== "production") {
-            console.warn(
-              `[SmsService:Fast2SMS] FAST2SMS_OTP_ID is required for Fast2SMS Dedicated Send OTP API (https://docs.fast2sms.com/reference/send-otp). Create or view your Smart OTP Template in Fast2SMS Dashboard (Smart OTP -> OTP Template List) and copy your unique 10-character OTP ID into FAST2SMS_OTP_ID in .env.local. Falling back to simulated OTP in development.`,
-            );
-            return {
-              success: true,
-              messageId: `sim_sms_${Date.now()}`,
-              simulated: true,
-            };
-          }
-          console.error(
-            `[SmsService:Fast2SMS] FAST2SMS_OTP_ID is missing in production for Fast2SMS Send OTP API.`,
-          );
-          throw new Error(
-            "Fast2SMS Send OTP API requires FAST2SMS_OTP_ID. Please configure it in environment variables.",
-          );
-        }
-
-        // Dedicated Fast2SMS Send OTP endpoint per official reference:
-        // https://docs.fast2sms.com/reference/send-otp
-        const payload: Record<string, unknown> = {
-          otp_id: otpId,
-          mobile: cleanDigits,
-          otp: code,
-          otp_expiry: expiresInMinutes,
-          otp_length: 6,
-        };
-
-        if (process.env.FAST2SMS_VARIABLES_VALUES) {
-          payload.variables_values = process.env.FAST2SMS_VARIABLES_VALUES;
-        }
-
-        response = await fetch("https://www.fast2sms.com/dev/otp/send", {
-          method: "POST",
-          headers: {
-            authorization: fast2SmsApiKey!.trim(),
-            accept: "application/json",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-      } else if (route === "dlt") {
-        // Fast2SMS DLT Route: sender_id (DLT Header) + message (Template Message ID) + variables_values
-        const senderId =
-          process.env.FAST2SMS_SENDER_ID ||
-          process.env.SMS_SENDER_ID ||
-          "FSTSMS";
-        const templateId =
-          process.env.FAST2SMS_TEMPLATE_ID ||
-          process.env.SMS_TEMPLATE_ID ||
-          "";
-
-        response = await fetch("https://www.fast2sms.com/dev/bulkV2", {
-          method: "POST",
-          headers: {
-            authorization: fast2SmsApiKey!.trim(),
-            accept: "application/json",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            route: "dlt",
-            sender_id: senderId,
-            message: templateId,
-            variables_values: code,
-            numbers: cleanDigits,
-          }),
-        });
-      } else {
-        // Fast2SMS Quick Route: full custom message text
-        response = await fetch("https://www.fast2sms.com/dev/bulkV2", {
-          method: "POST",
-          headers: {
-            authorization: fast2SmsApiKey!.trim(),
-            accept: "application/json",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            route: "q",
-            message: smsBody,
-            language: "english",
-            flash: 0,
-            numbers: cleanDigits,
-          }),
-        });
+      const responseText = await response.text();
+      let responseData: Record<string, unknown> | null = null;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch {
+        // Plain text response
       }
 
-      const data = await response.json();
-      if (!response.ok || data.return === false || (data.status_code && data.status_code !== 200)) {
-        const errorMsg = Array.isArray(data.message)
-          ? data.message.join(", ")
-          : typeof data.message === "string"
-            ? data.message
-            : `Fast2SMS dispatch failed (HTTP ${response.status})`;
-        throw new Error(errorMsg);
+      if (responseData) {
+        const statusVal = responseData.status ?? responseData.type ?? responseData.return;
+        const isError =
+          !response.ok ||
+          statusVal === "error" ||
+          statusVal === false ||
+          (typeof responseData.status_code === "number" && responseData.status_code !== 200);
+
+        if (isError) {
+          const errorMsg =
+            (typeof responseData.message === "string" && responseData.message) ||
+            (typeof responseData.msg === "string" && responseData.msg) ||
+            (typeof responseData.error === "string" && responseData.error) ||
+            `Renflair dispatch failed (HTTP ${response.status})`;
+          throw new Error(errorMsg);
+        }
+      } else {
+        const lower = responseText.toLowerCase();
+        if (!response.ok || lower.includes("error") || lower.includes("invalid api") || lower.includes("fail")) {
+          throw new Error(responseText.trim() || `Renflair dispatch failed (HTTP ${response.status})`);
+        }
       }
 
       const messageId =
-        data.request_id ||
-        (Array.isArray(data.message) ? data.message[0] : `f2s_${Date.now()}`);
+        (responseData && (responseData.request_id || responseData.msg_id || responseData.id)) ||
+        `renflair_${Date.now()}`;
+
       console.info(
-        `[SmsService:Fast2SMS] Delivered OTP via Send OTP API to ${maskPhone(normalized)} (ID: ${messageId})`,
+        `[SmsService:Renflair] Delivered OTP via Renflair API to ${maskPhone(normalized)} (ID: ${messageId})`,
       );
-      return { success: true, messageId };
+      return { success: true, messageId: String(messageId) };
     } catch (error) {
       console.error(
-        `[SmsService:Fast2SMS] Error dispatching to ${maskPhone(normalized)}:`,
+        `[SmsService:Renflair] Error dispatching to ${maskPhone(normalized)}:`,
         error,
       );
       if (process.env.NODE_ENV !== "production") {
@@ -404,92 +334,6 @@ export async function sendOtpSms(params: SendOtpSmsParams): Promise<SmsSendResul
     messageId: `sim_sms_${Date.now()}`,
     simulated: true,
   };
-}
-
-export interface VerifyFast2SmsOtpParams {
-  phone: string;
-  code: string;
-}
-
-export interface VerifyFast2SmsOtpResult {
-  success: boolean;
-  verified: boolean;
-  message: string;
-}
-
-/**
- * Validates an OTP against Fast2SMS Verify OTP API:
- * Reference: https://docs.fast2sms.com/reference/verify-otp
- */
-export async function verifyFast2SmsOtp(
-  params: VerifyFast2SmsOtpParams,
-): Promise<VerifyFast2SmsOtpResult> {
-  const { phone, code } = params;
-  const normalized = normalizePhone(phone);
-  const cleanDigits = normalized.replace(/\D/g, "").slice(-10);
-  const apiKey =
-    process.env.FAST2SMS_API_KEY ||
-    process.env.SMS_API_KEY ||
-    process.env.SMS_PROVIDER_API_KEY;
-
-  if (!apiKey || cleanDigits.length !== 10) {
-    return {
-      success: false,
-      verified: false,
-      message: "Valid API key and 10-digit Indian mobile number required",
-    };
-  }
-
-  // Automated test environment fallback
-  if (process.env.NODE_ENV === "test") {
-    return {
-      success: true,
-      verified: true,
-      message: "OTP verified successfully (test)",
-    };
-  }
-
-  try {
-    const response = await fetch("https://www.fast2sms.com/dev/otp/verify", {
-      method: "POST",
-      headers: {
-        authorization: apiKey.trim(),
-        accept: "application/json",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        mobile: cleanDigits,
-        otp: code.trim(),
-      }),
-    });
-
-    const data = await response.json();
-    const isVerified = Boolean(
-      response.ok &&
-        (data.return === true || (data.status_code && data.status_code === 200)),
-    );
-    const message = Array.isArray(data.message)
-      ? data.message.join(", ")
-      : typeof data.message === "string"
-        ? data.message
-        : isVerified
-          ? "OTP verified successfully"
-          : "OTP verification failed";
-
-    return {
-      success: true,
-      verified: isVerified,
-      message,
-    };
-  } catch (error: unknown) {
-    console.error(`[SmsService:Fast2SMS] Verify OTP error:`, error);
-    const errMsg = error instanceof Error ? error.message : "Failed to verify OTP with Fast2SMS";
-    return {
-      success: false,
-      verified: false,
-      message: errMsg,
-    };
-  }
 }
 
 export interface VerifyMsg91OtpParams {

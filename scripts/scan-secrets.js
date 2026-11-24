@@ -9,7 +9,7 @@ const secretPatterns = [
   { name: 'JWT Token', regex: /eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}/ },
   { name: 'Stripe Secret Key', regex: /sk_live_[0-9a-zA-Z]{24}/ },
   { name: 'Twilio Auth Token', regex: /(?:twilio.*auth.*token|auth_token)\s*[:=]\s*['"][a-zA-Z0-9]{32}['"]/i },
-  { name: 'Fast2SMS/MSG91 Key', regex: /(?:fast2sms|msg91).*(?:key|token|auth)\s*[:=]\s*['"][a-zA-Z0-9_\-]{16,}['"]/i },
+  { name: 'Renflair/MSG91 Key', regex: /(?:renflair|msg91).*(?:key|token|auth)\s*[:=]\s*['"][a-zA-Z0-9_\-]{16,}['"]/i },
   { name: 'Exposed Verification/Session Token', regex: /(?:verificationToken|sessionToken)\s*[:=]\s*['"][a-f0-9]{32,}['"]/i },
 ];
 

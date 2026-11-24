@@ -46,11 +46,7 @@ const serverEnvSchema = z.object({
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_PHONE_NUMBER: z.string().optional(),
-  FAST2SMS_API_KEY: z.string().optional(),
-  FAST2SMS_ROUTE: z.enum(["otp", "dlt", "q", "smart_otp"]).optional(),
-  FAST2SMS_SENDER_ID: z.string().optional(),
-  FAST2SMS_TEMPLATE_ID: z.string().optional(),
-  FAST2SMS_OTP_ID: z.string().optional(),
+  RENFLAIR_API_KEY: z.string().optional(),
 
   // MSG91 configuration
   MSG91_AUTH_KEY: z.string().optional(),

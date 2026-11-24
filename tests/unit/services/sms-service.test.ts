@@ -1,11 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   sendOtpSms,
-  verifyFast2SmsOtp,
   verifyMsg91Otp,
 } from "@/server/notifications/sms-service";
 
-describe("Fast2SMS Dedicated Send OTP & Verify OTP API", () => {
+describe("Renflair SMS API Integration (https://sms.renflair.in/V1.php)", () => {
   const originalEnv = { ...process.env };
   const mockFetch = vi.fn();
 
@@ -20,21 +19,20 @@ describe("Fast2SMS Dedicated Send OTP & Verify OTP API", () => {
     process.env = { ...originalEnv };
   });
 
-  it("dispatches OTP via Fast2SMS Send OTP API (https://docs.fast2sms.com/reference/send-otp)", async () => {
+  it("dispatches OTP via Renflair SMS API with valid parameters", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    process.env.SMS_PROVIDER = "fast2sms";
-    process.env.FAST2SMS_API_KEY = "mock_fast2sms_test_key_12345";
-    process.env.FAST2SMS_OTP_ID = "otp_tpl_987";
+    process.env.SMS_PROVIDER = "renflair";
+    process.env.RENFLAIR_API_KEY = "mock_renflair_test_key_12345";
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      json: async () => ({
-        return: true,
-        status_code: 200,
-        request_id: "f2s_req_987654321",
-        message: "OTP sent successfully",
-      }),
+      text: async () =>
+        JSON.stringify({
+          status: "success",
+          msg: "SMS sent successfully",
+          request_id: "rf_req_987654321",
+        }),
     });
 
     const result = await sendOtpSms({
@@ -45,79 +43,55 @@ describe("Fast2SMS Dedicated Send OTP & Verify OTP API", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.messageId).toBe("f2s_req_987654321");
+    expect(result.messageId).toBe("rf_req_987654321");
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
-    const call = mockFetch.mock.calls[0] as [string, { method: string; headers: Record<string, string>; body: string }];
+    const call = mockFetch.mock.calls[0] as [string, { method: string }];
     const [url, options] = call;
-    expect(url).toBe("https://www.fast2sms.com/dev/otp/send");
-    expect(options.method).toBe("POST");
-    expect(options.headers.authorization).toBe("mock_fast2sms_test_key_12345");
-    expect(options.headers.accept).toBe("application/json");
-    expect(options.headers["content-type"]).toBe("application/json");
+    const parsedUrl = new URL(url);
 
-    const body = JSON.parse(options.body);
-    expect(body).toEqual({
-      otp_id: "otp_tpl_987",
-      mobile: "9876543210", // Clean 10-digit Indian mobile number
-      otp: "544690",
-      otp_expiry: 5,
-      otp_length: 6,
-    });
+    expect(parsedUrl.origin).toBe("https://sms.renflair.in");
+    expect(parsedUrl.pathname).toBe("/V1.php");
+    expect(parsedUrl.searchParams.get("API")).toBe("mock_renflair_test_key_12345");
+    expect(parsedUrl.searchParams.get("PHONE")).toBe("9876543210");
+    expect(parsedUrl.searchParams.get("OTP")).toBe("544690");
+    expect(options.method).toBe("GET");
   });
 
-  it("verifies OTP via Fast2SMS Verify OTP API (https://docs.fast2sms.com/reference/verify-otp)", async () => {
+  it("handles plain text success response from Renflair API", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    process.env.FAST2SMS_API_KEY = "mock_fast2sms_test_key_12345";
+    process.env.SMS_PROVIDER = "renflair";
+    process.env.RENFLAIR_API_KEY = "mock_renflair_test_key_12345";
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      json: async () => ({
-        return: true,
-        status_code: 200,
-        message: "OTP verified successfully",
-      }),
+      text: async () => "SMS sent successfully. Message ID: 123456",
     });
 
-    const result = await verifyFast2SmsOtp({
+    const result = await sendOtpSms({
       phone: "+91 62976 76908",
       code: "544690",
+      purpose: "LOGIN",
     });
 
     expect(result.success).toBe(true);
-    expect(result.verified).toBe(true);
-    expect(result.message).toBe("OTP verified successfully");
-
-    const call = mockFetch.mock.calls[0] as [string, { method: string; headers: Record<string, string>; body: string }];
-    const [url, options] = call;
-    expect(url).toBe("https://www.fast2sms.com/dev/otp/verify");
-    expect(options.method).toBe("POST");
-    expect(options.headers.authorization).toBe("mock_fast2sms_test_key_12345");
-    expect(options.headers.accept).toBe("application/json");
-    expect(options.headers["content-type"]).toBe("application/json");
-
-    const body = JSON.parse(options.body);
-    expect(body).toEqual({
-      mobile: "6297676908",
-      otp: "544690",
-    });
+    expect(result.messageId).toContain("renflair_");
   });
 
-  it("handles Fast2SMS Send OTP API errors and parses error messages", async () => {
+  it("handles Renflair API JSON error responses", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    process.env.SMS_PROVIDER = "fast2sms";
-    process.env.FAST2SMS_API_KEY = "mock_fast2sms_test_key_12345";
-    process.env.FAST2SMS_OTP_ID = "otp_tpl_987";
+    process.env.SMS_PROVIDER = "renflair";
+    process.env.RENFLAIR_API_KEY = "mock_renflair_test_key_12345";
 
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 400,
-      json: async () => ({
-        return: false,
-        status_code: 400,
-        message: "The otp id field is required.",
-      }),
+      text: async () =>
+        JSON.stringify({
+          status: "error",
+          message: "Invalid API Key provided",
+        }),
     });
 
     await expect(
@@ -126,15 +100,34 @@ describe("Fast2SMS Dedicated Send OTP & Verify OTP API", () => {
         code: "654321",
         purpose: "REGISTRATION",
       }),
-    ).rejects.toThrow("The otp id field is required.");
+    ).rejects.toThrow("Invalid API Key provided");
   });
 
-  it("falls back to simulated OTP in development when FAST2SMS_OTP_ID is not set", async () => {
+  it("handles Renflair API plain text error responses", async () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+    process.env.SMS_PROVIDER = "renflair";
+    process.env.RENFLAIR_API_KEY = "mock_renflair_test_key_12345";
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      text: async () => "Error: Gateway Timeout or Route Down",
+    });
+
+    await expect(
+      sendOtpSms({
+        phone: "+919876543210",
+        code: "654321",
+        purpose: "REGISTRATION",
+      }),
+    ).rejects.toThrow(/Gateway Timeout/);
+  });
+
+  it("falls back to simulated OTP in development when RENFLAIR_API_KEY is not configured", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "development";
-    process.env.SMS_PROVIDER = "fast2sms";
-    process.env.FAST2SMS_API_KEY = "mock_fast2sms_test_key_12345";
-    delete process.env.FAST2SMS_OTP_ID;
-    delete process.env.FAST2SMS_TEMPLATE_ID;
+    process.env.SMS_PROVIDER = "renflair";
+    delete process.env.RENFLAIR_API_KEY;
+    delete process.env.SMS_API_KEY;
 
     const result = await sendOtpSms({
       phone: "+919876543210",
@@ -148,26 +141,10 @@ describe("Fast2SMS Dedicated Send OTP & Verify OTP API", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("strictly throws in production when FAST2SMS_OTP_ID is missing", async () => {
+  it("strictly throws in production when Renflair API key is missing", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    process.env.SMS_PROVIDER = "fast2sms";
-    process.env.FAST2SMS_API_KEY = "mock_fast2sms_test_key_12345";
-    delete process.env.FAST2SMS_OTP_ID;
-    delete process.env.FAST2SMS_TEMPLATE_ID;
-
-    await expect(
-      sendOtpSms({
-        phone: "+919876543210",
-        code: "777888",
-        purpose: "REGISTRATION",
-      }),
-    ).rejects.toThrow(/Fast2SMS Send OTP API requires FAST2SMS_OTP_ID/);
-  });
-
-  it("strictly throws in production when Fast2SMS API key is missing", async () => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    process.env.SMS_PROVIDER = "fast2sms";
-    delete process.env.FAST2SMS_API_KEY;
+    process.env.SMS_PROVIDER = "renflair";
+    delete process.env.RENFLAIR_API_KEY;
     delete process.env.SMS_API_KEY;
 
     await expect(
@@ -176,13 +153,13 @@ describe("Fast2SMS Dedicated Send OTP & Verify OTP API", () => {
         code: "777888",
         purpose: "REGISTRATION",
       }),
-    ).rejects.toThrow("Fast2SMS API key is not configured.");
+    ).rejects.toThrow("Renflair API key is not configured.");
   });
 
   it("validates 10-digit Indian phone number extraction and rejects invalid lengths", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    process.env.SMS_PROVIDER = "fast2sms";
-    process.env.FAST2SMS_API_KEY = "mock_fast2sms_test_key_12345";
+    process.env.SMS_PROVIDER = "renflair";
+    process.env.RENFLAIR_API_KEY = "mock_renflair_test_key_12345";
 
     await expect(
       sendOtpSms({
@@ -190,7 +167,7 @@ describe("Fast2SMS Dedicated Send OTP & Verify OTP API", () => {
         code: "112233",
         purpose: "REGISTRATION",
       }),
-    ).rejects.toThrow(/Fast2SMS requires a valid 10-digit Indian mobile number/);
+    ).rejects.toThrow(/Renflair requires a valid 10-digit Indian mobile number/);
   });
 });
 
