@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/server/integrations/redis";
 import { toErrorResponse, RateLimitExceededError } from "@/lib/errors";
 import { otpService, OtpChannel } from "@/server/auth/otp-service";
 import { authRepository } from "@/server/auth/auth-repository";
+import { sessionService } from "@/server/auth/session-service";
 import { hashPassword, maskEmail, maskPhone, normalizePhone } from "@/server/security/crypto";
 import { logAuditEvent } from "@/server/security/audit-logger";
 import { logger } from "@/lib/logger";
@@ -173,10 +174,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Hash new password, update user record, and revoke existing sessions
+    // 4. Hash new password, update user record, and revoke existing sessions (DB + cache)
     const newHash = await hashPassword(data.password);
     await authRepository.updateUserPassword(user.id, newHash);
-    await authRepository.revokeAllUserSessions(user.id);
+    const revokedTokenHashes = await authRepository.revokeAllUserSessions(user.id);
+    await sessionService.invalidateSessionsByTokenHashes(revokedTokenHashes);
 
     // 5. Log audit event
     await logAuditEvent({

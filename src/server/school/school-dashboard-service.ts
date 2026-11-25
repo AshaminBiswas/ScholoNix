@@ -1,25 +1,9 @@
 import "server-only";
 import { authRepository, SchoolRecord, UserRecord } from "@/server/auth/auth-repository";
+import { tenantCache } from "@/server/integrations/redis";
 import { TenantMismatchError, TenantNotFoundError } from "@/lib/errors";
+import { formatAvatarInitials, formatRoleLabel } from "@/modules/school/utils/shell-props";
 import type { SchoolDashboardData } from "@/modules/school/types";
-
-function getAvatarInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const first = parts[0];
-  const last = parts[parts.length - 1];
-  if (!first) return "SA";
-  if (parts.length === 1 || !last) return first.slice(0, 2).toUpperCase();
-  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
-}
-
-function formatUserRole(role: string): string {
-  return role
-    .toLowerCase()
-    .split("_")
-    .filter(Boolean)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-}
 
 function getCurrentAcademicSession(): SchoolDashboardData["academicSession"] {
   const now = new Date();
@@ -59,7 +43,127 @@ function getCurrentAcademicSession(): SchoolDashboardData["academicSession"] {
   };
 }
 
+const DASHBOARD_CACHE_TTL_SECONDS = 60;
+
+function buildEmptyDashboardData(
+  school: SchoolRecord,
+  user?: Pick<UserRecord, "name" | "role"> | null,
+): SchoolDashboardData {
+  const userName = user?.name?.trim() || "School Administrator";
+  const userRole = user?.role ? formatRoleLabel(user.role) : "School Admin";
+
+  return {
+    school: {
+      id: school.id,
+      name: school.name,
+      slug: school.slug,
+      code: school.code || "",
+      affiliationBoard: school.affiliationBoard || "Not Specified",
+      city: school.city || "",
+      state: school.state || "",
+    },
+    currentUser: {
+      name: userName,
+      role: userRole,
+      avatarInitials: formatAvatarInitials(userName),
+    },
+    academicSession: getCurrentAcademicSession(),
+    kpis: {
+      totalStudents: { value: 0, change: 0 },
+      totalStaff: { value: 0, change: 0 },
+      pendingAdmissions: { value: 0, change: 0 },
+      feeDues: { value: 0, change: 0 },
+    },
+    studentOverview: {
+      total: 0,
+      sections: [],
+    },
+    attendanceToday: {
+      rate: 0,
+      present: 0,
+      absent: 0,
+      notMarked: 0,
+    },
+    todayTasks: [],
+    feeCollection: {
+      collectedAmount: 0,
+      collectionRate: 0,
+      totalFee: 0,
+      pendingFee: 0,
+      overdueFee: 0,
+      monthlyTrends: [],
+    },
+    upcomingEvents: [],
+    recentAdmissions: [],
+    recentActivities: [],
+    classStrength: [],
+    academicPerformance: {
+      overallPassRate: 0,
+      trendVsLastTerm: 0,
+      termTrends: [],
+      topClasses: [],
+    },
+    admissionFunnel: {
+      enquiries: 0,
+      applications: 0,
+      shortlisted: 0,
+      admitted: 0,
+      conversionRate: 0,
+      trendVsLastYear: 0,
+    },
+    staffOverview: {
+      total: 0,
+      teaching: 0,
+      teachingPercentage: 0,
+      nonTeaching: 0,
+      nonTeachingPercentage: 0,
+      administrative: 0,
+      adminPercentage: 0,
+    },
+    genderBreakdown: {
+      total: 0,
+      boys: 0,
+      boysPercentage: 0,
+      girls: 0,
+      girlsPercentage: 0,
+    },
+    keyInsights: [],
+    notices: [],
+    communicationSummary: {
+      noticesSent: 0,
+      smsDelivered: 0,
+      emailsDelivered: 0,
+    },
+  };
+}
+
 export const schoolDashboardService = {
+  /**
+   * Fast path: builds or fetches tenant-cached dashboard state directly from the
+   * already-verified session school & user records (0 redundant DB round-trips).
+   */
+  async getDashboardDataFromSession(
+    school: SchoolRecord,
+    user: Pick<UserRecord, "id" | "name" | "role" | "schoolId">,
+  ): Promise<{ data: SchoolDashboardData; cacheHit: boolean }> {
+    if (!school?.id) {
+      throw new TenantNotFoundError("Registered school not found.");
+    }
+    if (user.role !== "PLATFORM_SUPER_ADMIN" && user.schoolId !== school.id) {
+      throw new TenantMismatchError("Access denied: requested school belongs to another tenant.");
+    }
+
+    const cacheKey = `dashboard:v1:${user.id}`;
+    const cached = await tenantCache.get<SchoolDashboardData>(school.id, cacheKey);
+    if (cached && cached.school?.id === school.id) {
+      return { data: cached, cacheHit: true };
+    }
+
+    const fresh = buildEmptyDashboardData(school, user);
+    await tenantCache.set(school.id, cacheKey, fresh, DASHBOARD_CACHE_TTL_SECONDS);
+    return { data: fresh, cacheHit: false };
+  },
+
   /**
    * Returns tenant-scoped dashboard state for the registered school.
    * Rejects missing schools and cross-tenant user access.
@@ -79,92 +183,15 @@ export const schoolDashboardService = {
       throw new TenantMismatchError("Access denied: requested school belongs to another tenant.");
     }
 
-    const userName = user?.name?.trim() || "School Administrator";
-    const userRole = user?.role ? formatUserRole(user.role) : "School Admin";
+    const cacheKey = user ? `dashboard:v1:${user.id}` : "dashboard:v1:anon";
+    const cached = await tenantCache.get<SchoolDashboardData>(school.id, cacheKey);
+    if (cached && cached.school?.id === school.id) {
+      return cached;
+    }
 
-    return {
-      school: {
-        id: school.id,
-        name: school.name,
-        slug: school.slug,
-        code: school.code || "",
-        affiliationBoard: school.affiliationBoard || "Not Specified",
-        city: school.city || "",
-        state: school.state || "",
-      },
-      currentUser: {
-        name: userName,
-        role: userRole,
-        avatarInitials: getAvatarInitials(userName),
-      },
-      academicSession: getCurrentAcademicSession(),
-      kpis: {
-        totalStudents: { value: 0, change: 0 },
-        totalStaff: { value: 0, change: 0 },
-        pendingAdmissions: { value: 0, change: 0 },
-        feeDues: { value: 0, change: 0 },
-      },
-      studentOverview: {
-        total: 0,
-        sections: [],
-      },
-      attendanceToday: {
-        rate: 0,
-        present: 0,
-        absent: 0,
-        notMarked: 0,
-      },
-      todayTasks: [],
-      feeCollection: {
-        collectedAmount: 0,
-        collectionRate: 0,
-        totalFee: 0,
-        pendingFee: 0,
-        overdueFee: 0,
-        monthlyTrends: [],
-      },
-      upcomingEvents: [],
-      recentAdmissions: [],
-      recentActivities: [],
-      classStrength: [],
-      academicPerformance: {
-        overallPassRate: 0,
-        trendVsLastTerm: 0,
-        termTrends: [],
-        topClasses: [],
-      },
-      admissionFunnel: {
-        enquiries: 0,
-        applications: 0,
-        shortlisted: 0,
-        admitted: 0,
-        conversionRate: 0,
-        trendVsLastYear: 0,
-      },
-      staffOverview: {
-        total: 0,
-        teaching: 0,
-        teachingPercentage: 0,
-        nonTeaching: 0,
-        nonTeachingPercentage: 0,
-        administrative: 0,
-        adminPercentage: 0,
-      },
-      genderBreakdown: {
-        total: 0,
-        boys: 0,
-        boysPercentage: 0,
-        girls: 0,
-        girlsPercentage: 0,
-      },
-      keyInsights: [],
-      notices: [],
-      communicationSummary: {
-        noticesSent: 0,
-        smsDelivered: 0,
-        emailsDelivered: 0,
-      },
-    };
+    const fresh = buildEmptyDashboardData(school, user);
+    await tenantCache.set(school.id, cacheKey, fresh, DASHBOARD_CACHE_TTL_SECONDS);
+    return fresh;
   },
 
   /**

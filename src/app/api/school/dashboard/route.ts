@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { sessionService } from "@/server/auth/session-service";
 import { schoolDashboardService } from "@/server/school/school-dashboard-service";
 import { toErrorResponse } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const startedAt = Date.now();
   try {
     const session = await sessionService.getSessionFromRequest(req);
     if (!session || !session.user) {
@@ -20,12 +22,14 @@ export async function GET(req: NextRequest) {
 
     const url = new URL(req.url);
     const requestedSchoolId = url.searchParams.get("schoolId")?.trim();
+    const requestedSlug = url.searchParams.get("schoolSlug")?.trim().toLowerCase();
     const ownSchoolId = session.school?.id || session.user.schoolId;
+    const isSuperAdmin = session.user.role === "PLATFORM_SUPER_ADMIN";
 
     if (
-      requestedSchoolId &&
-      session.user.role !== "PLATFORM_SUPER_ADMIN" &&
-      requestedSchoolId !== ownSchoolId
+      !isSuperAdmin &&
+      ((requestedSchoolId && requestedSchoolId !== ownSchoolId) ||
+        (requestedSlug && session.school && requestedSlug !== session.school.slug.toLowerCase()))
     ) {
       return NextResponse.json(
         {
@@ -44,12 +48,37 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const [dashboardData, availableSchools] = await Promise.all([
-      schoolDashboardService.getDashboardData(targetSchoolId, session.user.id),
-      schoolDashboardService.getSchoolsForUser(session.user, session.school),
-    ]);
+    let dashboardData;
+    let availableSchools;
+    let cacheHit = false;
 
-    return NextResponse.json({
+    if (!isSuperAdmin && session.school && session.school.id === targetSchoolId) {
+      const fastResult = await schoolDashboardService.getDashboardDataFromSession(
+        session.school,
+        session.user,
+      );
+      dashboardData = fastResult.data;
+      cacheHit = fastResult.cacheHit;
+      availableSchools = [session.school];
+    } else {
+      [dashboardData, availableSchools] = await Promise.all([
+        schoolDashboardService.getDashboardData(targetSchoolId, session.user.id),
+        schoolDashboardService.getSchoolsForUser(session.user, session.school),
+      ]);
+    }
+
+    const durationMs = Date.now() - startedAt;
+    logger.info(
+      {
+        event: "SCHOOL_DASHBOARD_API_LOADED",
+        schoolId: dashboardData.school.id,
+        cacheHit,
+        durationMs,
+      },
+      "[DashboardAPI] Loaded tenant dashboard",
+    );
+
+    const response = NextResponse.json({
       success: true,
       authenticated: true,
       data: dashboardData,
@@ -69,6 +98,8 @@ export async function GET(req: NextRequest) {
         role: session.user.role,
       },
     });
+    response.headers.set("Server-Timing", `dash;dur=${durationMs}`);
+    return response;
   } catch (err) {
     return toErrorResponse(err);
   }

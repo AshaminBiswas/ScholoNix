@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  LayoutDashboard,
   Users,
   GraduationCap,
   Calendar,
@@ -14,12 +11,8 @@ import {
   Megaphone,
   MessageSquare,
   BarChart3,
-  Settings,
   ChevronDown,
-  ChevronRight,
   Search,
-  Bell,
-  HelpCircle,
   CheckCircle2,
   XCircle,
   ArrowRight,
@@ -27,16 +20,14 @@ import {
   Mail,
   FileText,
   School,
-  Menu,
   X,
-  LogOut,
-  Check,
   UserPlus,
   Sparkles,
-  Loader2,
 } from "lucide-react";
 import type { SchoolDashboardData } from "@/modules/school/types";
 import { SchoolCampusIllustration } from "./school-campus-illustration";
+import { SchoolWorkspaceShell } from "./school-workspace-shell";
+import { buildSchoolShellProps } from "@/modules/school/utils/shell-props";
 
 interface SchoolOption {
   id: string;
@@ -49,7 +40,7 @@ interface SchoolOption {
 
 interface SchoolDashboardProps {
   initialData: SchoolDashboardData;
-  availableSchools: SchoolOption[];
+  availableSchools?: SchoolOption[];
   user: {
     id: string;
     name: string;
@@ -59,18 +50,11 @@ interface SchoolDashboardProps {
   };
 }
 
-export function SchoolDashboard({ initialData, availableSchools, user }: SchoolDashboardProps) {
-  const router = useRouter();
-
-  // Active dynamic school dashboard data
+export function SchoolDashboard({ initialData, user }: SchoolDashboardProps) {
+  // Active single-tenant school dashboard data
   const [data, setData] = useState<SchoolDashboardData>(initialData);
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string>(initialData.school.id);
-  const [isLoadingSchool, setIsLoadingSchool] = useState<boolean>(false);
 
-  // UI state
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [schoolDropdownOpen, setSchoolDropdownOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  // Dashboard-specific modal state
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [quickActionModal, setQuickActionModal] = useState<string | null>(null);
@@ -87,7 +71,6 @@ export function SchoolDashboard({ initialData, availableSchools, user }: SchoolD
   useEffect(() => {
     setData(initialData);
     setTasks(initialData.todayTasks);
-    setSelectedSchoolId(initialData.school.id);
   }, [initialData]);
 
   // Keyboard shortcut Ctrl+K / Cmd+K for search
@@ -99,8 +82,6 @@ export function SchoolDashboard({ initialData, availableSchools, user }: SchoolD
       }
       if (e.key === "Escape") {
         setSearchOpen(false);
-        setSchoolDropdownOpen(false);
-        setUserMenuOpen(false);
         setQuickActionModal(null);
       }
     };
@@ -108,343 +89,27 @@ export function SchoolDashboard({ initialData, availableSchools, user }: SchoolD
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Handle switching school dynamically
-  const handleSwitchSchool = async (schoolId: string) => {
-    if (schoolId === data.school.id) {
-      setSchoolDropdownOpen(false);
-      return;
-    }
-    setIsLoadingSchool(true);
-    setSchoolDropdownOpen(false);
-
-    try {
-      const res = await fetch(`/api/school/dashboard?schoolId=${encodeURIComponent(schoolId)}`);
-      const json = await res.json();
-      if (json.success && json.data) {
-        setData(json.data);
-        setTasks(json.data.todayTasks);
-        setSelectedSchoolId(schoolId);
-      }
-    } catch (err) {
-      console.error("Failed to load school dashboard data:", err);
-    } finally {
-      setIsLoadingSchool(false);
-    }
-  };
-
   // Toggle task item completion
   const handleToggleTask = (taskId: string) => {
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
+      prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)),
     );
   };
 
   const completedTasksCount = useMemo(() => tasks.filter((t) => t.completed).length, [tasks]);
-
-  // Logout handler
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {
-      // Ignore
-    }
-    router.push("/login");
-  };
+  const shellProps = useMemo(
+    () => buildSchoolShellProps(data.school, user),
+    [data.school, user],
+  );
 
   return (
-    <div className="relative min-h-screen bg-[#F4F6FC] text-[#1B1D45] flex flex-col font-sans overflow-x-hidden">
-      {/* =========================================================================
-          1. TOP APP HEADER / BAR
-          ========================================================================= */}
-      <header className="sticky top-0 z-40 border-b border-[#D6DBF0] bg-white/98 backdrop-blur-md px-3 sm:px-6 py-2.5 shadow-xs">
-        <div className="flex items-center justify-between gap-2 sm:gap-4">
-          {/* Left: Mobile Toggle & Brand / Panel Identifier */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#08093B] shadow-xs lg:hidden"
-              aria-label="Toggle navigation drawer"
-            >
-              {mobileSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-
-            <div className="hidden sm:flex items-center gap-2">
-              <School className="h-5 w-5 text-[#663CF6]" />
-              <span className="text-sm font-extrabold text-[#08093B]">
-                School Web Panel
-              </span>
-            </div>
-
-            {/* School Switcher Pill Dropdown */}
-            <div className="relative">
-              <button
-                type="button"
-                id="school-switcher-dropdown-btn"
-                onClick={() => setSchoolDropdownOpen(!schoolDropdownOpen)}
-                className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-[#D6DBF0] bg-[#FAF8FE] px-2.5 sm:px-3 py-1 text-xs font-bold text-[#08093B] transition hover:border-[#9B76FF] hover:bg-[#F2EEFD] shadow-xs cursor-pointer max-w-[150px] sm:max-w-none"
-                aria-expanded={schoolDropdownOpen}
-              >
-                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#663CF6] text-white text-[10px]">
-                  🎓
-                </div>
-                <span className="truncate">
-                  {data.school.name}
-                </span>
-                {isLoadingSchool ? (
-                  <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[#663CF6]" />
-                ) : (
-                  <ChevronDown className="h-3 w-3 shrink-0 text-[#4D5072]" />
-                )}
-              </button>
-
-              {/* School Switcher Dropdown Menu */}
-              {schoolDropdownOpen && (
-                <div className="absolute left-0 mt-2 w-72 rounded-[16px] border border-[#D6DBF0] bg-white p-2 shadow-xl z-50">
-                  <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#76799C] border-b border-[#DFE3F5]">
-                    Select Registered School
-                  </div>
-                  <div className="mt-1 space-y-1 max-h-60 overflow-y-auto">
-                    {availableSchools.map((s) => {
-                      const isSelected = s.id === selectedSchoolId;
-                      return (
-                        <button
-                          key={s.id}
-                          id={`switch-school-${s.id}`}
-                          type="button"
-                          onClick={() => handleSwitchSchool(s.id)}
-                          className={`flex w-full items-center justify-between rounded-[10px] p-2 text-left text-xs transition cursor-pointer ${
-                            isSelected
-                              ? "bg-[#EDE7FF] font-bold text-[#663CF6]"
-                              : "text-[#1B1D45] hover:bg-[#F8FAFC]"
-                          }`}
-                        >
-                          <div className="flex flex-col">
-                            <span className="truncate">{s.name}</span>
-                            <span className="text-[10px] text-[#76799C]">
-                              {s.code || s.slug} {s.city ? `· ${s.city}` : ""}
-                            </span>
-                          </div>
-                          {isSelected && <Check className="h-4 w-4 text-[#663CF6] shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Middle: Universal Search Bar (Ctrl + K) */}
-          <div className="flex-1 max-w-md hidden md:block">
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              className="flex w-full items-center justify-between rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3.5 py-1.5 text-xs text-[#76799C] transition hover:border-[#663CF6] hover:bg-white cursor-pointer shadow-xs"
-            >
-              <div className="flex items-center gap-2">
-                <Search className="h-3.5 w-3.5 text-[#76799C]" />
-                <span>Search students, staff, classes, fees, etc.</span>
-              </div>
-              <kbd className="rounded border border-[#D6DBF0] bg-white px-1.5 py-0.5 text-[10px] font-mono text-[#4D5072] shadow-xs">
-                Ctrl + K
-              </kbd>
-            </button>
-          </div>
-
-          {/* Right: Notifications, Help & User Profile */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Notification Bell with Badge */}
-            <button
-              type="button"
-              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#D6DBF0] bg-white text-[#4D5072] transition hover:bg-[#F2EEFD] hover:text-[#663CF6] shadow-xs"
-              aria-label="View notifications"
-            >
-              <Bell className="h-4 w-4" />
-              {data.notices.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
-                  {data.notices.length}
-                </span>
-              )}
-            </button>
-
-            {/* Help Link */}
-            <Link
-              href="/help"
-              className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full border border-[#D6DBF0] bg-white text-[#4D5072] transition hover:bg-[#F2EEFD] hover:text-[#663CF6] shadow-xs"
-              aria-label="Open Help Center"
-            >
-              <HelpCircle className="h-4 w-4" />
-            </Link>
-
-            {/* User Profile Pill */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 rounded-full border border-[#D6DBF0] bg-white p-1 pr-2 sm:pr-3 transition hover:border-[#663CF6] shadow-xs cursor-pointer"
-                aria-expanded={userMenuOpen}
-              >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-tr from-[#663CF6] to-[#8B5CF6] text-xs font-bold text-white shadow-xs">
-                  {data.currentUser.avatarInitials}
-                </div>
-                <div className="hidden text-left sm:block">
-                  <p className="text-xs font-bold leading-tight text-[#08093B]">
-                    {data.currentUser.name}
-                  </p>
-                  <p className="text-[10px] text-[#76799C] capitalize">
-                    {data.currentUser.role}
-                  </p>
-                </div>
-                <ChevronDown className="h-3 w-3 text-[#4D5072]" />
-              </button>
-
-              {/* User Menu Dropdown */}
-              {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-[16px] border border-[#D6DBF0] bg-white p-2 shadow-xl z-50">
-                  <div className="px-3 py-2 border-b border-[#DFE3F5]">
-                    <p className="text-xs font-bold text-[#08093B]">{data.currentUser.name}</p>
-                    <p className="text-[11px] text-[#76799C]">{user.email || data.currentUser.role}</p>
-                    <span className="inline-block mt-1 rounded bg-[#EDE7FF] px-2 py-0.5 text-[10px] font-bold text-[#663CF6]">
-                      {data.school.name}
-                    </span>
-                  </div>
-                  <div className="py-1">
-                    <Link
-                      href="/contact"
-                      className="flex items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs text-[#4D5072] hover:bg-[#F6F5FD] hover:text-[#663CF6]"
-                    >
-                      <HelpCircle className="h-3.5 w-3.5" />
-                      <span>Contact Support</span>
-                    </Link>
-                    <Link
-                      href="/feedback"
-                      className="flex items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs text-[#4D5072] hover:bg-[#F6F5FD] hover:text-[#663CF6]"
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-[#663CF6]" />
-                      <span>Give Feedback</span>
-                    </Link>
-                  </div>
-                  <div className="border-t border-[#DFE3F5] pt-1">
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="flex w-full items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 cursor-pointer"
-                    >
-                      <LogOut className="h-3.5 w-3.5" />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* =========================================================================
-          2. LAYOUT: SIDEBAR + MAIN WORKSPACE
-          ========================================================================= */}
-      <div className="flex flex-1">
-        {/* Left Sidebar Menu */}
-        <aside
-          className={`fixed inset-y-0 left-0 z-30 w-64 border-r border-[#D6DBF0] bg-white pt-16 lg:pt-0 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
-            mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="h-full overflow-y-auto px-3 py-4 flex flex-col justify-between">
-            <div className="space-y-1">
-              {/* Dashboard Item (Active Purple) */}
-              <Link
-                href="/dashboard"
-                onClick={() => setMobileSidebarOpen(false)}
-                className="flex items-center gap-3 rounded-[12px] bg-[#663CF6] px-3.5 py-2.5 text-xs font-bold text-white shadow-md transition"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                <span>Dashboard</span>
-              </Link>
-
-              {/* Admissions with sub-items */}
-              <div className="pt-1">
-                <div className="flex items-center justify-between rounded-[10px] px-3.5 py-2 text-xs font-semibold text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <UserPlus className="h-4 w-4" />
-                    <span>Admissions</span>
-                  </div>
-                  <ChevronDown className="h-3.5 w-3.5 text-[#76799C]" />
-                </div>
-                <div className="ml-7 space-y-1 border-l-2 border-[#DDD6FE] pl-2.5 py-1 text-[11px] font-medium text-[#76799C]">
-                  <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Applications</p>
-                  <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Enquiries</p>
-                  <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Admitted Students</p>
-                  <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Admission Settings</p>
-                </div>
-              </div>
-
-              {/* Standard Menu Items with Chevrons matching mockup */}
-              {[
-                { icon: Users, label: "Students" },
-                { icon: Users, label: "Parents & Guardians" },
-                { icon: GraduationCap, label: "Academics" },
-                { icon: Clock, label: "Attendance" },
-                { icon: Calendar, label: "Timetable" },
-                { icon: Users, label: "Staff" },
-                { icon: CreditCard, label: "Finance" },
-                { icon: Megaphone, label: "Marketing", badge: "New" },
-                { icon: MessageSquare, label: "Communication" },
-                { icon: BarChart3, label: "Reports" },
-                { icon: Settings, label: "Settings" },
-              ].map((item, idx) => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between rounded-[10px] px-3.5 py-2 text-xs font-semibold text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] cursor-pointer transition"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {item.badge && (
-                        <span className="rounded-full bg-[#EDE7FF] px-2 py-0.5 text-[9px] font-extrabold text-[#663CF6]">
-                          {item.badge}
-                        </span>
-                      )}
-                      <ChevronRight className="h-3 w-3 text-[#CAD0EB]" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Sidebar Bottom Card: Connected School Status */}
-            <div className="mt-6 rounded-[14px] border border-[#DDD6FE] bg-gradient-to-br from-[#EDE7FF]/60 via-white to-[#F6F2FF] p-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#663CF6]">
-                Connected School
-              </p>
-              <p className="mt-1 text-xs font-extrabold text-[#08093B] truncate">
-                {data.school.name}
-              </p>
-              <p className="text-[10px] text-[#76799C]">
-                {data.school.affiliationBoard} · {data.school.code}
-              </p>
-            </div>
-          </div>
-        </aside>
-
-        {/* Mobile Backdrop */}
-        {mobileSidebarOpen && (
-          <div
-            className="fixed inset-0 z-20 bg-black/30 backdrop-blur-xs lg:hidden"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-        )}
-
-        {/* =========================================================================
-            3. MAIN CONTENT CANVAS
-            ========================================================================= */}
-        <main className="flex-1 min-w-0 overflow-x-hidden p-3 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full">
+    <SchoolWorkspaceShell
+      school={shellProps.school}
+      user={shellProps.user}
+      activeNav="dashboard"
+      noticeCount={data.notices.length}
+      onOpenSearch={() => setSearchOpen(true)}
+    >
           {/* Top Hero Section: Greeting & Campus Architecture Banner */}
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
             <div className="space-y-3">
@@ -1613,60 +1278,6 @@ export function SchoolDashboard({ initialData, availableSchools, user }: SchoolD
             </div>
           </div>
 
-          {/* =========================================================================
-              12. BOTTOM HELP & FEEDBACK BANNER (From uploaded mockup)
-              ========================================================================= */}
-          <div className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#663CF6] via-[#7C3AED] to-[#4F27E8] p-6 text-white shadow-lg">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4 text-center sm:text-left">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-white/15 backdrop-blur-md text-white">
-                  <HelpCircle className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold">Need Help or Have Suggestions?</h3>
-                  <p className="mt-0.5 text-xs text-purple-100">
-                    Get support, share feedback or request a feature enhancement.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 shrink-0">
-                <Link
-                  href="/contact"
-                  className="inline-flex items-center gap-1.5 rounded-[12px] bg-white px-4 py-2 text-xs font-bold text-[#4F27E8] shadow-sm transition hover:bg-[#F6F5FD]"
-                >
-                  <span>Contact Support</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-                <Link
-                  href="/feedback"
-                  className="inline-flex items-center gap-1.5 rounded-[12px] bg-white/20 backdrop-blur-md px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-white/30"
-                >
-                  <span>Share Feedback</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer inside panel */}
-          <footer className="border-t border-[#DFE3F5] pt-6 pb-4 text-xs text-[#76799C] flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p>&copy; {new Date().getFullYear()} ScholoNix. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <Link href="/contact" className="hover:text-[#663CF6]">
-                Support
-              </Link>
-              <Link href="/feedback" className="hover:text-[#663CF6]">
-                Feedback
-              </Link>
-              <Link href="/help" className="hover:text-[#663CF6]">
-                Help Center
-              </Link>
-            </div>
-          </footer>
-        </main>
-      </div>
-
       {/* Quick Action Modal Preview */}
       {quickActionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
@@ -1753,6 +1364,6 @@ export function SchoolDashboard({ initialData, availableSchools, user }: SchoolD
           </div>
         </div>
       )}
-    </div>
+    </SchoolWorkspaceShell>
   );
 }

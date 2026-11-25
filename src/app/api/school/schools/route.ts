@@ -12,10 +12,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const schools = await schoolDashboardService.getSchoolsForUser(
-      session.user,
-      session.school,
-    );
+    const schools =
+      session.user.role !== "PLATFORM_SUPER_ADMIN" && session.school
+        ? [session.school]
+        : await schoolDashboardService.getSchoolsForUser(session.user, session.school);
 
     return NextResponse.json({
       success: true,

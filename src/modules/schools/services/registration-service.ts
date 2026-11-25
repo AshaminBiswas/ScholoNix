@@ -1,10 +1,46 @@
 import "server-only";
+import { randomBytes } from "crypto";
 import { hashPassword, normalizePhone } from "@/server/security/crypto";
 import { authRepository } from "@/server/auth/auth-repository";
 import { otpService } from "@/server/auth/otp-service";
 import { logAuditEvent } from "@/server/security/audit-logger";
 import { ConflictError, ValidationError, VerificationRequiredError } from "@/lib/errors";
 import type { CompleteRegistrationInput } from "../schemas/registration";
+
+export const RESERVED_SCHOOL_SLUGS = new Set([
+  "login",
+  "register",
+  "forgot-password",
+  "reset-password",
+  "dashboard",
+  "help",
+  "help-center",
+  "faqs",
+  "faq",
+  "blog",
+  "guides",
+  "guide",
+  "features",
+  "pricing",
+  "contact",
+  "feedback",
+  "for-schools",
+  "api",
+  "todos",
+  "workspace",
+  "admin",
+  "platform",
+  "unauthorized",
+  "apple-icon.png",
+  "icon.png",
+  "favicon.ico",
+  "manifest.webmanifest",
+  "_next",
+]);
+
+export function isReservedSchoolSlug(slug: string): boolean {
+  return RESERVED_SCHOOL_SLUGS.has(slug.trim().toLowerCase());
+}
 
 /**
  * Normalizes an institution name into a URL-friendly, safe slug.
@@ -15,9 +51,34 @@ export function generateSlug(name: string): string {
     .trim()
     .replace(/[^\w\s-]/g, "")
     .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80)
+    .replace(/-+$/g, "");
 
   return base || "school";
+}
+
+/**
+ * Resolves a unique, collision-free URL slug for a newly registered school.
+ * Avoids reserved platform routes and deduplicates same-name schools cleanly.
+ */
+export async function generateUniqueSchoolSlug(name: string): Promise<string> {
+  let base = generateSlug(name);
+  if (isReservedSchoolSlug(base)) {
+    base = `${base}-school`;
+  }
+
+  const maxAttempts = 25;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`;
+    if (isReservedSchoolSlug(candidate)) continue;
+    const existing = await authRepository.findSchoolBySlug(candidate);
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  return `${base}-${randomBytes(3).toString("hex")}`;
 }
 
 /**
@@ -176,8 +237,8 @@ export async function registerSchool(
     );
   }
 
-  // 3. Generate unique slug and school code
-  const slug = generateSlug(institution.name);
+  // 3. Generate unique non-reserved slug and school code
+  const slug = await generateUniqueSchoolSlug(institution.name);
   const code = generateSchoolCode(institution.name, institution.pinCode);
 
   // 4. Hash administrator password

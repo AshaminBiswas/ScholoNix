@@ -182,12 +182,6 @@ function saveStore(state: AuthStoreState): void {
   }
 }
 
-storeMemory = loadStore();
-
-/**
- * Returns true when executing inside an ephemeral serverless runtime (e.g. Vercel),
- * where in-memory RAM / local filesystem cannot be shared across HTTP invocations.
- */
 function isServerlessRuntime(): boolean {
   return Boolean(
     process.env.VERCEL ||
@@ -196,51 +190,61 @@ function isServerlessRuntime(): boolean {
   );
 }
 
+storeMemory = isServerlessRuntime() ? storeMemory : loadStore();
+
 /**
- * Checks if Prisma is connected and healthy.
- * Never permanently caches `false` so transient cold-start issues self-heal cleanly.
+ * Global circuit breaker for Prisma connectivity so multiple Next.js route bundles
+ * never perform repeated blocking probes or wait on dead local DB sockets.
  */
-let prismaAvailable: boolean | null = null;
-let prismaLastFailureAt = 0;
-const PRISMA_RETRY_COOLDOWN_MS = 10_000;
+const globalForAuthRepo = globalThis as unknown as {
+  authRepoPrismaUnavailableUntil?: number;
+};
+const PRISMA_RETRY_COOLDOWN_MS = 30_000;
+const PRISMA_DEV_OP_TIMEOUT_MS = 3000;
 
 async function isPrismaWorking(): Promise<boolean> {
   // In automated test environments, strictly use ephemeral in-memory state
   if (process.env.NODE_ENV === "test") {
     return false;
   }
-  if (prismaAvailable === true) {
-    return true;
-  }
-  if (
-    prismaAvailable === false &&
-    Date.now() - prismaLastFailureAt < PRISMA_RETRY_COOLDOWN_MS
-  ) {
+  if (!process.env.DATABASE_URL?.trim()) {
     return false;
   }
+  const unavailableUntil = globalForAuthRepo.authRepoPrismaUnavailableUntil || 0;
+  if (unavailableUntil > Date.now()) {
+    return false;
+  }
+  return true;
+}
+
+async function runPrismaOp<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+  if (isServerlessRuntime()) {
+    const result = await fn();
+    globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
+    return result;
+  }
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Database connection timeout")), 8000),
-    );
-    await Promise.race([db.$queryRaw`SELECT 1`, timeoutPromise]);
-    prismaAvailable = true;
-    prismaLastFailureAt = 0;
-    return true;
-  } catch (err) {
-    prismaAvailable = false;
-    prismaLastFailureAt = Date.now();
-    logger.error(
-      { err: err instanceof Error ? err.message : String(err), serverless: isServerlessRuntime() },
-      "[AuthRepository] PostgreSQL connectivity check failed",
-    );
-    return false;
+    const result = await Promise.race([
+      fn(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Database ${operation} timeout after ${PRISMA_DEV_OP_TIMEOUT_MS}ms`)),
+          PRISMA_DEV_OP_TIMEOUT_MS,
+        );
+      }),
+    ]);
+    globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
+    return result;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
 function handlePrismaRuntimeError(operation: string, err: unknown): void {
   const message = err instanceof Error ? err.message : String(err);
-  prismaAvailable = false;
-  prismaLastFailureAt = Date.now();
+  globalForAuthRepo.authRepoPrismaUnavailableUntil = Date.now() + PRISMA_RETRY_COOLDOWN_MS;
   logger.error(
     { operation, error: message, serverless: isServerlessRuntime() },
     `[AuthRepository] Prisma ${operation} failed`,
@@ -859,12 +863,14 @@ export const authRepository = {
           return null;
         }
 
-        const user = await (db as any).user.findFirst({
-          where: {
-            OR: orConditions,
-          },
-          include: { school: true },
-        });
+        const user = await runPrismaOp("findUserByIdentifier", () =>
+          (db as any).user.findFirst({
+            where: {
+              OR: orConditions,
+            },
+            include: { school: true },
+          }),
+        );
         return user ? (user as unknown as UserRecord) : null;
       } catch (err) {
         handlePrismaRuntimeError("findUserByIdentifier", err);
@@ -911,13 +917,16 @@ export const authRepository = {
   async findUserById(id: string): Promise<UserRecord | null> {
     if (await isPrismaWorking()) {
       try {
-        const user = await (db as any).user.findUnique({
-          where: { id },
-          include: { school: true },
-        });
+        const user = await runPrismaOp("findUserById", () =>
+          (db as any).user.findUnique({
+            where: { id },
+            include: { school: true },
+          }),
+        );
         if (user) return user as unknown as UserRecord;
-      } catch {
-        // Fallback
+        return null;
+      } catch (err) {
+        handlePrismaRuntimeError("findUserById", err);
       }
     }
 
@@ -936,12 +945,14 @@ export const authRepository = {
   async findSchoolById(id: string): Promise<SchoolRecord | null> {
     if (await isPrismaWorking()) {
       try {
-        const school = await (db as any).school.findUnique({
-          where: { id },
-        });
+        const school = await runPrismaOp("findSchoolById", () =>
+          (db as any).school.findUnique({
+            where: { id },
+          }),
+        );
         if (school) return school as unknown as SchoolRecord;
-      } catch {
-        // Fallback
+      } catch (err) {
+        handlePrismaRuntimeError("findSchoolById", err);
       }
     }
     if (!storeMemory.schools[id]) {
@@ -950,15 +961,47 @@ export const authRepository = {
     return storeMemory.schools[id] || Object.values(storeMemory.schools).find((s) => s.slug === id || s.code === id) || null;
   },
 
+  async findSchoolBySlug(slug: string): Promise<SchoolRecord | null> {
+    const cleanSlug = slug.trim().toLowerCase();
+    if (!cleanSlug) return null;
+
+    if (await isPrismaWorking()) {
+      try {
+        const school = await runPrismaOp("findSchoolBySlug", () =>
+          (db as any).school.findFirst({
+            where: { slug: { equals: cleanSlug, mode: "insensitive" } },
+          }),
+        );
+        if (school) return school as unknown as SchoolRecord;
+        return null;
+      } catch (err) {
+        handlePrismaRuntimeError("findSchoolBySlug", err);
+      }
+    }
+
+    const matchInMemory = (schools: Record<string, SchoolRecord>) =>
+      Object.values(schools).find((s) => s.slug.toLowerCase() === cleanSlug) || null;
+
+    let found = matchInMemory(storeMemory.schools);
+    if (!found && !isServerlessRuntime()) {
+      storeMemory = loadStore();
+      found = matchInMemory(storeMemory.schools);
+    }
+    return found;
+  },
+
   async getAllSchools(): Promise<SchoolRecord[]> {
     if (await isPrismaWorking()) {
       try {
-        const schools = await (db as any).school.findMany({
-          orderBy: { name: "asc" },
-        });
+        const schools = await runPrismaOp<SchoolRecord[]>("getAllSchools", () =>
+          (db as any).school.findMany({
+            orderBy: { name: "asc" },
+          }),
+        );
         if (schools && schools.length > 0) return schools as unknown as SchoolRecord[];
-      } catch {
-        // Fallback
+        return [];
+      } catch (err) {
+        handlePrismaRuntimeError("getAllSchools", err);
       }
     }
     storeMemory = loadStore();
@@ -1139,22 +1182,38 @@ export const authRepository = {
     }
   },
 
-  async revokeAllUserSessions(userId: string): Promise<void> {
+  async revokeAllUserSessions(userId: string): Promise<string[]> {
     const now = new Date();
+    const revokedTokenHashes: string[] = [];
 
     if (await isPrismaWorking()) {
       try {
-        await (db as any).userSession.updateMany({
-          where: { userId, revokedAt: null },
-          data: { revokedAt: now },
-        });
+        const activeSessions = (await runPrismaOp("findActiveSessionsForRevoke", () =>
+          (db as any).userSession.findMany({
+            where: { userId, revokedAt: null },
+            select: { tokenHash: true },
+          }),
+        )) as Array<{ tokenHash: string }>;
+        for (const s of activeSessions) {
+          if (s.tokenHash) revokedTokenHashes.push(s.tokenHash);
+        }
+
+        await runPrismaOp("revokeAllUserSessions", () =>
+          (db as any).userSession.updateMany({
+            where: { userId, revokedAt: null },
+            data: { revokedAt: now },
+          }),
+        );
         for (const s of Object.values(storeMemory.sessions)) {
           if (s.userId === userId && !s.revokedAt) {
             s.revokedAt = now;
+            if (s.tokenHash && !revokedTokenHashes.includes(s.tokenHash)) {
+              revokedTokenHashes.push(s.tokenHash);
+            }
           }
         }
         if (!isServerlessRuntime()) saveStore(storeMemory);
-        return;
+        return revokedTokenHashes;
       } catch (err) {
         handlePrismaRuntimeError("revokeAllUserSessions", err);
       }
@@ -1167,9 +1226,11 @@ export const authRepository = {
     for (const s of Object.values(storeMemory.sessions)) {
       if (s.userId === userId && !s.revokedAt) {
         s.revokedAt = now;
+        if (s.tokenHash) revokedTokenHashes.push(s.tokenHash);
       }
     }
     saveStore(storeMemory);
+    return revokedTokenHashes;
   },
 
   /**
@@ -1308,16 +1369,18 @@ export const authRepository = {
 
     if (await isPrismaWorking()) {
       try {
-        const created = await (db as any).userSession.create({
-          data: {
-            id,
-            userId: params.userId,
-            tokenHash: params.tokenHash,
-            expiresAt: params.expiresAt,
-            ipAddress: params.ipAddress,
-            userAgent: params.userAgent,
-          },
-        });
+        const created = await runPrismaOp("createSession", () =>
+          (db as any).userSession.create({
+            data: {
+              id,
+              userId: params.userId,
+              tokenHash: params.tokenHash,
+              expiresAt: params.expiresAt,
+              ipAddress: params.ipAddress,
+              userAgent: params.userAgent,
+            },
+          }),
+        );
         const createdRecord = created as unknown as SessionRecord;
         if (!isServerlessRuntime()) {
           storeMemory.sessions[id] = createdRecord;
@@ -1343,21 +1406,24 @@ export const authRepository = {
 
     if (await isPrismaWorking()) {
       try {
-        const session = await (db as any).userSession.findFirst({
-          where: {
-            tokenHash,
-            revokedAt: null,
-            expiresAt: { gt: now },
-          },
-          include: {
-            user: {
-              include: { school: true },
+        const session = await runPrismaOp("findSessionByTokenHash", () =>
+          (db as any).userSession.findFirst({
+            where: {
+              tokenHash,
+              revokedAt: null,
+              expiresAt: { gt: now },
             },
-          },
-        });
+            include: {
+              user: {
+                include: { school: true },
+              },
+            },
+          }),
+        );
         if (session) return session as unknown as SessionRecord;
-      } catch {
-        // Fallback
+        return null;
+      } catch (err) {
+        handlePrismaRuntimeError("findSessionByTokenHash", err);
       }
     }
 

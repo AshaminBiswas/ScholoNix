@@ -17,6 +17,17 @@ test.describe("School Dashboard - Authentication Guard & Tenant Boundary", () =>
     await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
   });
 
+  test("Unauthenticated user visiting a per-school workspace or in-portal help URL is redirected to /login", async ({
+    page,
+  }) => {
+    await page.context().clearCookies();
+    await page.goto("/synthetic-school-slug", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
+
+    await page.goto("/synthetic-school-slug/help", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
+  });
+
   test("Unauthenticated requests to school dashboard APIs return 401 Unauthorized", async ({
     request,
   }) => {

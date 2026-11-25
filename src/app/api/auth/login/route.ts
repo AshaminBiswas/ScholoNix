@@ -109,6 +109,8 @@ export async function POST(req: NextRequest) {
         userAgent,
       });
 
+      const redirectTo = user.school?.slug ? `/${user.school.slug}` : "/dashboard";
+
       const response = NextResponse.json({
         success: true,
         message: "Login successful via OTP",
@@ -122,11 +124,13 @@ export async function POST(req: NextRequest) {
           },
           school: user.school
             ? {
+                id: user.school.id,
                 name: user.school.name,
                 slug: user.school.slug,
                 code: user.school.code,
               }
             : null,
+          redirectTo,
         },
       });
 
@@ -209,6 +213,8 @@ export async function POST(req: NextRequest) {
       userAgent,
     });
 
+    const redirectTo = user.school?.slug ? `/${user.school.slug}` : "/dashboard";
+
     const response = NextResponse.json({
       success: true,
       message: "Login successful",
@@ -222,11 +228,13 @@ export async function POST(req: NextRequest) {
         },
         school: user.school
           ? {
+              id: user.school.id,
               name: user.school.name,
               slug: user.school.slug,
               code: user.school.code,
             }
           : null,
+        redirectTo,
       },
     });
 

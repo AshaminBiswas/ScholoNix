@@ -23,10 +23,13 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const isTelemetryTunnel = request.nextUrl.pathname === "/api/glitchtip-tunnel";
+  const pathname = request.nextUrl.pathname;
+  const requiresSupabaseSessionRefresh = pathname.startsWith("/todos");
 
-  // Safe Supabase session refresh: never fail request invocation if Supabase is unconfigured
-  if (!isTelemetryTunnel) {
+  // Only invoke Supabase Auth refresh for Supabase-backed routes; school workspace routes
+  // verify custom opaque session cookies in Server Components / API handlers without
+  // extra external Supabase network round-trips.
+  if (requiresSupabaseSessionRefresh) {
     try {
       const supabaseRes = await updateSession(request);
       if (supabaseRes) {

@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
 import {
   BookOpen,
   Users,
@@ -34,7 +36,25 @@ import { BrandLogo } from "@/components/ui/brand-logo";
 type LoginMode = "otp" | "email" | "password" | "otp-verify";
 type OtpChannel = "phone" | "email";
 
+function resolvePostLoginUrl(
+  schoolSlug?: string | null,
+  requestedCallbackUrl?: string | null,
+): string {
+  if (!schoolSlug) {
+    return "/dashboard";
+  }
+  const schoolBase = `/${schoolSlug}`;
+  if (
+    requestedCallbackUrl &&
+    (requestedCallbackUrl === schoolBase || requestedCallbackUrl.startsWith(`${schoolBase}/`))
+  ) {
+    return requestedCallbackUrl;
+  }
+  return schoolBase;
+}
+
 export function SchoolLoginPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<LoginMode>("otp");
   const [otpChannel, setOtpChannel] = useState<OtpChannel>("phone");
   const [countryDialCode, setCountryDialCode] = useState<string>("+91");
@@ -59,9 +79,18 @@ export function SchoolLoginPage() {
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [callbackUrl, setCallbackUrl] = useState<string>("/dashboard");
+  const [callbackUrl, setCallbackUrl] = useState<string>("");
 
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
 
   // Sync mode and callbackUrl from URL query params
   useEffect(() => {
@@ -262,6 +291,8 @@ export function SchoolLoginPage() {
       if (!res.ok) {
         throw new Error(data.error?.message || "Invalid or expired verification code");
       }
+      const targetUrl = resolvePostLoginUrl(data.data.school?.slug, callbackUrl);
+      setCallbackUrl(targetUrl);
       setLoggedInUser({
         name: data.data.user.name,
         email: data.data.user.email,
@@ -271,6 +302,10 @@ export function SchoolLoginPage() {
         schoolSlug: data.data.school?.slug,
       });
       setLoginSuccess(true);
+      router.prefetch(targetUrl as Route);
+      redirectTimerRef.current = setTimeout(() => {
+        router.push(targetUrl as Route);
+      }, 1200);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Verification failed. Please check your code.");
     } finally {
@@ -301,6 +336,8 @@ export function SchoolLoginPage() {
       if (!res.ok) {
         throw new Error(data.error?.message || "Invalid credentials. Please verify your details.");
       }
+      const targetUrl = resolvePostLoginUrl(data.data.school?.slug, callbackUrl);
+      setCallbackUrl(targetUrl);
       setLoggedInUser({
         name: data.data.user.name,
         email: data.data.user.email,
@@ -310,6 +347,10 @@ export function SchoolLoginPage() {
         schoolSlug: data.data.school?.slug,
       });
       setLoginSuccess(true);
+      router.prefetch(targetUrl as Route);
+      redirectTimerRef.current = setTimeout(() => {
+        router.push(targetUrl as Route);
+      }, 1200);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Invalid credentials. Please check your details.");
     } finally {
@@ -899,7 +940,13 @@ export function SchoolLoginPage() {
             <button
               id="close-login-success-modal"
               type="button"
-              onClick={() => setLoginSuccess(false)}
+              onClick={() => {
+                if (redirectTimerRef.current) {
+                  clearTimeout(redirectTimerRef.current);
+                  redirectTimerRef.current = null;
+                }
+                setLoginSuccess(false);
+              }}
               className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#666987] hover:bg-[#F1F3F9] hover:text-[#08093B] transition-colors"
               aria-label="Close modal"
             >
@@ -974,7 +1021,10 @@ export function SchoolLoginPage() {
             {/* Primary Action Button */}
             <Link
               id="login-success-dashboard-btn"
-              href={callbackUrl || "/dashboard"}
+              href={
+                (callbackUrl ||
+                  (loggedInUser?.schoolSlug ? `/${loggedInUser.schoolSlug}` : "/dashboard")) as Route
+              }
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#663CF6] to-[#4F27E8] py-3.5 text-sm font-bold text-white shadow-md shadow-purple-500/25 hover:opacity-95 cursor-pointer"
             >
               <span>Go to Dashboard</span>

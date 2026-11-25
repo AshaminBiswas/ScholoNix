@@ -35,7 +35,10 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         message: "School registered and activated successfully",
-        data: result,
+        data: {
+          ...result,
+          redirectTo: `/${result.slug}?onboarding=true`,
+        },
       },
       { status: 201 },
     );

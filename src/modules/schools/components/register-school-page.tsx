@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
 import {
   GraduationCap,
   CheckCircle2,
@@ -195,6 +197,7 @@ const PLANS = [
 ];
 
 export function RegisterSchoolPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [selectedPlan, setSelectedPlan] = useState<"starter" | "professional" | "enterprise">("professional");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
@@ -901,6 +904,9 @@ export function RegisterSchoolPage() {
         adminName: data.data.adminName,
         adminEmail: data.data.adminEmail,
       });
+      if (data.data?.slug) {
+        router.prefetch(`/${data.data.slug}` as Route);
+      }
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -3352,7 +3358,7 @@ export function RegisterSchoolPage() {
             {/* CTA Button and Dashboard Link */}
             <div className="mt-7 flex flex-col items-center">
               <Link
-                href={`/${registrationSuccess.slug || "workspace"}?onboarding=true`}
+                href={`/${registrationSuccess.slug || "workspace"}?onboarding=true` as Route}
                 className="w-full max-w-sm"
               >
                 <Button
@@ -3365,7 +3371,7 @@ export function RegisterSchoolPage() {
               </Link>
 
               <Link
-                href={`/${registrationSuccess.slug || "workspace"}`}
+                href={`/${registrationSuccess.slug || "workspace"}` as Route}
                 className="mt-3.5 text-sm font-bold text-[#4F27E8] underline hover:text-[#381AB5] transition-colors"
               >
                 Go to Dashboard

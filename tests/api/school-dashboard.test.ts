@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import { GET as dashboardGet } from "@/app/api/school/dashboard/route";
 import { GET as schoolsGet } from "@/app/api/school/schools/route";
+import { POST as loginPost } from "@/app/api/auth/login/route";
 import { authRepository } from "@/server/auth/auth-repository";
 import { getSessionCookieName, sessionService } from "@/server/auth/session-service";
 import { hashPassword } from "@/server/security/crypto";
@@ -138,5 +139,66 @@ describe("School Dashboard API & Strict Tenant Isolation", () => {
     const json = await res.json();
     expect(json.data.school.id).toBe(targetSchool.id);
     expect(json.availableSchools.some((s: { id: string }) => s.id === targetSchool.id)).toBe(true);
+  });
+
+  it("rejects cross-tenant schoolSlug overrides and returns school-specific redirectTo on login", async () => {
+    const unique = `Login-${Date.now()}-${randomBytes(3).toString("hex")}`;
+    const passphrase = `Login!${randomBytes(8).toString("hex")}7`;
+    const passwordHash = await hashPassword(passphrase);
+    const email = `login.${unique.toLowerCase()}@scholonix.example`;
+
+    const { school: schoolA, user: userA } = await authRepository.createUserWithSchool({
+      school: {
+        name: `Login School ${unique}`,
+        slug: `login-school-${unique.toLowerCase()}`,
+        code: `LS-${randomBytes(3).toString("hex").toUpperCase()}`,
+        category: "Co-Educational School",
+        affiliationBoard: "CBSE",
+        city: "Bengaluru",
+        state: "Karnataka",
+        pinCode: "560001",
+        country: "India",
+      },
+      user: {
+        name: "Login Test Admin",
+        email,
+        phone: `+9198${Math.floor(10000000 + Math.random() * 89999999)}`,
+        passwordHash,
+        role: "SCHOOL_ADMIN",
+        phoneVerified: true,
+        emailVerified: true,
+      },
+    });
+    const { school: schoolB } = await createTenantAdmin("SlugCrossB");
+
+    const loginRes = await loginPost(
+      new NextRequest("http://localhost/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ method: "password", identifier: email, password: passphrase }),
+      }),
+    );
+    expect(loginRes.status).toBe(200);
+    const loginJson = await loginRes.json();
+    expect(loginJson.data.school.slug).toBe(schoolA.slug);
+    expect(loginJson.data.redirectTo).toBe(`/${schoolA.slug}`);
+
+    const sessionA = await sessionService.createSession(userA);
+    const cookieName = getSessionCookieName();
+    const crossSlugRes = await dashboardGet(
+      new NextRequest(
+        `http://localhost/api/school/dashboard?schoolSlug=${encodeURIComponent(schoolB.slug)}`,
+        { headers: { cookie: `${cookieName}=${sessionA.token}` } },
+      ),
+    );
+    expect(crossSlugRes.status).toBe(403);
+
+    const fastDash = await schoolDashboardService.getDashboardDataFromSession(schoolA, userA);
+    expect(fastDash.data.school.id).toBe(schoolA.id);
+    expect(fastDash.data.school.slug).toBe(schoolA.slug);
+
+    await expect(
+      schoolDashboardService.getDashboardDataFromSession(schoolB, userA),
+    ).rejects.toBeInstanceOf(TenantMismatchError);
   });
 });
