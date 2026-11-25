@@ -171,6 +171,18 @@ async function runPrismaOp<T>(operation: string, fn: () => Promise<T>): Promise<
   }
 }
 
+function isMissingTablePrismaError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as { code?: string }).code;
+  const message = err instanceof Error ? err.message : String(err);
+  return (
+    code === "P2021" ||
+    code === "P2022" ||
+    message.includes("does not exist in the current database") ||
+    message.includes("relation \"admission_")
+  );
+}
+
 function handlePrismaError(operation: string, err: unknown): void {
   const message = err instanceof Error ? err.message : String(err);
   globalForAdmissionsRepo.admissionsRepoPrismaUnavailableUntil =
@@ -180,10 +192,19 @@ function handlePrismaError(operation: string, err: unknown): void {
     `[AdmissionsRepository] Prisma ${operation} failed`,
   );
   if (isServerlessRuntime()) {
+    if (isMissingTablePrismaError(err)) {
+      throw new ServiceUnavailableError(
+        "Admissions database tables are not provisioned yet. Execute prisma/migrations/20261125160000_admissions_management/migration.sql in Supabase SQL Editor.",
+      );
+    }
     throw new ServiceUnavailableError(
       "Admissions database is temporarily unavailable. Please try again shortly.",
     );
   }
+}
+
+async function setTransactionTenantContext(tx: any, schoolId: string): Promise<void> {
+  await tx.$executeRaw`SELECT set_config('app.current_school_id', ${schoolId}, true)`;
 }
 
 function cloneDefaultChecklist(): AdmissionDocumentChecklistItem[] {
@@ -333,45 +354,48 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("getTenantSnapshot", async () => {
-          const [settingRow, appRows, enqRows, reminderRows, activityRows] = await Promise.all([
-            db.admissionSetting.findUnique({ where: { schoolId } }),
-            db.admissionApplication.findMany({
-              where: { schoolId },
-              orderBy: { appliedAt: "desc" },
-            }),
-            db.admissionEnquiry.findMany({
-              where: { schoolId },
-              orderBy: { createdAt: "desc" },
-            }),
-            db.admissionReminder.findMany({
-              where: { schoolId },
-              orderBy: { createdAt: "desc" },
-            }),
-            db.admissionActivity.findMany({
-              where: { schoolId },
-              orderBy: { createdAt: "desc" },
-              take: 30,
-            }),
-          ]);
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const [settingRow, appRows, enqRows, reminderRows, activityRows] = await Promise.all([
+              tx.admissionSetting.findUnique({ where: { schoolId } }),
+              tx.admissionApplication.findMany({
+                where: { schoolId },
+                orderBy: { appliedAt: "desc" },
+              }),
+              tx.admissionEnquiry.findMany({
+                where: { schoolId },
+                orderBy: { createdAt: "desc" },
+              }),
+              tx.admissionReminder.findMany({
+                where: { schoolId },
+                orderBy: { createdAt: "desc" },
+              }),
+              tx.admissionActivity.findMany({
+                where: { schoolId },
+                orderBy: { createdAt: "desc" },
+                take: 30,
+              }),
+            ]);
 
-          const settings: AdmissionSettingRecord = settingRow
-            ? mapPrismaSetting(settingRow)
-            : {
-                schoolId,
-                currentAcademicYear: getCurrentAcademicYearLabel(),
-                applicationDeadline: null,
-                applicationPrefix: "APP",
-                enabledGrades: [...DEFAULT_ADMISSION_GRADES],
-                updatedAt: new Date().toISOString(),
-              };
+            const settings: AdmissionSettingRecord = settingRow
+              ? mapPrismaSetting(settingRow)
+              : {
+                  schoolId,
+                  currentAcademicYear: getCurrentAcademicYearLabel(),
+                  applicationDeadline: null,
+                  applicationPrefix: "APP",
+                  enabledGrades: [...DEFAULT_ADMISSION_GRADES],
+                  updatedAt: new Date().toISOString(),
+                };
 
-          return {
-            settings,
-            applications: appRows.map(mapPrismaApplication),
-            enquiries: enqRows.map(mapPrismaEnquiry),
-            reminders: reminderRows.map(mapPrismaReminder),
-            activities: activityRows.map(mapPrismaActivity),
-          };
+            return {
+              settings,
+              applications: appRows.map(mapPrismaApplication),
+              enquiries: enqRows.map(mapPrismaEnquiry),
+              reminders: reminderRows.map(mapPrismaReminder),
+              activities: activityRows.map(mapPrismaActivity),
+            };
+          });
         });
       } catch (err) {
         handlePrismaError("getTenantSnapshot", err);
@@ -412,6 +436,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
       try {
         return await runPrismaOp("createApplication", async () => {
           return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
             let setting = await tx.admissionSetting.findUnique({ where: { schoolId } });
             if (!setting) {
               setting = await tx.admissionSetting.create({
@@ -583,13 +608,16 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("getApplicationById", async () => {
-          const found = await db.admissionApplication.findFirst({
-            where: { id: applicationId, schoolId },
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const found = await tx.admissionApplication.findFirst({
+              where: { id: applicationId, schoolId },
+            });
+            if (!found) {
+              throw new NotFoundError("Admission application");
+            }
+            return mapPrismaApplication(found);
           });
-          if (!found) {
-            throw new NotFoundError("Admission application");
-          }
-          return mapPrismaApplication(found);
         });
       } catch (err) {
         if (err instanceof NotFoundError) throw err;
@@ -619,6 +647,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
       try {
         return await runPrismaOp("updateApplication", async () => {
           return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
             const existingRow = await tx.admissionApplication.findFirst({
               where: { id: applicationId, schoolId },
             });
@@ -824,6 +853,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
       try {
         return await runPrismaOp("createEnquiry", async () => {
           return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
             const updatedSetting = await tx.admissionSetting.upsert({
               where: { schoolId },
               update: { nextEnquirySeq: { increment: 1 } },
@@ -947,20 +977,23 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("updateEnquiry", async () => {
-          const existing = await db.admissionEnquiry.findFirst({
-            where: { id: enquiryId, schoolId },
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const existing = await tx.admissionEnquiry.findFirst({
+              where: { id: enquiryId, schoolId },
+            });
+            if (!existing) {
+              throw new NotFoundError("Admission enquiry");
+            }
+            const updated = await tx.admissionEnquiry.update({
+              where: { id: existing.id },
+              data: {
+                status: input.status ?? existing.status,
+                notes: input.notes !== undefined ? input.notes : existing.notes,
+              },
+            });
+            return { enquiry: mapPrismaEnquiry(updated) };
           });
-          if (!existing) {
-            throw new NotFoundError("Admission enquiry");
-          }
-          const updated = await db.admissionEnquiry.update({
-            where: { id: existing.id },
-            data: {
-              status: input.status ?? existing.status,
-              notes: input.notes !== undefined ? input.notes : existing.notes,
-            },
-          });
-          return { enquiry: mapPrismaEnquiry(updated) };
         });
       } catch (err) {
         if (err instanceof NotFoundError) throw err;
@@ -993,11 +1026,14 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("getEnquiryById", async () => {
-          const row = await db.admissionEnquiry.findFirst({
-            where: { id: enquiryId, schoolId },
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const row = await tx.admissionEnquiry.findFirst({
+              where: { id: enquiryId, schoolId },
+            });
+            if (!row) throw new NotFoundError("Admission enquiry");
+            return mapPrismaEnquiry(row);
           });
-          if (!row) throw new NotFoundError("Admission enquiry");
-          return mapPrismaEnquiry(row);
         });
       } catch (err) {
         if (err instanceof NotFoundError) throw err;
@@ -1028,34 +1064,37 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("updateSettings", async () => {
-          const updated = await db.admissionSetting.upsert({
-            where: { schoolId },
-            update: {
-              currentAcademicYear: input.currentAcademicYear,
-              applicationDeadline: deadlineDate,
-              applicationPrefix: input.applicationPrefix,
-              enabledGrades: input.enabledGrades,
-            },
-            create: {
-              schoolId,
-              currentAcademicYear: input.currentAcademicYear,
-              applicationDeadline: deadlineDate,
-              applicationPrefix: input.applicationPrefix,
-              enabledGrades: input.enabledGrades,
-            },
-          });
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const updated = await tx.admissionSetting.upsert({
+              where: { schoolId },
+              update: {
+                currentAcademicYear: input.currentAcademicYear,
+                applicationDeadline: deadlineDate,
+                applicationPrefix: input.applicationPrefix,
+                enabledGrades: input.enabledGrades,
+              },
+              create: {
+                schoolId,
+                currentAcademicYear: input.currentAcademicYear,
+                applicationDeadline: deadlineDate,
+                applicationPrefix: input.applicationPrefix,
+                enabledGrades: input.enabledGrades,
+              },
+            });
 
-          await db.admissionActivity.create({
-            data: {
-              schoolId,
-              actorId: actor.id,
-              actorName: actor.name,
-              action: "SETTINGS_UPDATED",
-              summary: `Updated admission settings for ${input.currentAcademicYear}.`,
-            },
-          });
+            await tx.admissionActivity.create({
+              data: {
+                schoolId,
+                actorId: actor.id,
+                actorName: actor.name,
+                action: "SETTINGS_UPDATED",
+                summary: `Updated admission settings for ${input.currentAcademicYear}.`,
+              },
+            });
 
-          return mapPrismaSetting(updated);
+            return mapPrismaSetting(updated);
+          });
         });
       } catch (err) {
         handlePrismaError("updateSettings", err);
@@ -1099,17 +1138,20 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("createReminder", async () => {
-          const created = await db.admissionReminder.create({
-            data: {
-              schoolId,
-              title: input.title,
-              academicYear: input.academicYear || null,
-              dueDate,
-              priority: input.priority,
-              createdByUserId: actor.id,
-            },
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const created = await tx.admissionReminder.create({
+              data: {
+                schoolId,
+                title: input.title,
+                academicYear: input.academicYear || null,
+                dueDate,
+                priority: input.priority,
+                createdByUserId: actor.id,
+              },
+            });
+            return mapPrismaReminder(created);
           });
-          return mapPrismaReminder(created);
         });
       } catch (err) {
         handlePrismaError("createReminder", err);
@@ -1142,15 +1184,18 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("toggleReminder", async () => {
-          const existing = await db.admissionReminder.findFirst({
-            where: { id: reminderId, schoolId },
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const existing = await tx.admissionReminder.findFirst({
+              where: { id: reminderId, schoolId },
+            });
+            if (!existing) throw new NotFoundError("Admission reminder");
+            const updated = await tx.admissionReminder.update({
+              where: { id: existing.id },
+              data: { isCompleted },
+            });
+            return mapPrismaReminder(updated);
           });
-          if (!existing) throw new NotFoundError("Admission reminder");
-          const updated = await db.admissionReminder.update({
-            where: { id: existing.id },
-            data: { isCompleted },
-          });
-          return mapPrismaReminder(updated);
         });
       } catch (err) {
         if (err instanceof NotFoundError) throw err;
@@ -1175,11 +1220,14 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         await runPrismaOp("deleteReminder", async () => {
-          const existing = await db.admissionReminder.findFirst({
-            where: { id: reminderId, schoolId },
+          await db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const existing = await tx.admissionReminder.findFirst({
+              where: { id: reminderId, schoolId },
+            });
+            if (!existing) throw new NotFoundError("Admission reminder");
+            await tx.admissionReminder.delete({ where: { id: existing.id } });
           });
-          if (!existing) throw new NotFoundError("Admission reminder");
-          await db.admissionReminder.delete({ where: { id: existing.id } });
         });
         return;
       } catch (err) {

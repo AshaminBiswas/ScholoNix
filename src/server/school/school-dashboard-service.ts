@@ -1,7 +1,8 @@
 import "server-only";
 import { authRepository, SchoolRecord, UserRecord } from "@/server/auth/auth-repository";
 import { tenantCache } from "@/server/integrations/redis";
-import { TenantMismatchError, TenantNotFoundError } from "@/lib/errors";
+import { ServiceUnavailableError, TenantMismatchError, TenantNotFoundError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { formatAvatarInitials, formatRoleLabel } from "@/modules/school/utils/shell-props";
 import { ADMISSION_STATUS_META } from "@/modules/school/admissions/types";
 import type { SchoolDashboardData } from "@/modules/school/types";
@@ -145,7 +146,19 @@ async function buildLiveDashboardData(
   user?: Pick<UserRecord, "name" | "role"> | null,
 ): Promise<SchoolDashboardData> {
   const base = buildEmptyDashboardData(school, user);
-  const snapshot = await admissionsRepository.getTenantSnapshot(school.id);
+  let snapshot;
+  try {
+    snapshot = await admissionsRepository.getTenantSnapshot(school.id);
+  } catch (err) {
+    if (err instanceof ServiceUnavailableError) {
+      logger.warn(
+        { schoolId: school.id, error: err.message },
+        "[DashboardService] Admissions summary unavailable; returning base dashboard",
+      );
+      return base;
+    }
+    throw err;
+  }
 
   const pendingCount = snapshot.applications.filter(
     (app) => app.status !== "ADMITTED" && app.status !== "REJECTED",
