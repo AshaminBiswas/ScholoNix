@@ -27,26 +27,34 @@ const nextConfig: NextConfig = {
   },
 };
 
-const sentryUrl = process.env.SENTRY_URL || "https://app.glitchtip.com";
-const isGlitchTip = sentryUrl.includes("glitchtip");
+const sentryUrl = (process.env.SENTRY_URL || "https://app.glitchtip.com").trim();
+const isGlitchTip =
+  sentryUrl.toLowerCase().includes("glitchtip") ||
+  (!sentryUrl.toLowerCase().includes("sentry.io") &&
+    process.env.SENTRY_ENABLE_CLI_RELEASES !== "true");
+const disableBuildReleasePlugin = isGlitchTip || !process.env.SENTRY_AUTH_TOKEN?.trim();
 
 export default withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-  // GlitchTip does not implement Sentry's release/artifactbundle v2 upload APIs (causes 404 during next build);
-  // keep runtime instrumentation active and upload source maps manually via glitchtip-cli if needed.
-  authToken: isGlitchTip ? undefined : process.env.SENTRY_AUTH_TOKEN,
+  // GlitchTip does not implement Sentry's release/deploy/artifactbundle APIs (which return 404 during next build);
+  // keep runtime error instrumentation active via instrumentation/sentry.*.config.ts while disabling
+  // build-time Sentry CLI release, deploy, commit-linking, and sourcemap uploads unless targeting Sentry SaaS.
+  authToken: disableBuildReleasePlugin ? "" : process.env.SENTRY_AUTH_TOKEN,
   sentryUrl,
   silent: !process.env.CI,
   telemetry: false,
-  release: isGlitchTip
+  release: disableBuildReleasePlugin
     ? {
+        name: "",
+        inject: false,
         create: false,
         finalize: false,
         setCommits: false,
+        deploy: false,
       }
     : undefined,
   sourcemaps: {
-    disable: isGlitchTip || !process.env.SENTRY_AUTH_TOKEN ? true : false,
+    disable: disableBuildReleasePlugin,
   },
 });
