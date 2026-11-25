@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { POST as sendOtpPost } from "@/app/api/auth/otp/route";
@@ -8,12 +9,17 @@ import { setOtpGeneratorForTesting } from "@/server/auth/otp-service";
 import { sessionService } from "@/server/auth/session-service";
 import { hashPassword, verifyPassword } from "@/server/security/crypto";
 
+function createSyntheticPassphrase(prefix = "Pass"): string {
+  return `${prefix}!${randomBytes(8).toString("hex")}9`;
+}
+
 async function createSyntheticUser(suffix: string) {
   const email = `reset.tester.${suffix}@scholonix.example`;
   const phone = `+919870${suffix.slice(-6).padStart(6, "0")}`;
-  const passwordHash = await hashPassword("MockOld!123");
+  const initialPassphrase = createSyntheticPassphrase("Init");
+  const passwordHash = await hashPassword(initialPassphrase);
 
-  return authRepository.createUserWithSchool({
+  const created = await authRepository.createUserWithSchool({
     school: {
       name: `Test Academy ${suffix}`,
       slug: `test-academy-${suffix}`,
@@ -33,6 +39,8 @@ async function createSyntheticUser(suffix: string) {
       emailVerified: true,
     },
   });
+
+  return { ...created, initialPassphrase };
 }
 
 describe("Forgot Password OTP & /api/auth/reset-password", () => {
@@ -42,8 +50,10 @@ describe("Forgot Password OTP & /api/auth/reset-password", () => {
 
   it("resets password via the 3-step email OTP verify -> verificationToken flow, revokes old sessions, and blocks replay", async () => {
     const suffix = `${Date.now().toString().slice(-6)}1`;
-    const { user } = await createSyntheticUser(suffix);
+    const { user, initialPassphrase } = await createSyntheticUser(suffix);
     const activeSession = await sessionService.createSession(user);
+    const nextPassphrase = createSyntheticPassphrase("Next");
+    const replayPassphrase = createSyntheticPassphrase("Replay");
 
     setOtpGeneratorForTesting(() => "482913");
 
@@ -84,8 +94,8 @@ describe("Forgot Password OTP & /api/auth/reset-password", () => {
         recipient: user.email,
         channel: "email",
         verificationToken,
-        password: "MockNew!456",
-        confirmPassword: "MockNew!456",
+        password: nextPassphrase,
+        confirmPassword: nextPassphrase,
       }),
     });
     const resetRes = await resetPasswordPost(resetReq);
@@ -96,8 +106,8 @@ describe("Forgot Password OTP & /api/auth/reset-password", () => {
     // Password actually updated in authRepository
     const updatedUser = await authRepository.findUserByIdentifier(user.email!);
     expect(updatedUser).not.toBeNull();
-    await expect(verifyPassword("MockNew!456", updatedUser!.passwordHash)).resolves.toBe(true);
-    await expect(verifyPassword("MockOld!123", updatedUser!.passwordHash)).resolves.toBe(false);
+    await expect(verifyPassword(nextPassphrase, updatedUser!.passwordHash)).resolves.toBe(true);
+    await expect(verifyPassword(initialPassphrase, updatedUser!.passwordHash)).resolves.toBe(false);
 
     // Prior session was revoked upon password reset
     await expect(sessionService.verifyToken(activeSession.token)).resolves.toBeNull();
@@ -111,8 +121,8 @@ describe("Forgot Password OTP & /api/auth/reset-password", () => {
           recipient: user.email,
           channel: "email",
           verificationToken,
-          password: "MockAnother!789",
-          confirmPassword: "MockAnother!789",
+          password: replayPassphrase,
+          confirmPassword: replayPassphrase,
         }),
       }),
     );
@@ -124,6 +134,8 @@ describe("Forgot Password OTP & /api/auth/reset-password", () => {
     const suffixB = `${Date.now().toString().slice(-6)}3`;
     const { user: userA } = await createSyntheticUser(suffixA);
     const { user: userB } = await createSyntheticUser(suffixB);
+    const crossUserPassphrase = createSyntheticPassphrase("Cross");
+    const mobileResetPassphrase = createSyntheticPassphrase("Mobile");
 
     setOtpGeneratorForTesting(() => "903157");
 
@@ -168,8 +180,8 @@ describe("Forgot Password OTP & /api/auth/reset-password", () => {
           recipient: userB.phone,
           channel: "phone",
           verificationToken,
-          password: "MockNew!456",
-          confirmPassword: "MockNew!456",
+          password: crossUserPassphrase,
+          confirmPassword: crossUserPassphrase,
         }),
       }),
     );
@@ -184,20 +196,22 @@ describe("Forgot Password OTP & /api/auth/reset-password", () => {
           recipient: formattedPhone,
           channel: "phone",
           verificationToken,
-          password: "MockMobile!789",
-          confirmPassword: "MockMobile!789",
+          password: mobileResetPassphrase,
+          confirmPassword: mobileResetPassphrase,
         }),
       }),
     );
     expect(resetRes.status).toBe(200);
 
     const updatedA = await authRepository.findUserByIdentifier(userA.phone!);
-    await expect(verifyPassword("MockMobile!789", updatedA!.passwordHash)).resolves.toBe(true);
+    await expect(verifyPassword(mobileResetPassphrase, updatedA!.passwordHash)).resolves.toBe(true);
   });
 
   it("supports direct single-step /api/auth/reset-password with raw otp and prevents OTP reuse", async () => {
     const suffix = `${Date.now().toString().slice(-6)}4`;
     const { user } = await createSyntheticUser(suffix);
+    const directPassphrase = createSyntheticPassphrase("Direct");
+    const reusePassphrase = createSyntheticPassphrase("Reuse");
 
     setOtpGeneratorForTesting(() => "174208");
 
@@ -220,8 +234,8 @@ describe("Forgot Password OTP & /api/auth/reset-password", () => {
           recipient: user.email,
           channel: "email",
           otp: "174208",
-          password: "MockDirect!321",
-          confirmPassword: "MockDirect!321",
+          password: directPassphrase,
+          confirmPassword: directPassphrase,
         }),
       }),
     );
@@ -235,8 +249,8 @@ describe("Forgot Password OTP & /api/auth/reset-password", () => {
           recipient: user.email,
           channel: "email",
           otp: "174208",
-          password: "MockDirect!654",
-          confirmPassword: "MockDirect!654",
+          password: reusePassphrase,
+          confirmPassword: reusePassphrase,
         }),
       }),
     );

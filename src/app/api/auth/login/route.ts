@@ -3,7 +3,7 @@ import { z } from "zod";
 import { checkRateLimit } from "@/server/integrations/redis";
 import { toErrorResponse, RateLimitExceededError } from "@/lib/errors";
 import { authRepository } from "@/server/auth/auth-repository";
-import { verifyPassword } from "@/server/security/crypto";
+import { getDummyPasswordHash, verifyPassword } from "@/server/security/crypto";
 import { sessionService } from "@/server/auth/session-service";
 import { otpService, OtpChannel } from "@/server/auth/otp-service";
 import { logAuditEvent } from "@/server/security/audit-logger";
@@ -24,8 +24,8 @@ const loginSchema = z.discriminatedUnion("method", [
   }),
 ]);
 
-// Dummy bcrypt hash for constant-time failure comparison when user is not found
-const DUMMY_HASH = "$2a$10$wT0H7cW1XyZ4v2b7F3G8uuqN8s.p5dKlQjS9.vMh6cErN6rW2V6ey";
+// Process-ephemeral bcrypt hash helper used to keep missing-user timing consistent
+// without storing any hardcoded hash literal in source control.
 
 export async function POST(req: NextRequest) {
   try {
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       // Run dummy compare to mitigate timing enumeration attacks
-      await verifyPassword(parsed.password, DUMMY_HASH);
+      await verifyPassword(parsed.password, await getDummyPasswordHash());
       return NextResponse.json(
         {
           success: false,

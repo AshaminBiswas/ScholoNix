@@ -70,6 +70,22 @@ export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
 }
 
+let ephemeralDummyPasswordHashPromise: Promise<string> | null = null;
+
+/**
+ * Generates and caches a process-ephemeral bcrypt hash used solely to keep
+ * missing-user login verification timing consistent without static hash literals.
+ */
+export async function getDummyPasswordHash(): Promise<string> {
+  if (!ephemeralDummyPasswordHashPromise) {
+    ephemeralDummyPasswordHashPromise = bcrypt.hash(
+      crypto.randomBytes(32).toString("hex"),
+      10,
+    );
+  }
+  return ephemeralDummyPasswordHashPromise;
+}
+
 /**
  * Verifies a plaintext password against a stored bcrypt hash.
  */

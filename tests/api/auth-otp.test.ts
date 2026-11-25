@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { NextRequest } from "next/server";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import {
@@ -12,6 +13,15 @@ import {
 } from "@/server/security/crypto";
 import { otpService, setOtpGeneratorForTesting } from "@/server/auth/otp-service";
 import { authRepository } from "@/server/auth/auth-repository";
+
+function makeTestPassphrase(): string {
+  return `Pass!${randomBytes(8).toString("hex")}7`;
+}
+
+function makeMatchingPasswords(): { password: string; confirmPassword: string } {
+  const password = makeTestPassphrase();
+  return { password, confirmPassword: password };
+}
 
 describe("ScholoNix Cryptography & Security Utilities", () => {
   it("generates a cryptographically secure 6-digit OTP", () => {
@@ -35,7 +45,8 @@ describe("ScholoNix Cryptography & Security Utilities", () => {
   });
 
   it("hashes and verifies passwords securely using bcrypt", async () => {
-    const password = "StrongPassword@2026";
+    const password = makeTestPassphrase();
+    const wrongPassword = makeTestPassphrase();
     const hash = await hashPassword(password);
     expect(hash).not.toBe(password);
     expect(hash.startsWith("$2")).toBe(true);
@@ -43,7 +54,7 @@ describe("ScholoNix Cryptography & Security Utilities", () => {
     const isMatch = await verifyPassword(password, hash);
     expect(isMatch).toBe(true);
 
-    const isWrong = await verifyPassword("WrongPassword!", hash);
+    const isWrong = await verifyPassword(wrongPassword, hash);
     expect(isWrong).toBe(false);
   });
 
@@ -171,7 +182,7 @@ describe("Custom OTP Service Lifecycle", () => {
 
 describe("Auth Repository & Tenant Provisioning", () => {
   it("provisions a school tenant and administrator user with hashed password", async () => {
-    const passwordHash = await hashPassword("ScholoNixSecured123!");
+    const passwordHash = await hashPassword(makeTestPassphrase());
     const uniqueEmail = `admin_${Date.now()}@testschool.edu.in`;
     const uniquePhone = `+9199${Math.floor(10000000 + Math.random() * 90000000)}`;
 
@@ -253,8 +264,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
             designation: "Principal",
             adminPhone: phone,
             adminEmail: changedEmail, // Changed from originalEmail
-            password: "StrongPassword@2026",
-            confirmPassword: "StrongPassword@2026",
+            ...makeMatchingPasswords(),
           },
           plan: "starter",
           billingCycle: "monthly",
@@ -344,8 +354,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
             designation: "Principal",
             adminPhone: phone,
             adminEmail: unverifiedEmail, // Not verified!
-            password: "StrongPassword@2026",
-            confirmPassword: "StrongPassword@2026",
+            ...makeMatchingPasswords(),
           },
           plan: "professional",
           billingCycle: "monthly",
@@ -373,8 +382,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
           designation: "Principal",
           adminPhone: phone,
           adminEmail: email,
-          password: "StrongPassword@2026",
-          confirmPassword: "StrongPassword@2026",
+          ...makeMatchingPasswords(),
         },
         plan: "professional",
         billingCycle: "monthly",
@@ -405,8 +413,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
             designation: "Principal",
             adminPhone: `+919812${Math.floor(100000 + Math.random() * 900000)}`,
             adminEmail: `new_${Date.now()}@scholonix.com`,
-            password: "StrongPassword@2026",
-            confirmPassword: "StrongPassword@2026",
+            ...makeMatchingPasswords(),
           },
           plan: "professional",
           billingCycle: "monthly",
@@ -435,8 +442,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
             designation: "Principal",
             adminPhone: phone, // Already registered!
             adminEmail: `another_${Date.now()}@scholonix.com`,
-            password: "StrongPassword@2026",
-            confirmPassword: "StrongPassword@2026",
+            ...makeMatchingPasswords(),
           },
           plan: "starter",
           billingCycle: "monthly",
@@ -688,8 +694,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
             designation: "Principal",
             adminPhone: phone,
             adminEmail: email,
-            password: "StrongPassword@2026",
-            confirmPassword: "StrongPassword@2026",
+            ...makeMatchingPasswords(),
           },
           plan: "professional",
           billingCycle: "monthly",
@@ -754,8 +759,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
             designation: "Principal",
             adminPhone: phone,
             adminEmail: email,
-            password: "StrongPassword@2026",
-            confirmPassword: "StrongPassword@2026",
+            ...makeMatchingPasswords(),
           },
           plan: "professional",
           billingCycle: "monthly",

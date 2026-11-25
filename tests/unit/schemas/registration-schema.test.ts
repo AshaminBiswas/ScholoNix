@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { describe, expect, it } from "vitest";
 import {
   institutionDetailsSchema,
@@ -40,12 +41,14 @@ describe("School Registration Schemas", () => {
   });
 
   it("validates administrator details and catches password mismatch", () => {
+    const primaryPassphrase = `Pass!${randomBytes(8).toString("hex")}1`;
+    const mismatchedPassphrase = `Diff!${randomBytes(8).toString("hex")}2`;
     const mismatchData = {
-      adminName: "Dr. Rajesh Sharma",
+      adminName: "Synthetic School Admin",
       adminPhone: "+91 98765 43210",
-      adminEmail: "principal@sunriseis.edu.in",
-      password: "Password123",
-      confirmPassword: "DifferentPassword123",
+      adminEmail: "admin@scholonix.example",
+      password: primaryPassphrase,
+      confirmPassword: mismatchedPassphrase,
     };
 
     const parsed = administratorDetailsSchema.safeParse(mismatchData);

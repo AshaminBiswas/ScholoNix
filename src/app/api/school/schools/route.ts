@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionService } from "@/server/auth/session-service";
 import { schoolDashboardService } from "@/server/school/school-dashboard-service";
+import { toErrorResponse } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const schools = await schoolDashboardService.getAllSchools();
+    const schools = await schoolDashboardService.getSchoolsForUser(
+      session.user,
+      session.school,
+    );
+
     return NextResponse.json({
       success: true,
       schools: schools.map((s) => ({
@@ -24,8 +29,7 @@ export async function GET(req: NextRequest) {
         affiliationBoard: s.affiliationBoard,
       })),
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal error";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  } catch (err) {
+    return toErrorResponse(err);
   }
 }
