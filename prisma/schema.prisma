@@ -50,10 +50,15 @@ model School {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relationships
-  parentSchool School?     @relation("SchoolHierarchy", fields: [parentSchoolId], references: [id], onDelete: SetNull)
-  branches     School[]    @relation("SchoolHierarchy")
-  users        User[]
-  auditLogs    AuditLog[]
+  parentSchool          School?                @relation("SchoolHierarchy", fields: [parentSchoolId], references: [id], onDelete: SetNull)
+  branches              School[]               @relation("SchoolHierarchy")
+  users                 User[]
+  auditLogs             AuditLog[]
+  admissionSetting      AdmissionSetting?
+  admissionEnquiries    AdmissionEnquiry[]
+  admissionApplications AdmissionApplication[]
+  admissionReminders    AdmissionReminder[]
+  admissionActivities   AdmissionActivity[]
 
   @@index([status])
   @@index([slug])
@@ -252,4 +257,156 @@ model AuditLog {
   @@index([schoolId, createdAt])
   @@index([actorId])
   @@map("audit_logs")
+}
+
+// =============================================================================
+// ADMISSIONS MANAGEMENT MODELS (STRICTLY TENANT-SCOPED)
+// =============================================================================
+
+enum AdmissionEnquiryStatus {
+  NEW
+  CONTACTED
+  FOLLOW_UP
+  CONVERTED
+  CLOSED
+}
+
+enum AdmissionApplicationStatus {
+  UNDER_REVIEW
+  DOCUMENTS_PENDING
+  SHORTLISTED
+  ADMITTED
+  REJECTED
+}
+
+enum DocumentVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum AdmissionReminderPriority {
+  INFO
+  WARNING
+}
+
+model AdmissionSetting {
+  id                  String    @id @default(uuid()) @db.Uuid
+  schoolId            String    @unique @map("school_id") @db.Uuid
+  currentAcademicYear String    @map("current_academic_year") @db.VarChar(30)
+  applicationDeadline DateTime? @map("application_deadline") @db.Timestamptz(6)
+  applicationPrefix   String    @default("APP") @map("application_prefix") @db.VarChar(16)
+  nextApplicationSeq  Int       @default(1) @map("next_application_seq")
+  nextEnquirySeq      Int       @default(1) @map("next_enquiry_seq")
+  nextAdmissionSeq    Int       @default(1) @map("next_admission_seq")
+  enabledGrades       String[]  @map("enabled_grades")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@map("admission_settings")
+}
+
+model AdmissionEnquiry {
+  id                     String                 @id @default(uuid()) @db.Uuid
+  schoolId               String                 @map("school_id") @db.Uuid
+  enquiryCode            String                 @map("enquiry_code") @db.VarChar(40)
+  studentName            String                 @map("student_name") @db.VarChar(255)
+  guardianName           String                 @map("guardian_name") @db.VarChar(255)
+  guardianPhone          String                 @map("guardian_phone") @db.VarChar(30)
+  guardianEmail          String?                @map("guardian_email") @db.VarChar(255)
+  gradeApplied           String                 @map("grade_applied") @db.VarChar(60)
+  academicYear           String                 @map("academic_year") @db.VarChar(30)
+  source                 String                 @default("Walk-In") @db.VarChar(60)
+  status                 AdmissionEnquiryStatus @default(NEW)
+  notes                  String?                @db.Text
+  convertedApplicationId String?                @map("converted_application_id") @db.Uuid
+  createdByUserId        String?                @map("created_by_user_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, enquiryCode])
+  @@index([schoolId, academicYear, status, createdAt])
+  @@map("admission_enquiries")
+}
+
+model AdmissionApplication {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  schoolId           String                     @map("school_id") @db.Uuid
+  applicationCode    String                     @map("application_code") @db.VarChar(40)
+  admissionNumber    String?                    @map("admission_number") @db.VarChar(40)
+  enquiryId          String?                    @map("enquiry_id") @db.Uuid
+  studentName        String                     @map("student_name") @db.VarChar(255)
+  gender             String?                    @db.VarChar(30)
+  dateOfBirth        DateTime?                  @map("date_of_birth") @db.Date
+  gradeApplied       String                     @map("grade_applied") @db.VarChar(60)
+  academicYear       String                     @map("academic_year") @db.VarChar(30)
+  guardianName       String                     @map("guardian_name") @db.VarChar(255)
+  guardianRelation   String                     @default("Parent") @map("guardian_relation") @db.VarChar(60)
+  guardianPhone      String                     @map("guardian_phone") @db.VarChar(30)
+  guardianEmail      String?                    @map("guardian_email") @db.VarChar(255)
+  previousSchool     String?                    @map("previous_school") @db.VarChar(255)
+  status             AdmissionApplicationStatus @default(UNDER_REVIEW)
+  verificationStatus DocumentVerificationStatus @default(PENDING) @map("verification_status")
+  verificationNotes  String?                    @map("verification_notes") @db.Text
+  documentsChecklist Json                       @map("documents_checklist") @db.JsonB
+  appliedAt          DateTime                   @default(now()) @map("applied_at") @db.Timestamptz(6)
+  shortlistedAt      DateTime?                  @map("shortlisted_at") @db.Timestamptz(6)
+  admittedAt         DateTime?                  @map("admitted_at") @db.Timestamptz(6)
+  rejectedAt         DateTime?                  @map("rejected_at") @db.Timestamptz(6)
+  verifiedAt         DateTime?                  @map("verified_at") @db.Timestamptz(6)
+  reviewedByUserId   String?                    @map("reviewed_by_user_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, applicationCode])
+  @@unique([schoolId, admissionNumber])
+  @@index([schoolId, academicYear, status, appliedAt])
+  @@index([schoolId, academicYear, gradeApplied])
+  @@index([schoolId, appliedAt])
+  @@map("admission_applications")
+}
+
+model AdmissionReminder {
+  id              String                    @id @default(uuid()) @db.Uuid
+  schoolId        String                    @map("school_id") @db.Uuid
+  title           String                    @db.VarChar(255)
+  academicYear    String?                   @map("academic_year") @db.VarChar(30)
+  dueDate         DateTime?                 @map("due_date") @db.Timestamptz(6)
+  priority        AdmissionReminderPriority @default(INFO)
+  isCompleted     Boolean                   @default(false) @map("is_completed")
+  createdByUserId String?                   @map("created_by_user_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, academicYear, isCompleted, createdAt])
+  @@map("admission_reminders")
+}
+
+model AdmissionActivity {
+  id            String   @id @default(uuid()) @db.Uuid
+  schoolId      String   @map("school_id") @db.Uuid
+  applicationId String?  @map("application_id") @db.Uuid
+  enquiryId     String?  @map("enquiry_id") @db.Uuid
+  actorId       String?  @map("actor_id") @db.Uuid
+  actorName     String   @map("actor_name") @db.VarChar(255)
+  action        String   @db.VarChar(80)
+  summary       String   @db.VarChar(500)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, createdAt])
+  @@map("admission_activities")
 }

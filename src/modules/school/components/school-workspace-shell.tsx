@@ -32,6 +32,8 @@ import {
   Loader2,
 } from "lucide-react";
 
+import type { AdmissionsTab } from "@/modules/school/admissions/types";
+
 export interface SchoolShellSchool {
   id: string;
   name: string;
@@ -52,7 +54,8 @@ export interface SchoolShellUser {
 interface SchoolWorkspaceShellProps {
   school: SchoolShellSchool;
   user: SchoolShellUser;
-  activeNav: "dashboard" | "help";
+  activeNav: "dashboard" | "admissions" | "help";
+  activeAdmissionsTab?: AdmissionsTab;
   noticeCount?: number;
   onOpenSearch?: () => void;
   children: React.ReactNode;
@@ -68,6 +71,7 @@ export function SchoolWorkspaceShell({
   school,
   user,
   activeNav,
+  activeAdmissionsTab,
   noticeCount = 0,
   onOpenSearch,
   children,
@@ -75,7 +79,7 @@ export function SchoolWorkspaceShell({
   const router = useRouter();
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [admissionsOpen, setAdmissionsOpen] = useState(false);
+  const [admissionsOpen, setAdmissionsOpen] = useState(activeNav === "admissions");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [portalModal, setPortalModal] = useState<"support" | "feedback" | null>(null);
 
@@ -261,7 +265,7 @@ export function SchoolWorkspaceShell({
             )}
           </div>
 
-          {/* Right: Notifications, In-Portal Help & User Profile */}
+          {/* Right: Notifications & User Profile (Help icon removed from top nav bar) */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Notification Bell with Badge */}
             <button
@@ -276,21 +280,6 @@ export function SchoolWorkspaceShell({
                 </span>
               )}
             </button>
-
-            {/* In-Portal Help Link (Stays inside authenticated school URL) */}
-            <Link
-              id="school-portal-help-btn"
-              href={helpHref}
-              className={`flex h-9 w-9 items-center justify-center rounded-full border transition shadow-xs ${
-                activeNav === "help"
-                  ? "border-[#663CF6] bg-[#EDE7FF] text-[#663CF6]"
-                  : "border-[#D6DBF0] bg-white text-[#4D5072] hover:bg-[#F2EEFD] hover:text-[#663CF6]"
-              }`}
-              aria-label="Open School Help Center"
-              title="School Help Center"
-            >
-              <HelpCircle className="h-4 w-4" />
-            </Link>
 
             {/* User Profile Pill */}
             <div className="relative">
@@ -398,7 +387,7 @@ export function SchoolWorkspaceShell({
                 <span>Dashboard</span>
               </Link>
 
-              {/* Admissions Dropdown (closed by default) */}
+              {/* Admissions Dropdown (closed by default on Dashboard/Help; open on Admissions routes) */}
               <div className="pt-1">
                 <button
                   id="admissions-dropdown-btn"
@@ -406,10 +395,12 @@ export function SchoolWorkspaceShell({
                   onClick={() => setAdmissionsOpen((prev) => !prev)}
                   aria-expanded={admissionsOpen}
                   aria-controls="admissions-submenu"
-                  className={`flex w-full items-center justify-between rounded-[10px] px-3.5 py-2 text-xs font-semibold cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
-                    admissionsOpen
-                      ? "bg-[#FAF8FE] text-[#663CF6]"
-                      : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6]"
+                  className={`flex w-full items-center justify-between rounded-[12px] px-3.5 py-2.5 text-xs font-bold cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
+                    activeNav === "admissions"
+                      ? "bg-[#663CF6] text-white shadow-md"
+                      : admissionsOpen
+                        ? "bg-[#FAF8FE] text-[#663CF6]"
+                        : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6]"
                   }`}
                 >
                   <span className="flex items-center gap-3">
@@ -418,7 +409,9 @@ export function SchoolWorkspaceShell({
                   </span>
                   <ChevronDown
                     className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${
-                      admissionsOpen ? "rotate-180 text-[#663CF6]" : "rotate-0 text-[#76799C]"
+                      admissionsOpen
+                        ? `rotate-180 ${activeNav === "admissions" ? "text-white" : "text-[#663CF6]"}`
+                        : `rotate-0 ${activeNav === "admissions" ? "text-white" : "text-[#76799C]"}`
                     }`}
                     aria-hidden="true"
                   />
@@ -428,18 +421,33 @@ export function SchoolWorkspaceShell({
                     id="admissions-submenu"
                     className="mt-1 ml-4 space-y-0.5 rounded-[12px] border border-[#EDE7FF] bg-[#FAF8FE]/80 p-1.5 text-[11px] font-medium text-[#4D5072]"
                   >
-                    {["Applications", "Enquiries", "Admitted Students", "Admission Settings"].map(
-                      (subLabel) => (
-                        <button
-                          key={subLabel}
-                          type="button"
+                    {(
+                      [
+                        { label: "Overview", tab: "overview" },
+                        { label: "Applications", tab: "applications" },
+                        { label: "Enquiries", tab: "enquiries" },
+                        { label: "Admitted Students", tab: "admitted" },
+                        { label: "Admission Settings", tab: "settings" },
+                      ] as Array<{ label: string; tab: AdmissionsTab }>
+                    ).map((subItem) => {
+                      const isSubActive =
+                        activeNav === "admissions" &&
+                        (activeAdmissionsTab ?? "overview") === subItem.tab;
+                      return (
+                        <Link
+                          key={subItem.tab}
+                          href={buildSchoolRoute(school.slug, `admissions?tab=${subItem.tab}`)}
                           onClick={() => setMobileSidebarOpen(false)}
-                          className="flex w-full items-center rounded-[8px] border-l-2 border-transparent px-2.5 py-1.5 text-left transition hover:border-[#663CF6] hover:bg-white hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer"
+                          className={`flex w-full items-center rounded-[8px] border-l-2 px-2.5 py-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
+                            isSubActive
+                              ? "border-[#663CF6] bg-white font-bold text-[#663CF6] shadow-2xs"
+                              : "border-transparent text-[#4D5072] hover:border-[#663CF6] hover:bg-white hover:text-[#663CF6]"
+                          }`}
                         >
-                          {subLabel}
-                        </button>
-                      ),
-                    )}
+                          {subItem.label}
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>

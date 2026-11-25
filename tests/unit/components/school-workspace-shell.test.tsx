@@ -41,7 +41,7 @@ describe("SchoolWorkspaceShell single-tenant & in-portal help links", () => {
     expect(screen.queryByText(/Select Registered School/i)).toBeNull();
   });
 
-  it("routes top-right help button and Help Center links inside /{schoolSlug}/help rather than public /help", () => {
+  it("removes help icon button from top nav bar while keeping in-portal /{schoolSlug}/help links", () => {
     render(
       <SchoolWorkspaceShell school={school} user={user} activeNav="dashboard">
         <div>Workspace Content</div>
@@ -49,8 +49,12 @@ describe("SchoolWorkspaceShell single-tenant & in-portal help links", () => {
     );
 
     const helpBtn = document.querySelector("#school-portal-help-btn");
-    expect(helpBtn).not.toBeNull();
-    expect(helpBtn?.getAttribute("href")).toBe("/synthetic-demo-academy/help");
+    expect(helpBtn).toBeNull();
+
+    const inPortalHelpLinks = Array.from(document.querySelectorAll("a")).filter(
+      (el) => el.getAttribute("href") === "/synthetic-demo-academy/help",
+    );
+    expect(inPortalHelpLinks.length).toBeGreaterThanOrEqual(1);
 
     const allLinks = Array.from(document.querySelectorAll("a"));
     expect(allLinks.filter((el) => {
@@ -108,10 +112,21 @@ describe("SchoolWorkspaceShell single-tenant & in-portal help links", () => {
     await userActor.click(admissionsBtn);
     expect(admissionsBtn.getAttribute("aria-expanded")).toBe("true");
     expect(document.querySelector("#admissions-submenu")).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Applications" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Enquiries" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Admitted Students" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Admission Settings" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Overview" }).getAttribute("href")).toBe(
+      "/synthetic-demo-academy/admissions?tab=overview",
+    );
+    expect(screen.getByRole("link", { name: "Applications" }).getAttribute("href")).toBe(
+      "/synthetic-demo-academy/admissions?tab=applications",
+    );
+    expect(screen.getByRole("link", { name: "Enquiries" }).getAttribute("href")).toBe(
+      "/synthetic-demo-academy/admissions?tab=enquiries",
+    );
+    expect(screen.getByRole("link", { name: "Admitted Students" }).getAttribute("href")).toBe(
+      "/synthetic-demo-academy/admissions?tab=admitted",
+    );
+    expect(screen.getByRole("link", { name: "Admission Settings" }).getAttribute("href")).toBe(
+      "/synthetic-demo-academy/admissions?tab=settings",
+    );
 
     await userActor.click(admissionsBtn);
     expect(admissionsBtn.getAttribute("aria-expanded")).toBe("false");

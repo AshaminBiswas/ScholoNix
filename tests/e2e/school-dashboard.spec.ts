@@ -26,6 +26,9 @@ test.describe("School Dashboard - Authentication Guard & Tenant Boundary", () =>
 
     await page.goto("/synthetic-school-slug/help", { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
+
+    await page.goto("/synthetic-school-slug/admissions", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
   });
 
   test("Unauthenticated requests to school dashboard APIs return 401 Unauthorized", async ({
@@ -41,5 +44,8 @@ test.describe("School Dashboard - Authentication Guard & Tenant Boundary", () =>
 
     const schoolsRes = await request.get("/api/school/schools");
     expect(schoolsRes.status()).toBe(401);
+
+    const admissionsRes = await request.get("/api/school/admissions/overview");
+    expect(admissionsRes.status()).toBe(401);
   });
 });

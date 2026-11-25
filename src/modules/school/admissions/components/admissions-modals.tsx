@@ -1,0 +1,966 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+import { X, Loader2, CheckCircle2, FileCheck2, UserPlus } from "lucide-react";
+import {
+  ADMISSION_STATUS_META,
+  DOCUMENT_VERIFICATION_META,
+  type AdmissionApplicationRecord,
+  type AdmissionApplicationStatusType,
+  type AdmissionDocumentChecklistItem,
+  type DocumentVerificationStatusType,
+} from "@/modules/school/admissions/types";
+
+function useNativeDialogSync(
+  dialogRef: React.RefObject<HTMLDialogElement | null>,
+  isOpen: boolean,
+  onClose: () => void,
+) {
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (isOpen) {
+      if (typeof dialog.showModal === "function") {
+        if (!dialog.open) dialog.showModal();
+      } else {
+        dialog.setAttribute("open", "true");
+      }
+    } else if (typeof dialog.close === "function") {
+      if (dialog.open) dialog.close();
+    } else {
+      dialog.removeAttribute("open");
+    }
+  }, [dialogRef, isOpen]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    let pressedOutside = false;
+    const isOutside = (e: PointerEvent) => {
+      const rect = dialog.getBoundingClientRect();
+      return (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      );
+    };
+
+    const handleCancel = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      pressedOutside = isOutside(e);
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (pressedOutside && isOutside(e)) {
+        onClose();
+      }
+      pressedOutside = false;
+    };
+
+    dialog.addEventListener("cancel", handleCancel);
+    dialog.addEventListener("pointerdown", handlePointerDown);
+    dialog.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      dialog.removeEventListener("cancel", handleCancel);
+      dialog.removeEventListener("pointerdown", handlePointerDown);
+      dialog.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [dialogRef, onClose]);
+}
+
+interface NewApplicationModalProps {
+  open: boolean;
+  onClose: () => void;
+  grades: string[];
+  defaultAcademicYear: string;
+  academicYears: string[];
+  onSubmit: (payload: {
+    studentName: string;
+    gender: "Male" | "Female" | "Other" | "";
+    dateOfBirth: string;
+    gradeApplied: string;
+    academicYear: string;
+    guardianName: string;
+    guardianRelation: string;
+    guardianPhone: string;
+    guardianEmail: string;
+    previousSchool: string;
+    status: "UNDER_REVIEW" | "DOCUMENTS_PENDING" | "SHORTLISTED";
+    notes: string;
+  }) => Promise<void>;
+}
+
+export function NewApplicationModal({
+  open,
+  onClose,
+  grades,
+  defaultAcademicYear,
+  academicYears,
+  onSubmit,
+}: NewApplicationModalProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useNativeDialogSync(dialogRef, open, onClose);
+
+  const [studentName, setStudentName] = useState("");
+  const [gender, setGender] = useState<"Male" | "Female" | "Other" | "">("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [gradeApplied, setGradeApplied] = useState(grades[0] || "Class I");
+  const [academicYear, setAcademicYear] = useState(defaultAcademicYear);
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianRelation, setGuardianRelation] = useState("Parent");
+  const [guardianPhone, setGuardianPhone] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
+  const [previousSchool, setPreviousSchool] = useState("");
+  const [status, setStatus] = useState<"UNDER_REVIEW" | "DOCUMENTS_PENDING" | "SHORTLISTED">(
+    "UNDER_REVIEW",
+  );
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setErrorMsg(null);
+      setAcademicYear(defaultAcademicYear);
+      if (grades.length > 0 && !grades.includes(gradeApplied)) {
+        setGradeApplied(grades[0]!);
+      }
+    }
+  }, [open, defaultAcademicYear, grades, gradeApplied]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        studentName,
+        gender,
+        dateOfBirth,
+        gradeApplied,
+        academicYear,
+        guardianName,
+        guardianRelation,
+        guardianPhone,
+        guardianEmail,
+        previousSchool,
+        status,
+        notes,
+      });
+      setStudentName("");
+      setGuardianName("");
+      setGuardianPhone("");
+      setGuardianEmail("");
+      setPreviousSchool("");
+      setDateOfBirth("");
+      setNotes("");
+      onClose();
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to save application.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="new-application-dialog-title"
+      className="m-auto w-[min(95vw,600px)] rounded-[22px] border border-[#D6DBF0] bg-white p-0 shadow-2xl"
+    >
+      <div className="flex items-center justify-between border-b border-[#DFE3F5] px-6 py-4">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6]">
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <div>
+            <h1 id="new-application-dialog-title" className="text-base font-extrabold text-[#08093B]">
+              New Admission Application
+            </h1>
+            <p className="text-[11px] text-[#76799C]">
+              Creates a real tenant-scoped admission record and generates an Application ID.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close application modal"
+          className="rounded-full p-1.5 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer"
+        >
+          <X className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {errorMsg && (
+          <div
+            role="alert"
+            className="rounded-[12px] border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700"
+          >
+            {errorMsg}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label htmlFor="app-student-name" className="block text-xs font-bold text-[#08093B] mb-1">
+              Student Name <span className="text-rose-500">*</span>
+            </label>
+            <input
+              id="app-student-name"
+              type="text"
+              required
+              minLength={2}
+              autoFocus
+              value={studentName}
+              onChange={(e) => setStudentName(e.target.value)}
+              placeholder="Full student name"
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="app-grade" className="block text-xs font-bold text-[#08093B] mb-1">
+              Admission Grade <span className="text-rose-500">*</span>
+            </label>
+            <select
+              id="app-grade"
+              value={gradeApplied}
+              onChange={(e) => setGradeApplied(e.target.value)}
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            >
+              {grades.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="app-ay" className="block text-xs font-bold text-[#08093B] mb-1">
+              Academic Year <span className="text-rose-500">*</span>
+            </label>
+            <select
+              id="app-ay"
+              value={academicYear}
+              onChange={(e) => setAcademicYear(e.target.value)}
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            >
+              {academicYears.map((ay) => (
+                <option key={ay} value={ay}>
+                  {ay}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="app-status" className="block text-xs font-bold text-[#08093B] mb-1">
+              Initial Stage
+            </label>
+            <select
+              id="app-status"
+              value={status}
+              onChange={(e) =>
+                setStatus(e.target.value as "UNDER_REVIEW" | "DOCUMENTS_PENDING" | "SHORTLISTED")
+              }
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            >
+              <option value="UNDER_REVIEW">Under Review</option>
+              <option value="DOCUMENTS_PENDING">Documents Pending</option>
+              <option value="SHORTLISTED">Shortlisted</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="app-guardian-name" className="block text-xs font-bold text-[#08093B] mb-1">
+              Guardian Name <span className="text-rose-500">*</span>
+            </label>
+            <input
+              id="app-guardian-name"
+              type="text"
+              required
+              minLength={2}
+              value={guardianName}
+              onChange={(e) => setGuardianName(e.target.value)}
+              placeholder="Parent or guardian name"
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="app-guardian-phone" className="block text-xs font-bold text-[#08093B] mb-1">
+              Guardian Phone <span className="text-rose-500">*</span>
+            </label>
+            <input
+              id="app-guardian-phone"
+              type="tel"
+              required
+              minLength={7}
+              value={guardianPhone}
+              onChange={(e) => setGuardianPhone(e.target.value)}
+              placeholder="+91 98XXXXXXXX"
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="app-guardian-email" className="block text-xs font-bold text-[#08093B] mb-1">
+              Guardian Email
+            </label>
+            <input
+              id="app-guardian-email"
+              type="email"
+              value={guardianEmail}
+              onChange={(e) => setGuardianEmail(e.target.value)}
+              placeholder="Optional email address"
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="app-guardian-relation" className="block text-xs font-bold text-[#08093B] mb-1">
+              Relation
+            </label>
+            <select
+              id="app-guardian-relation"
+              value={guardianRelation}
+              onChange={(e) => setGuardianRelation(e.target.value)}
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            >
+              <option value="Parent">Parent</option>
+              <option value="Mother">Mother</option>
+              <option value="Father">Father</option>
+              <option value="Guardian">Legal Guardian</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="app-gender" className="block text-xs font-bold text-[#08093B] mb-1">
+              Gender
+            </label>
+            <select
+              id="app-gender"
+              value={gender}
+              onChange={(e) => setGender(e.target.value as "Male" | "Female" | "Other" | "")}
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            >
+              <option value="">Not specified</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="app-dob" className="block text-xs font-bold text-[#08093B] mb-1">
+              Date of Birth
+            </label>
+            <input
+              id="app-dob"
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="app-prev-school" className="block text-xs font-bold text-[#08093B] mb-1">
+            Previous School
+          </label>
+          <input
+            id="app-prev-school"
+            type="text"
+            value={previousSchool}
+            onChange={(e) => setPreviousSchool(e.target.value)}
+            placeholder="Optional previous school name"
+            className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="app-notes" className="block text-xs font-bold text-[#08093B] mb-1">
+            Review Notes
+          </label>
+          <textarea
+            id="app-notes"
+            rows={2}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Any initial verification or admission remarks..."
+            className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none resize-y"
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-[#DFE3F5]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] hover:bg-[#F8FAFC] cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white hover:bg-[#4F27E8] disabled:opacity-60 cursor-pointer"
+          >
+            {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+            <span>{submitting ? "Creating..." : "Create Application"}</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+
+interface NewEnquiryModalProps {
+  open: boolean;
+  onClose: () => void;
+  grades: string[];
+  defaultAcademicYear: string;
+  academicYears: string[];
+  onSubmit: (payload: {
+    studentName: string;
+    guardianName: string;
+    guardianPhone: string;
+    guardianEmail: string;
+    gradeApplied: string;
+    academicYear: string;
+    source: "Website" | "Walk-In" | "Phone Call" | "Referral" | "Campaign" | "Other";
+    notes: string;
+  }) => Promise<void>;
+}
+
+export function NewEnquiryModal({
+  open,
+  onClose,
+  grades,
+  defaultAcademicYear,
+  academicYears,
+  onSubmit,
+}: NewEnquiryModalProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useNativeDialogSync(dialogRef, open, onClose);
+
+  const [studentName, setStudentName] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianPhone, setGuardianPhone] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
+  const [gradeApplied, setGradeApplied] = useState(grades[0] || "Class I");
+  const [academicYear, setAcademicYear] = useState(defaultAcademicYear);
+  const [source, setSource] = useState<
+    "Website" | "Walk-In" | "Phone Call" | "Referral" | "Campaign" | "Other"
+  >("Walk-In");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  if (!open) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        studentName,
+        guardianName,
+        guardianPhone,
+        guardianEmail,
+        gradeApplied,
+        academicYear,
+        source,
+        notes,
+      });
+      setStudentName("");
+      setGuardianName("");
+      setGuardianPhone("");
+      setGuardianEmail("");
+      setNotes("");
+      onClose();
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Unable to save enquiry.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="new-enquiry-dialog-title"
+      className="m-auto w-[min(95vw,520px)] rounded-[22px] border border-[#D6DBF0] bg-white p-0 shadow-2xl"
+    >
+      <div className="flex items-center justify-between border-b border-[#DFE3F5] px-6 py-4">
+        <h1 id="new-enquiry-dialog-title" className="text-base font-extrabold text-[#08093B]">
+          Log Admission Enquiry
+        </h1>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close enquiry modal"
+          className="rounded-full p-1.5 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer"
+        >
+          <X className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="p-6 space-y-3.5">
+        {errorMsg && (
+          <div
+            role="alert"
+            className="rounded-[12px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700"
+          >
+            {errorMsg}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="enq-student-name" className="block text-xs font-bold text-[#08093B] mb-1">
+              Student Name *
+            </label>
+            <input
+              id="enq-student-name"
+              type="text"
+              required
+              autoFocus
+              minLength={2}
+              value={studentName}
+              onChange={(e) => setStudentName(e.target.value)}
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="enq-guardian-name" className="block text-xs font-bold text-[#08093B] mb-1">
+              Guardian Name *
+            </label>
+            <input
+              id="enq-guardian-name"
+              type="text"
+              required
+              minLength={2}
+              value={guardianName}
+              onChange={(e) => setGuardianName(e.target.value)}
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="enq-phone" className="block text-xs font-bold text-[#08093B] mb-1">
+              Phone *
+            </label>
+            <input
+              id="enq-phone"
+              type="tel"
+              required
+              minLength={7}
+              value={guardianPhone}
+              onChange={(e) => setGuardianPhone(e.target.value)}
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="enq-email" className="block text-xs font-bold text-[#08093B] mb-1">
+              Email
+            </label>
+            <input
+              id="enq-email"
+              type="email"
+              value={guardianEmail}
+              onChange={(e) => setGuardianEmail(e.target.value)}
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="enq-grade" className="block text-xs font-bold text-[#08093B] mb-1">
+              Grade *
+            </label>
+            <select
+              id="enq-grade"
+              value={gradeApplied}
+              onChange={(e) => setGradeApplied(e.target.value)}
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B]"
+            >
+              {grades.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="enq-source" className="block text-xs font-bold text-[#08093B] mb-1">
+              Source
+            </label>
+            <select
+              id="enq-source"
+              value={source}
+              onChange={(e) =>
+                setSource(
+                  e.target.value as
+                    | "Website"
+                    | "Walk-In"
+                    | "Phone Call"
+                    | "Referral"
+                    | "Campaign"
+                    | "Other",
+                )
+              }
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B]"
+            >
+              <option value="Walk-In">Walk-In</option>
+              <option value="Website">Website</option>
+              <option value="Phone Call">Phone Call</option>
+              <option value="Referral">Referral</option>
+              <option value="Campaign">Campaign</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="enq-ay" className="block text-xs font-bold text-[#08093B] mb-1">
+            Academic Year
+          </label>
+          <select
+            id="enq-ay"
+            value={academicYear}
+            onChange={(e) => setAcademicYear(e.target.value)}
+            className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B]"
+          >
+            {academicYears.map((ay) => (
+              <option key={ay} value={ay}>
+                {ay}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="enq-notes" className="block text-xs font-bold text-[#08093B] mb-1">
+            Enquiry Notes
+          </label>
+          <textarea
+            id="enq-notes"
+            rows={2}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] resize-y"
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-[#DFE3F5]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white hover:bg-[#4F27E8] disabled:opacity-60 cursor-pointer"
+          >
+            {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+            <span>{submitting ? "Saving..." : "Save Enquiry"}</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+
+interface ApplicationDetailModalProps {
+  application: AdmissionApplicationRecord | null;
+  onClose: () => void;
+  canWrite: boolean;
+  canVerify: boolean;
+  onSave: (
+    applicationId: string,
+    payload: {
+      status: AdmissionApplicationStatusType;
+      verificationStatus: DocumentVerificationStatusType;
+      verificationNotes: string;
+      documentsChecklist: AdmissionDocumentChecklistItem[];
+    },
+  ) => Promise<void>;
+}
+
+export function ApplicationDetailModal({
+  application,
+  onClose,
+  canWrite,
+  canVerify,
+  onSave,
+}: ApplicationDetailModalProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useNativeDialogSync(dialogRef, Boolean(application), onClose);
+
+  const [status, setStatus] = useState<AdmissionApplicationStatusType>("UNDER_REVIEW");
+  const [verificationStatus, setVerificationStatus] =
+    useState<DocumentVerificationStatusType>("PENDING");
+  const [verificationNotes, setVerificationNotes] = useState("");
+  const [checklist, setChecklist] = useState<AdmissionDocumentChecklistItem[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (application) {
+      setStatus(application.status);
+      setVerificationStatus(application.verificationStatus);
+      setVerificationNotes(application.verificationNotes || "");
+      setChecklist(application.documentsChecklist.map((c) => ({ ...c })));
+      setErrorMsg(null);
+    }
+  }, [application]);
+
+  if (!application) return null;
+
+  const statusMeta = ADMISSION_STATUS_META[status];
+  const verMeta = DOCUMENT_VERIFICATION_META[verificationStatus];
+
+  const handleToggleChecklist = (key: string, field: "submitted" | "verified") => {
+    setChecklist((prev) =>
+      prev.map((item) => {
+        if (item.key !== key) return item;
+        const updated = { ...item, [field]: !item[field] };
+        if (field === "verified" && updated.verified) {
+          updated.submitted = true;
+        }
+        return updated;
+      }),
+    );
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSaving(true);
+    try {
+      await onSave(application.id, {
+        status,
+        verificationStatus,
+        verificationNotes,
+        documentsChecklist: checklist,
+      });
+      onClose();
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Unable to update application.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="app-detail-dialog-title"
+      className="m-auto w-[min(95vw,640px)] rounded-[22px] border border-[#D6DBF0] bg-white p-0 shadow-2xl"
+    >
+      <div className="flex items-center justify-between border-b border-[#DFE3F5] px-6 py-4">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6]">
+            <FileCheck2 className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div>
+            <h1 id="app-detail-dialog-title" className="text-base font-extrabold text-[#08093B]">
+              {application.studentName} · {application.applicationCode}
+            </h1>
+            <p className="text-[11px] text-[#76799C]">
+              {application.gradeApplied} · {application.academicYear}
+              {application.admissionNumber ? ` · Admission No: ${application.admissionNumber}` : ""}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close application details"
+          className="rounded-full p-1.5 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer"
+        >
+          <X className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+
+      <form onSubmit={handleSave} className="p-6 space-y-4">
+        {errorMsg && (
+          <div
+            role="alert"
+            className="rounded-[12px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700"
+          >
+            {errorMsg}
+          </div>
+        )}
+
+        {/* Applicant & Guardian Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-3.5 text-xs">
+          <div>
+            <span className="text-[#76799C]">Guardian:</span>{" "}
+            <strong className="text-[#08093B]">
+              {application.guardianName} ({application.guardianRelation})
+            </strong>
+          </div>
+          <div>
+            <span className="text-[#76799C]">Phone:</span>{" "}
+            <strong className="text-[#08093B]">{application.guardianPhone}</strong>
+          </div>
+          <div>
+            <span className="text-[#76799C]">Email:</span>{" "}
+            <strong className="text-[#08093B]">{application.guardianEmail || "Not provided"}</strong>
+          </div>
+          <div>
+            <span className="text-[#76799C]">Previous School:</span>{" "}
+            <strong className="text-[#08093B]">{application.previousSchool || "Not provided"}</strong>
+          </div>
+        </div>
+
+        {/* Status & Verification Controls */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="detail-status" className="block text-xs font-bold text-[#08093B] mb-1">
+              Application Stage
+            </label>
+            <select
+              id="detail-status"
+              disabled={!canWrite}
+              value={status}
+              onChange={(e) => setStatus(e.target.value as AdmissionApplicationStatusType)}
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs font-semibold text-[#08093B]"
+            >
+              <option value="UNDER_REVIEW">Under Review</option>
+              <option value="DOCUMENTS_PENDING">Documents Pending</option>
+              <option value="SHORTLISTED">Shortlisted</option>
+              <option value="ADMITTED">Admitted (Assigns Admission No)</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+            <span
+              className={`mt-1.5 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusMeta.bgClass} ${statusMeta.textClass} ${statusMeta.borderClass}`}
+            >
+              {statusMeta.label}
+            </span>
+          </div>
+
+          <div>
+            <label
+              htmlFor="detail-verification"
+              className="block text-xs font-bold text-[#08093B] mb-1"
+            >
+              Document Verification
+            </label>
+            <select
+              id="detail-verification"
+              disabled={!canVerify}
+              value={verificationStatus}
+              onChange={(e) =>
+                setVerificationStatus(e.target.value as DocumentVerificationStatusType)
+              }
+              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs font-semibold text-[#08093B]"
+            >
+              <option value="PENDING">Pending</option>
+              <option value="VERIFIED">Verified</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+            <span
+              className={`mt-1.5 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${verMeta.bgClass} ${verMeta.textClass} ${verMeta.borderClass}`}
+            >
+              {verMeta.label}
+            </span>
+          </div>
+        </div>
+
+        {/* Checklist */}
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-[#08093B]">Document Checklist</p>
+          <div className="divide-y divide-[#F1F5F9] rounded-[12px] border border-[#DFE3F5]">
+            {checklist.map((doc) => (
+              <div
+                key={doc.key}
+                className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs"
+              >
+                <span className="font-semibold text-[#08093B]">{doc.label}</span>
+                <div className="flex items-center gap-4">
+                  <label className="inline-flex items-center gap-1.5 text-[#4D5072] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      disabled={!canVerify}
+                      checked={doc.submitted}
+                      onChange={() => handleToggleChecklist(doc.key, "submitted")}
+                      className="h-3.5 w-3.5 accent-[#663CF6]"
+                    />
+                    <span>Submitted</span>
+                  </label>
+                  <label className="inline-flex items-center gap-1.5 text-emerald-700 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      disabled={!canVerify}
+                      checked={doc.verified}
+                      onChange={() => handleToggleChecklist(doc.key, "verified")}
+                      className="h-3.5 w-3.5 accent-emerald-600"
+                    />
+                    <span>Verified</span>
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label
+            htmlFor="detail-verification-notes"
+            className="block text-xs font-bold text-[#08093B] mb-1"
+          >
+            Verification / Review Remarks
+          </label>
+          <textarea
+            id="detail-verification-notes"
+            rows={2}
+            disabled={!canVerify && !canWrite}
+            value={verificationNotes}
+            onChange={(e) => setVerificationNotes(e.target.value)}
+            className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] resize-y"
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-[#DFE3F5]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] cursor-pointer"
+          >
+            Close
+          </button>
+          {(canWrite || canVerify) && (
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white hover:bg-[#4F27E8] disabled:opacity-60 cursor-pointer"
+            >
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              <span>{saving ? "Saving..." : "Save Updates"}</span>
+            </button>
+          )}
+        </div>
+      </form>
+    </dialog>
+  );
+}

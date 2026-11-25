@@ -3,7 +3,10 @@ import { authRepository, SchoolRecord, UserRecord } from "@/server/auth/auth-rep
 import { tenantCache } from "@/server/integrations/redis";
 import { TenantMismatchError, TenantNotFoundError } from "@/lib/errors";
 import { formatAvatarInitials, formatRoleLabel } from "@/modules/school/utils/shell-props";
+import { ADMISSION_STATUS_META } from "@/modules/school/admissions/types";
 import type { SchoolDashboardData } from "@/modules/school/types";
+import { admissionsRepository } from "./admissions-repository";
+import { roundToOneDecimal } from "./admissions-analytics";
 
 function getCurrentAcademicSession(): SchoolDashboardData["academicSession"] {
   const now = new Date();
@@ -137,6 +140,82 @@ function buildEmptyDashboardData(
   };
 }
 
+async function buildLiveDashboardData(
+  school: SchoolRecord,
+  user?: Pick<UserRecord, "name" | "role"> | null,
+): Promise<SchoolDashboardData> {
+  const base = buildEmptyDashboardData(school, user);
+  const snapshot = await admissionsRepository.getTenantSnapshot(school.id);
+
+  const pendingCount = snapshot.applications.filter(
+    (app) => app.status !== "ADMITTED" && app.status !== "REJECTED",
+  ).length;
+  const totalApps = snapshot.applications.length;
+  const shortlistedPipeline = snapshot.applications.filter(
+    (app) => app.status === "SHORTLISTED" || app.status === "ADMITTED",
+  ).length;
+  const admittedCount = snapshot.applications.filter((app) => app.status === "ADMITTED").length;
+  const conversionRate = totalApps > 0 ? roundToOneDecimal((admittedCount / totalApps) * 100) : 0;
+
+  base.kpis.totalStudents = {
+    value: admittedCount,
+    change: 0,
+  };
+  base.kpis.pendingAdmissions = {
+    value: pendingCount,
+    change: 0,
+  };
+  base.admissionFunnel = {
+    enquiries: snapshot.enquiries.length,
+    applications: totalApps,
+    shortlisted: shortlistedPipeline,
+    admitted: admittedCount,
+    conversionRate,
+    trendVsLastYear: 0,
+  };
+  base.recentAdmissions = snapshot.applications.slice(0, 5).map((app) => {
+    const mappedStatus =
+      app.status === "ADMITTED"
+        ? "Approved"
+        : app.status === "DOCUMENTS_PENDING"
+          ? "Documents Pending"
+          : app.status === "REJECTED"
+            ? "Waitlisted"
+            : "Under Review";
+    const meta = ADMISSION_STATUS_META[app.status];
+    return {
+      id: app.id,
+      name: app.studentName,
+      classApplied: app.gradeApplied,
+      status: mappedStatus,
+      statusColor: meta.textClass,
+      statusBg: `${meta.bgClass} ${meta.borderClass}`,
+      appliedOn: new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: "Asia/Kolkata",
+      }).format(new Date(app.appliedAt)),
+      initials: formatAvatarInitials(app.studentName),
+      avatarBg: "bg-[#EDE7FF] text-[#663CF6]",
+    };
+  });
+  base.recentActivities = snapshot.activities.slice(0, 5).map((act) => ({
+    id: act.id,
+    description: act.summary,
+    timestamp: new Intl.DateTimeFormat("en-IN", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Asia/Kolkata",
+    }).format(new Date(act.createdAt)),
+    type: "admission",
+  }));
+
+  return base;
+}
+
 export const schoolDashboardService = {
   /**
    * Fast path: builds or fetches tenant-cached dashboard state directly from the
@@ -159,7 +238,7 @@ export const schoolDashboardService = {
       return { data: cached, cacheHit: true };
     }
 
-    const fresh = buildEmptyDashboardData(school, user);
+    const fresh = await buildLiveDashboardData(school, user);
     await tenantCache.set(school.id, cacheKey, fresh, DASHBOARD_CACHE_TTL_SECONDS);
     return { data: fresh, cacheHit: false };
   },
@@ -189,7 +268,7 @@ export const schoolDashboardService = {
       return cached;
     }
 
-    const fresh = buildEmptyDashboardData(school, user);
+    const fresh = await buildLiveDashboardData(school, user);
     await tenantCache.set(school.id, cacheKey, fresh, DASHBOARD_CACHE_TTL_SECONDS);
     return fresh;
   },

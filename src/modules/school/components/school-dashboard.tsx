@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import {
   Users,
   GraduationCap,
@@ -26,7 +27,7 @@ import {
 } from "lucide-react";
 import type { SchoolDashboardData } from "@/modules/school/types";
 import { SchoolCampusIllustration } from "./school-campus-illustration";
-import { SchoolWorkspaceShell } from "./school-workspace-shell";
+import { SchoolWorkspaceShell, buildSchoolRoute } from "./school-workspace-shell";
 import { buildSchoolShellProps } from "@/modules/school/utils/shell-props";
 
 interface SchoolOption {
@@ -622,13 +623,13 @@ export function SchoolDashboard({ initialData, user }: SchoolDashboardProps) {
                   <UserPlus className="h-4 w-4 text-[#663CF6]" />
                   <h3 className="text-sm font-extrabold text-[#08093B]">Recent Admissions</h3>
                 </div>
-                <button
-                  type="button"
-                  className="text-xs font-bold text-[#663CF6] hover:underline flex items-center gap-1 cursor-pointer"
+                <Link
+                  href={buildSchoolRoute(data.school.slug, "admissions?tab=applications")}
+                  className="text-xs font-bold text-[#663CF6] hover:underline flex items-center gap-1"
                 >
                   <span>View All</span>
                   <ArrowRight className="h-3 w-3" />
-                </button>
+                </Link>
               </div>
 
               {/* Table */}
