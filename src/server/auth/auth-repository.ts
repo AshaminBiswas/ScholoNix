@@ -267,7 +267,19 @@ function doesSessionMatch(metadata: unknown, registrationSessionId?: string | nu
 }
 
 function mapPrismaOtpRecord(r: any): OtpRecord {
-  const metadataObj = (r.metadata && typeof r.metadata === "object" ? r.metadata : {}) as Record<string, any>;
+  let metadataObj: Record<string, any> = {};
+  if (typeof r.metadata === "string") {
+    try {
+      const parsed = JSON.parse(r.metadata);
+      if (parsed && typeof parsed === "object") {
+        metadataObj = parsed;
+      }
+    } catch {
+      metadataObj = {};
+    }
+  } else if (r.metadata && typeof r.metadata === "object") {
+    metadataObj = r.metadata as Record<string, any>;
+  }
   return {
     id: r.id,
     identifier: r.identifier,
@@ -832,11 +844,15 @@ export const authRepository = {
         if (isEmail) {
           orConditions.push({ email: { equals: clean, mode: "insensitive" } });
         } else if (phoneClean.length >= 4) {
+          const digitsOnly = phoneClean.replace(/^\+/, "");
           orConditions.push(
             { phone: identifier.replace(/\s+/g, "") },
             { phone: phoneClean },
             { phone: normalizedPhone },
           );
+          if (digitsOnly.length >= 10) {
+            orConditions.push({ phone: digitsOnly.slice(-10) });
+          }
         }
 
         if (orConditions.length === 0) {

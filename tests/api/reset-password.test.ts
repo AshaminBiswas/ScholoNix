@@ -186,6 +186,8 @@ describe("Forgot Password OTP & /api/auth/reset-password", () => {
       }),
     );
     expect(crossUserRes.status).toBe(400);
+    const crossJson = await crossUserRes.json();
+    expect(crossJson.error?.code).toBe("VERIFICATION_MISMATCH");
 
     // Valid reset for userA succeeds
     const resetRes = await resetPasswordPost(
@@ -205,6 +207,24 @@ describe("Forgot Password OTP & /api/auth/reset-password", () => {
 
     const updatedA = await authRepository.findUserByIdentifier(userA.phone!);
     await expect(verifyPassword(mobileResetPassphrase, updatedA!.passwordHash)).resolves.toBe(true);
+
+    // Replaying phone verification token fails with VERIFICATION_EXPIRED
+    const replayPhoneRes = await resetPasswordPost(
+      new NextRequest("http://localhost/api/auth/reset-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          recipient: formattedPhone,
+          channel: "phone",
+          verificationToken,
+          password: crossUserPassphrase,
+          confirmPassword: crossUserPassphrase,
+        }),
+      }),
+    );
+    expect(replayPhoneRes.status).toBe(400);
+    const replayJson = await replayPhoneRes.json();
+    expect(replayJson.error?.code).toBe("VERIFICATION_EXPIRED");
   });
 
   it("supports direct single-step /api/auth/reset-password with raw otp and prevents OTP reuse", async () => {

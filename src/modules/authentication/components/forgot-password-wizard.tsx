@@ -75,16 +75,31 @@ export function ForgotPasswordWizard({
   // Status & Error
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [needsReverification, setNeedsReverification] = useState<boolean>(false);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
+
+  const computeFormattedPhone = (dialCode: string, digits: string, currentPhone: string): string => {
+    const trimmedDigits = digits.trim();
+    if (trimmedDigits) {
+      return trimmedDigits.startsWith("+") ? trimmedDigits : `${dialCode} ${trimmedDigits}`.trim();
+    }
+    return currentPhone.trim();
+  };
 
   const persistResetState = (next: Partial<PersistedResetState>) => {
     if (typeof window === "undefined") return;
     try {
+      const nextDial = next.countryDialCode ?? countryDialCode;
+      const nextDigits = next.phoneDigits ?? phoneDigits;
+      const nextPhone =
+        next.phone !== undefined
+          ? next.phone
+          : computeFormattedPhone(nextDial, nextDigits, phone);
       const payload: PersistedResetState = {
         channel: next.channel ?? channel,
-        countryDialCode: next.countryDialCode ?? countryDialCode,
-        phoneDigits: next.phoneDigits ?? phoneDigits,
-        phone: next.phone ?? phone,
+        countryDialCode: nextDial,
+        phoneDigits: nextDigits,
+        phone: nextPhone,
         email: next.email ?? email,
         verificationToken:
           next.verificationToken !== undefined ? next.verificationToken : verificationToken,
@@ -144,17 +159,18 @@ export function ForgotPasswordWizard({
   }, []);
 
   // Update URL without full refresh for clean bookmarking & back button
-  const goToStep = (newStep: ForgotPasswordStep) => {
+  const goToStep = (newStep: ForgotPasswordStep, targetChannel: ResetChannel = channel) => {
     setStep(newStep);
     setErrorMessage(null);
+    setNeedsReverification(false);
     if (newStep === 1) {
       setVerificationToken(null);
-      persistResetState({ verificationToken: null });
+      persistResetState({ channel: targetChannel, verificationToken: null });
     }
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("step", newStep.toString());
-      url.searchParams.set("channel", channel);
+      url.searchParams.set("channel", targetChannel);
       window.history.pushState({}, "", url.toString());
     }
   };
@@ -169,8 +185,9 @@ export function ForgotPasswordWizard({
     }
   }, [step, resendTimer]);
 
-  // Recipient display text
-  const recipientDisplay = channel === "phone" ? phone : email;
+  // Resolved recipient text (auto-derives formatted phone even if autofill skipped phone state)
+  const resolvedPhone = computeFormattedPhone(countryDialCode, phoneDigits, phone);
+  const recipientDisplay = channel === "phone" ? resolvedPhone : email.trim();
 
   // Handle OTP digit changes
   const handleOtpChange = (index: number, val: string) => {
@@ -207,22 +224,28 @@ export function ForgotPasswordWizard({
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setNeedsReverification(false);
     setIsLoading(true);
 
     try {
-      if (channel === "phone" && phoneDigits.replace(/\D/g, "").length < 7) {
+      const trimmedEmail = email.trim();
+      if (channel === "phone" && resolvedPhone.replace(/\D/g, "").length < 7) {
         throw new Error("Please enter a valid mobile number");
       }
-      if (channel === "email" && !email.includes("@")) {
+      if (channel === "email" && !trimmedEmail.includes("@")) {
         throw new Error("Please enter a valid email address");
+      }
+
+      if (channel === "phone" && resolvedPhone !== phone) {
+        setPhone(resolvedPhone);
       }
 
       const res = await fetch("/api/auth/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: channel === "phone" ? phone : undefined,
-          email: channel === "email" ? email : undefined,
+          phone: channel === "phone" ? resolvedPhone : undefined,
+          email: channel === "email" ? trimmedEmail : undefined,
           purpose: "PASSWORD_RESET",
         }),
       });
@@ -233,7 +256,14 @@ export function ForgotPasswordWizard({
       }
 
       setVerificationToken(null);
-      persistResetState({ verificationToken: null });
+      persistResetState({
+        channel,
+        countryDialCode,
+        phoneDigits,
+        phone: resolvedPhone,
+        email: trimmedEmail,
+        verificationToken: null,
+      });
       setResendTimer(data.data?.cooldownSeconds || 60);
       goToStep(2);
     } catch (err: unknown) {
@@ -249,13 +279,15 @@ export function ForgotPasswordWizard({
     if (resendTimer > 0) return;
     setIsLoading(true);
     setErrorMessage(null);
+    setNeedsReverification(false);
     try {
+      const trimmedEmail = email.trim();
       const res = await fetch("/api/auth/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: channel === "phone" ? phone : undefined,
-          email: channel === "email" ? email : undefined,
+          phone: channel === "phone" ? resolvedPhone : undefined,
+          email: channel === "email" ? trimmedEmail : undefined,
           purpose: "PASSWORD_RESET",
         }),
       });
@@ -267,7 +299,14 @@ export function ForgotPasswordWizard({
 
       setVerificationToken(null);
       setOtp(["", "", "", "", "", ""]);
-      persistResetState({ verificationToken: null });
+      persistResetState({
+        channel,
+        countryDialCode,
+        phoneDigits,
+        phone: resolvedPhone,
+        email: trimmedEmail,
+        verificationToken: null,
+      });
       setResendTimer(data.data?.cooldownSeconds || 60);
       setResendNotice("A new 6-digit verification code has been sent!");
       setTimeout(() => setResendNotice(null), 4000);
@@ -282,6 +321,7 @@ export function ForgotPasswordWizard({
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setNeedsReverification(false);
     const code = otp.join("");
     if (code.length < 6) {
       setErrorMessage("Please enter all 6 digits of the OTP");
@@ -308,8 +348,18 @@ export function ForgotPasswordWizard({
 
       const issuedToken: string | null =
         data.data?.verificationToken || data.verificationToken || null;
+      if (!issuedToken) {
+        throw new Error("Verification token was not issued. Please try verifying your OTP again.");
+      }
       setVerificationToken(issuedToken);
-      persistResetState({ verificationToken: issuedToken });
+      persistResetState({
+        channel,
+        countryDialCode,
+        phoneDigits,
+        phone: resolvedPhone,
+        email: email.trim(),
+        verificationToken: issuedToken,
+      });
       goToStep(3);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Verification failed. Please try again.");
@@ -332,6 +382,7 @@ export function ForgotPasswordWizard({
   const handleCreatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setNeedsReverification(false);
 
     if (!isPasswordValid) {
       setErrorMessage("Please meet all password requirements before continuing.");
@@ -342,6 +393,7 @@ export function ForgotPasswordWizard({
       return;
     }
     if (!recipientDisplay || (!verificationToken && otp.join("").length < 6)) {
+      setNeedsReverification(true);
       setErrorMessage(
         "Your OTP verification session expired or is missing. Please verify your mobile number or email again.",
       );
@@ -362,17 +414,38 @@ export function ForgotPasswordWizard({
         }),
       });
 
-      const responseData = await res.json().catch(() => ({}));
-      if (!res.ok || !responseData.success) {
+      const responseData = await res.json().catch(() => null);
+      if (!res.ok || !responseData?.success) {
+        const errorCode = responseData?.error?.code as string | undefined;
+        if (
+          res.status === 400 &&
+          errorCode &&
+          [
+            "VERIFICATION_EXPIRED",
+            "VERIFICATION_MISMATCH",
+            "VERIFICATION_ALREADY_USED",
+            "OTP_INVALID",
+            "OTP_EXPIRED",
+            "OTP_ALREADY_USED",
+            "OTP_LOCKED",
+          ].includes(errorCode)
+        ) {
+          setNeedsReverification(true);
+        }
         const fieldErrors = responseData?.error?.details as Record<string, string[]> | undefined;
         const firstFieldMessage = fieldErrors
           ? Object.values(fieldErrors).flat().find(Boolean)
           : undefined;
-        throw new Error(
+        const apiErrorMessage =
           firstFieldMessage ||
-            responseData?.error?.message ||
-            responseData?.message ||
-            "Failed to update password",
+          (typeof responseData?.error?.message === "string"
+            ? responseData.error.message
+            : undefined) ||
+          (typeof responseData?.error === "string" ? responseData.error : undefined) ||
+          (typeof responseData?.message === "string" ? responseData.message : undefined);
+        throw new Error(
+          apiErrorMessage ||
+            `Unable to update password (HTTP ${res.status}). Please verify a new OTP and try again.`,
         );
       }
 
@@ -501,15 +574,34 @@ export function ForgotPasswordWizard({
 
               {/* Error Alert Message */}
               {errorMessage && (
-                <div className="mb-4 flex items-center gap-2 rounded-[12px] border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600 animate-in fade-in">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>{errorMessage}</span>
+                <div
+                  role="alert"
+                  aria-live="assertive"
+                  className="mb-4 flex flex-col gap-2 rounded-[12px] border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600 animate-in fade-in"
+                >
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{errorMessage}</span>
+                  </div>
+                  {needsReverification && step !== 1 && (
+                    <button
+                      type="button"
+                      onClick={() => goToStep(1)}
+                      className="self-start rounded-lg border border-red-300 bg-white px-2.5 py-1 text-[11px] font-bold text-red-700 hover:bg-red-100 transition"
+                    >
+                      Request a New OTP
+                    </button>
+                  )}
                 </div>
               )}
 
               {/* Success Notification */}
               {resendNotice && (
-                <div className="mb-4 flex items-center gap-2 rounded-[12px] border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-700 animate-in fade-in">
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="mb-4 flex items-center gap-2 rounded-[12px] border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-700 animate-in fade-in"
+                >
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                   <span>{resendNotice}</span>
                 </div>
@@ -536,6 +628,7 @@ export function ForgotPasswordWizard({
                       onClick={() => {
                         setChannel("phone");
                         setErrorMessage(null);
+                        setNeedsReverification(false);
                       }}
                       className={cn(
                         "flex items-center justify-center gap-2 py-2.5 rounded-[10px] text-xs font-bold transition-all",
@@ -552,6 +645,7 @@ export function ForgotPasswordWizard({
                       onClick={() => {
                         setChannel("email");
                         setErrorMessage(null);
+                        setNeedsReverification(false);
                       }}
                       className={cn(
                         "flex items-center justify-center gap-2 py-2.5 rounded-[10px] text-xs font-bold transition-all",
@@ -569,7 +663,10 @@ export function ForgotPasswordWizard({
                   <form onSubmit={handleSendOtp} className="space-y-4">
                     {channel === "phone" ? (
                       <div>
-                        <label className="block text-xs font-bold text-[#08093B] mb-1.5">
+                        <label
+                          htmlFor="forgot-password-phone-input"
+                          className="block text-xs font-bold text-[#08093B] mb-1.5"
+                        >
                           Mobile Number <span className="text-red-500">*</span>
                         </label>
                         <div className="flex gap-2">
@@ -585,7 +682,9 @@ export function ForgotPasswordWizard({
                           />
                           <div className="relative flex-1">
                             <input
+                              id="forgot-password-phone-input"
                               type="tel"
+                              autoComplete="tel-national"
                               value={phoneDigits}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -603,13 +702,18 @@ export function ForgotPasswordWizard({
                       </div>
                     ) : (
                       <div>
-                        <label className="block text-xs font-bold text-[#08093B] mb-1.5">
+                        <label
+                          htmlFor="forgot-password-email-input"
+                          className="block text-xs font-bold text-[#08093B] mb-1.5"
+                        >
                           Email Address <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                           <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C]" />
                           <input
+                            id="forgot-password-email-input"
                             type="email"
+                            autoComplete="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="principal@sunriseis.edu.in"
@@ -800,9 +904,23 @@ export function ForgotPasswordWizard({
                   </div>
 
                   <form onSubmit={handleCreatePassword} className="space-y-4">
+                    {/* Accessible hidden username field so password managers and assistive tools associate the reset with the verified account */}
+                    <input
+                      type={channel === "email" ? "email" : "tel"}
+                      name="username"
+                      autoComplete="username"
+                      value={recipientDisplay}
+                      readOnly
+                      tabIndex={-1}
+                      aria-hidden="true"
+                      className="sr-only"
+                    />
                     {/* New Password */}
                     <div>
-                      <label className="block text-xs font-bold text-[#08093B] mb-1.5">
+                      <label
+                        htmlFor="new-password-input"
+                        className="block text-xs font-bold text-[#08093B] mb-1.5"
+                      >
                         New Password <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
@@ -834,7 +952,10 @@ export function ForgotPasswordWizard({
 
                     {/* Confirm New Password */}
                     <div>
-                      <label className="block text-xs font-bold text-[#08093B] mb-1.5">
+                      <label
+                        htmlFor="confirm-new-password-input"
+                        className="block text-xs font-bold text-[#08093B] mb-1.5"
+                      >
                         Confirm New Password <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">

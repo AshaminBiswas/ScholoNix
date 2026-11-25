@@ -4,8 +4,9 @@ import { checkRateLimit } from "@/server/integrations/redis";
 import { toErrorResponse, RateLimitExceededError } from "@/lib/errors";
 import { otpService, OtpChannel } from "@/server/auth/otp-service";
 import { authRepository } from "@/server/auth/auth-repository";
-import { hashPassword, normalizePhone } from "@/server/security/crypto";
+import { hashPassword, maskEmail, maskPhone, normalizePhone } from "@/server/security/crypto";
 import { logAuditEvent } from "@/server/security/audit-logger";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,10 @@ function normalizeResetIdentifier(raw: string, channel: OtpChannel): string {
   return channel === "EMAIL" ? raw.trim().toLowerCase() : normalizePhone(raw);
 }
 
+function maskResetIdentifier(normalized: string, channel: OtpChannel): string {
+  return channel === "EMAIL" ? maskEmail(normalized) : maskPhone(normalized);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
@@ -54,6 +59,7 @@ export async function POST(req: NextRequest) {
     const channel: OtpChannel =
       data.channel === "email" || data.recipient.includes("@") ? "EMAIL" : "SMS";
     const normalizedRecipient = normalizeResetIdentifier(data.recipient, channel);
+    const maskedRecipient = maskResetIdentifier(normalizedRecipient, channel);
 
     let tokenToConsume: string | undefined;
 
@@ -67,10 +73,15 @@ export async function POST(req: NextRequest) {
       );
 
       if (!tokenValidation.valid || !tokenValidation.identifier) {
+        logger.warn(
+          { event: "PASSWORD_RESET_TOKEN_INVALID", channel, destinationMasked: maskedRecipient },
+          "[ResetPassword] Verification token invalid, expired, or already used",
+        );
         return NextResponse.json(
           {
             success: false,
             error: {
+              code: "VERIFICATION_EXPIRED",
               message:
                 "Your verification session has expired or was already used. Please request a new OTP.",
             },
@@ -81,10 +92,15 @@ export async function POST(req: NextRequest) {
 
       const tokenIdentifier = normalizeResetIdentifier(tokenValidation.identifier, channel);
       if (tokenIdentifier !== normalizedRecipient) {
+        logger.warn(
+          { event: "PASSWORD_RESET_RECIPIENT_MISMATCH", channel, destinationMasked: maskedRecipient },
+          "[ResetPassword] Verification token recipient mismatch",
+        );
         return NextResponse.json(
           {
             success: false,
             error: {
+              code: "VERIFICATION_MISMATCH",
               message: "Verification token does not match the requested mobile number or email.",
             },
           },
@@ -108,6 +124,7 @@ export async function POST(req: NextRequest) {
           {
             success: false,
             error: {
+              code: verifyResult.errorCode || "OTP_INVALID",
               message: verifyResult.message,
               remainingAttempts: verifyResult.remainingAttempts,
             },
@@ -120,12 +137,15 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Find user account
-    const user = await authRepository.findUserByIdentifier(data.recipient);
+    const user = await authRepository.findUserByIdentifier(normalizedRecipient);
     if (!user) {
       return NextResponse.json(
         {
           success: false,
-          error: { message: "No registered account found for this recipient." },
+          error: {
+            code: "ACCOUNT_NOT_FOUND",
+            message: "No registered account found for this recipient.",
+          },
         },
         { status: 404 },
       );
@@ -135,11 +155,17 @@ export async function POST(req: NextRequest) {
     if (tokenToConsume) {
       const consumed = await otpService.consumeVerificationToken(tokenToConsume);
       if (!consumed) {
+        logger.warn(
+          { event: "PASSWORD_RESET_TOKEN_REPLAY", channel, destinationMasked: maskedRecipient },
+          "[ResetPassword] Verification token already consumed",
+        );
         return NextResponse.json(
           {
             success: false,
             error: {
-              message: "This password reset verification has already been used. Please request a new OTP.",
+              code: "VERIFICATION_ALREADY_USED",
+              message:
+                "This password reset verification has already been used. Please request a new OTP.",
             },
           },
           { status: 400 },
