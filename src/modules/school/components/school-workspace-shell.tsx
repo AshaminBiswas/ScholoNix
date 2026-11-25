@@ -20,7 +20,8 @@ import {
   Search,
   Bell,
   HelpCircle,
-  School,
+  PanelLeftClose,
+  PanelLeftOpen,
   Menu,
   X,
   LogOut,
@@ -72,7 +73,9 @@ export function SchoolWorkspaceShell({
   children,
 }: SchoolWorkspaceShellProps) {
   const router = useRouter();
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [admissionsOpen, setAdmissionsOpen] = useState(true);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [portalModal, setPortalModal] = useState<"support" | "feedback" | null>(null);
 
@@ -178,41 +181,55 @@ export function SchoolWorkspaceShell({
   };
 
   return (
-    <div className="relative min-h-screen bg-[#F4F6FC] text-[#1B1D45] flex flex-col font-sans overflow-x-hidden">
+    <div className="relative min-h-screen bg-[#F4F6FC] text-[#1B1D45] flex flex-col font-sans overflow-x-clip">
       {/* =========================================================================
           1. TOP APP HEADER / BAR (Strictly single-tenant, no multi-school switcher)
           ========================================================================= */}
-      <header className="sticky top-0 z-40 border-b border-[#D6DBF0] bg-white/98 backdrop-blur-md px-3 sm:px-6 py-2.5 shadow-xs">
-        <div className="flex items-center justify-between gap-2 sm:gap-4">
-          {/* Left: Mobile Toggle, Brand & Single Verified School Pill */}
+      <header className="sticky top-0 z-40 h-14 border-b border-[#D6DBF0] bg-white/98 backdrop-blur-md px-3 sm:px-6 flex items-center shadow-xs">
+        <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
+          {/* Left: Sidebar Toggle Controls & Single Verified School Pill */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
+              id="mobile-sidebar-toggle-btn"
               type="button"
-              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#08093B] shadow-xs lg:hidden"
-              aria-label="Toggle navigation drawer"
+              onClick={() => setMobileSidebarOpen((prev) => !prev)}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:bg-[#FAF8FE] lg:hidden cursor-pointer"
+              aria-label={mobileSidebarOpen ? "Hide menu bar" : "Open menu bar"}
+              aria-expanded={mobileSidebarOpen}
+              aria-controls="school-sidebar"
             >
               {mobileSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
 
-            <Link href={dashboardHref} className="hidden sm:flex items-center gap-2 shrink-0">
-              <School className="h-5 w-5 text-[#663CF6]" />
-              <span className="text-sm font-extrabold text-[#08093B]">
-                School Web Panel
-              </span>
-            </Link>
+            <button
+              id="desktop-sidebar-toggle-btn"
+              type="button"
+              onClick={() => setDesktopSidebarOpen((prev) => !prev)}
+              className="hidden lg:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:bg-[#FAF8FE] hover:text-[#663CF6] cursor-pointer"
+              aria-label={desktopSidebarOpen ? "Hide menu bar" : "Open menu bar"}
+              aria-expanded={desktopSidebarOpen}
+              aria-controls="school-sidebar"
+              title={desktopSidebarOpen ? "Hide menu bar" : "Open menu bar"}
+            >
+              {desktopSidebarOpen ? (
+                <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
 
             {/* Static Single-School Identity Badge */}
-            <div
+            <Link
               id="active-school-badge"
-              className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-[#D6DBF0] bg-[#FAF8FE] px-2.5 sm:px-3 py-1 text-xs font-bold text-[#08093B] shadow-xs max-w-[180px] sm:max-w-xs"
+              href={dashboardHref}
+              className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-[#D6DBF0] bg-[#FAF8FE] px-2.5 sm:px-3 py-1 text-xs font-bold text-[#08093B] shadow-xs transition hover:border-[#9B76FF] max-w-[190px] sm:max-w-xs"
               title={school.name}
             >
               <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#663CF6] text-white text-[10px]">
                 🎓
               </div>
               <span className="truncate">{school.name}</span>
-            </div>
+            </Link>
           </div>
 
           {/* Middle: Universal Search Bar (Ctrl + K when on Dashboard) */}
@@ -349,16 +366,27 @@ export function SchoolWorkspaceShell({
       </header>
 
       {/* =========================================================================
-          2. LAYOUT: SIDEBAR + MAIN WORKSPACE
+          2. LAYOUT: FIXED SCROLLABLE SIDEBAR + MAIN WORKSPACE
           ========================================================================= */}
       <div className="flex flex-1">
         <aside
-          className={`fixed inset-y-0 left-0 z-30 w-64 border-r border-[#D6DBF0] bg-white pt-16 lg:pt-0 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
-            mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          id="school-sidebar"
+          aria-label="School navigation menu"
+          className={`fixed top-14 left-0 bottom-0 z-30 w-64 h-[calc(100dvh-3.5rem)] border-r border-[#D6DBF0] bg-white transform transition-[transform,visibility] duration-300 ease-in-out ${
+            mobileSidebarOpen
+              ? "translate-x-0 visible pointer-events-auto"
+              : "-translate-x-full invisible pointer-events-none"
+          } ${
+            desktopSidebarOpen
+              ? "lg:translate-x-0 lg:visible lg:pointer-events-auto"
+              : "lg:-translate-x-full lg:invisible lg:pointer-events-none"
           }`}
         >
-          <div className="h-full overflow-y-auto px-3 py-4 flex flex-col justify-between">
-            <div className="space-y-1">
+          <div
+            className="h-full overflow-y-auto overscroll-contain px-3 py-4 flex flex-col justify-between"
+            style={{ scrollbarGutter: "stable" }}
+          >
+            <nav aria-label="Primary school navigation" className="space-y-1">
               {/* Dashboard Item */}
               <Link
                 href={dashboardHref}
@@ -369,25 +397,37 @@ export function SchoolWorkspaceShell({
                     : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6]"
                 }`}
               >
-                <LayoutDashboard className="h-4 w-4" />
+                <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
                 <span>Dashboard</span>
               </Link>
 
-              {/* Admissions with sub-items */}
+              {/* Admissions with collapsible sub-items */}
               <div className="pt-1">
-                <div className="flex items-center justify-between rounded-[10px] px-3.5 py-2 text-xs font-semibold text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <UserPlus className="h-4 w-4" />
+                <button
+                  type="button"
+                  onClick={() => setAdmissionsOpen((prev) => !prev)}
+                  aria-expanded={admissionsOpen}
+                  className="flex w-full items-center justify-between rounded-[10px] px-3.5 py-2 text-xs font-semibold text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] cursor-pointer transition"
+                >
+                  <span className="flex items-center gap-3">
+                    <UserPlus className="h-4 w-4" aria-hidden="true" />
                     <span>Admissions</span>
+                  </span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 text-[#76799C] transition-transform duration-200 ${
+                      admissionsOpen ? "rotate-0" : "-rotate-90"
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+                {admissionsOpen && (
+                  <div className="ml-7 space-y-1 border-l-2 border-[#DDD6FE] pl-2.5 py-1 text-[11px] font-medium text-[#76799C]">
+                    <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Applications</p>
+                    <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Enquiries</p>
+                    <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Admitted Students</p>
+                    <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Admission Settings</p>
                   </div>
-                  <ChevronDown className="h-3.5 w-3.5 text-[#76799C]" />
-                </div>
-                <div className="ml-7 space-y-1 border-l-2 border-[#DDD6FE] pl-2.5 py-1 text-[11px] font-medium text-[#76799C]">
-                  <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Applications</p>
-                  <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Enquiries</p>
-                  <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Admitted Students</p>
-                  <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Admission Settings</p>
-                </div>
+                )}
               </div>
 
               {/* Standard Menu Items */}
@@ -411,7 +451,7 @@ export function SchoolWorkspaceShell({
                     className="flex items-center justify-between rounded-[10px] px-3.5 py-2 text-xs font-semibold text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] cursor-pointer transition"
                   >
                     <div className="flex items-center gap-3">
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4" aria-hidden="true" />
                       <span>{item.label}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -420,7 +460,7 @@ export function SchoolWorkspaceShell({
                           {item.badge}
                         </span>
                       )}
-                      <ChevronRight className="h-3 w-3 text-[#CAD0EB]" />
+                      <ChevronRight className="h-3 w-3 text-[#CAD0EB]" aria-hidden="true" />
                     </div>
                   </div>
                 );
@@ -437,14 +477,15 @@ export function SchoolWorkspaceShell({
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <HelpCircle className="h-4 w-4" />
+                  <HelpCircle className="h-4 w-4" aria-hidden="true" />
                   <span>Help Center</span>
                 </div>
                 <ChevronRight
                   className={`h-3 w-3 ${activeNav === "help" ? "text-white" : "text-[#CAD0EB]"}`}
+                  aria-hidden="true"
                 />
               </Link>
-            </div>
+            </nav>
 
             {/* Sidebar Bottom Card: Connected School Status */}
             <div className="mt-6 rounded-[14px] border border-[#DDD6FE] bg-gradient-to-br from-[#EDE7FF]/60 via-white to-[#F6F2FF] p-3 text-center">
@@ -462,13 +503,18 @@ export function SchoolWorkspaceShell({
         {/* Mobile Backdrop */}
         {mobileSidebarOpen && (
           <div
-            className="fixed inset-0 z-20 bg-black/30 backdrop-blur-xs lg:hidden"
+            className="fixed inset-0 top-14 z-20 bg-black/30 backdrop-blur-xs lg:hidden"
             onClick={() => setMobileSidebarOpen(false)}
           />
         )}
 
         {/* Main Workspace Content */}
-        <main className="flex-1 min-w-0 overflow-x-hidden p-3 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full flex flex-col justify-between">
+        <div
+          className={`flex-1 min-w-0 transition-[padding] duration-300 ease-in-out ${
+            desktopSidebarOpen ? "lg:pl-64" : "lg:pl-0"
+          }`}
+        >
+        <main className="min-w-0 overflow-x-hidden p-3 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full flex flex-col justify-between">
           <div className="space-y-6">{children}</div>
 
           {/* Shared In-Portal Support Banner & Footer */}
@@ -538,6 +584,7 @@ export function SchoolWorkspaceShell({
             </footer>
           </div>
         </main>
+        </div>
       </div>
 
       {/* =========================================================================

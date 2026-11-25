@@ -2,6 +2,7 @@
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { SchoolWorkspaceShell } from "@/modules/school/components/school-workspace-shell";
 
 vi.mock("next/navigation", () => ({
@@ -52,10 +53,40 @@ describe("SchoolWorkspaceShell single-tenant & in-portal help links", () => {
     expect(helpBtn?.getAttribute("href")).toBe("/synthetic-demo-academy/help");
 
     const allLinks = Array.from(document.querySelectorAll("a"));
-    const publicExternalLinks = allLinks.filter((el) => {
+    expect(allLinks.filter((el) => {
       const href = el.getAttribute("href");
       return href === "/help" || href === "/contact" || href === "/feedback" || href === "/dashboard";
-    });
-    expect(publicExternalLinks).toHaveLength(0);
+    })).toHaveLength(0);
+  });
+
+  it("removes School Web Panel text and provides a fixed scrollable sidebar open by default with a toggle button", async () => {
+    const userActor = userEvent.setup();
+    render(
+      <SchoolWorkspaceShell school={school} user={user} activeNav="dashboard">
+        <div>Workspace Content</div>
+      </SchoolWorkspaceShell>,
+    );
+
+    expect(screen.queryByText("School Web Panel")).toBeNull();
+
+    const sidebar = document.querySelector("#school-sidebar");
+    expect(sidebar).not.toBeNull();
+    expect(sidebar?.className).toContain("fixed");
+    expect(sidebar?.className).toContain("lg:translate-x-0");
+
+    const scrollableBody = sidebar?.querySelector(".overflow-y-auto");
+    expect(scrollableBody).not.toBeNull();
+
+    const desktopToggle = document.querySelector("#desktop-sidebar-toggle-btn") as HTMLButtonElement;
+    expect(desktopToggle).not.toBeNull();
+    expect(desktopToggle.getAttribute("aria-expanded")).toBe("true");
+
+    await userActor.click(desktopToggle);
+    expect(desktopToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(sidebar?.className).toContain("lg:-translate-x-full");
+
+    await userActor.click(desktopToggle);
+    expect(desktopToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(sidebar?.className).toContain("lg:translate-x-0");
   });
 });

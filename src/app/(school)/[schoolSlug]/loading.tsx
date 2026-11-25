@@ -9,10 +9,10 @@ export default function SchoolWorkspaceLoading() {
       className="min-h-screen bg-[#F4F6FC] flex flex-col font-sans"
     >
       <span className="sr-only">Loading school workspace...</span>
-      <header className="sticky top-0 z-40 border-b border-[#D6DBF0] bg-white px-4 sm:px-6 py-2.5">
-        <div className="flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 h-14 border-b border-[#D6DBF0] bg-white px-4 sm:px-6 flex items-center">
+        <div className="flex w-full items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Skeleton className="h-5 w-36 hidden sm:block" />
+            <Skeleton className="h-9 w-9 rounded-lg" />
             <Skeleton className="h-7 w-44 rounded-full bg-[#EDE7FF]" />
           </div>
           <Skeleton className="h-8 w-80 hidden md:block rounded-[10px]" />
