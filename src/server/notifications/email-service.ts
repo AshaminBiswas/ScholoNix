@@ -3,7 +3,19 @@ import fs from "fs";
 import path from "path";
 import nodemailer from "nodemailer";
 import { maskEmail } from "@/server/security/crypto";
+import { AppError, ValidationError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { renderOtpEmailHtml } from "./email-template";
+
+function stripSurroundingQuotes(val?: string): string {
+  if (!val) return "";
+  return val.trim().replace(/^["']+|["']+$/g, "").trim();
+}
+
+function extractEmailOnly(raw: string): string {
+  const match = raw.match(/<([^>]+)>/);
+  return (match?.[1] ?? raw).trim();
+}
 
 export interface EmailOptions {
   to: string;
@@ -37,31 +49,46 @@ export function isValidEmailAddress(email: string): boolean {
  * Always targets the verified domain scholonix.com, never testing sandbox onboarding@resend.dev.
  */
 export function getSenderAddress(): string {
-  const fromName = process.env.RESEND_FROM_NAME || process.env.EMAIL_FROM_NAME || "ScholoNix";
-  const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM_ADDRESS;
+  const fromName =
+    stripSurroundingQuotes(process.env.RESEND_FROM_NAME || process.env.EMAIL_FROM_NAME) ||
+    "ScholoNix";
+  const rawFromEmail = stripSurroundingQuotes(
+    process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM_ADDRESS,
+  );
+  const parsedFromEmail = rawFromEmail ? extractEmailOnly(rawFromEmail) : "";
 
-  if (fromEmail) {
-    return `${fromName} <${fromEmail}>`;
+  if (parsedFromEmail && !parsedFromEmail.includes("onboarding@resend.dev")) {
+    return `${fromName} <${parsedFromEmail}>`;
   }
 
-  if (process.env.EMAIL_FROM && !process.env.EMAIL_FROM.includes("onboarding@resend.dev")) {
-    return process.env.EMAIL_FROM;
+  const rawEnvEmailFrom = stripSurroundingQuotes(process.env.EMAIL_FROM);
+  if (rawEnvEmailFrom && !rawEnvEmailFrom.includes("onboarding@resend.dev")) {
+    const parsedEmail = extractEmailOnly(rawEnvEmailFrom);
+    if (rawEnvEmailFrom.includes("<") && isValidEmailAddress(parsedEmail)) {
+      return rawEnvEmailFrom;
+    }
+    if (isValidEmailAddress(parsedEmail)) {
+      return `${fromName} <${parsedEmail}>`;
+    }
   }
 
   // Verified ScholoNix production domain
-  return "ScholoNix <noreply@scholonix.com>";
+  return `${fromName} <noreply@scholonix.com>`;
 }
 
 /**
  * Creates a configured Nodemailer transporter or returns null if not configured.
  */
 function getTransporter() {
-  const host = process.env.SMTP_HOST || process.env.EMAIL_HOST;
-  const port = parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || "587", 10);
-  const user = process.env.SMTP_USER || process.env.EMAIL_USER;
-  const pass = process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD;
+  const host = stripSurroundingQuotes(process.env.SMTP_HOST || process.env.EMAIL_HOST);
+  const port = parseInt(
+    stripSurroundingQuotes(process.env.SMTP_PORT || process.env.EMAIL_PORT) || "587",
+    10,
+  );
+  const user = stripSurroundingQuotes(process.env.SMTP_USER || process.env.EMAIL_USER);
+  const pass = stripSurroundingQuotes(process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD);
 
-  if (!host || !user || !pass) {
+  if (!host || !user || !pass || host.includes("example.com")) {
     return null;
   }
 
@@ -85,7 +112,9 @@ export async function sendOtpEmail(params: SendOtpEmailParams): Promise<{
   simulated?: boolean;
 }> {
   if (!isValidEmailAddress(params.to)) {
-    throw new Error(`Invalid recipient email address: "${params.to}". Please provide a valid email.`);
+    throw new ValidationError(
+      `Invalid recipient email address: "${params.to}". Please provide a valid email.`,
+    );
   }
 
   const fromAddress = getSenderAddress();
@@ -122,13 +151,22 @@ If you did not request this, please ignore this email.
   let providerAttempted = false;
   let lastProviderError: string | null = null;
 
-  // Resolve logo file for inline CID attachment
+  // Resolve logo file for inline CID attachment safely
   const logoPath = path.join(process.cwd(), "public/images/scholonix-logo.png");
-  const logoExists = fs.existsSync(logoPath);
-  const logoBase64 = logoExists ? fs.readFileSync(logoPath).toString("base64") : null;
+  let logoExists = false;
+  let logoBase64: string | null = null;
+  try {
+    logoExists = fs.existsSync(logoPath);
+    logoBase64 = logoExists ? fs.readFileSync(logoPath).toString("base64") : null;
+  } catch {
+    logoExists = false;
+    logoBase64 = null;
+  }
 
   // 1. Resend API support (prioritized for verified domain delivery)
-  const resendApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_PROVIDER_API_KEY;
+  const resendApiKey = stripSurroundingQuotes(
+    process.env.RESEND_API_KEY || process.env.EMAIL_PROVIDER_API_KEY,
+  );
   if (resendApiKey) {
     providerAttempted = true;
     try {
@@ -147,13 +185,12 @@ If you did not request this, please ignore this email.
           { name: "purpose", value: params.purpose.toLowerCase() },
         ],
       };
-      if (logoBase64) {
+      if (logoBase64 && html.includes("cid:scholonix-logo")) {
         resendBody.attachments = [
           {
             filename: "scholonix-logo.png",
             content: logoBase64,
             content_id: "scholonix-logo",
-            contentId: "scholonix-logo",
           },
         ];
       }
@@ -165,18 +202,51 @@ If you did not request this, please ignore this email.
         },
         body: JSON.stringify(resendBody),
       });
-      const data = await res.json();
+      const rawText = await res.text();
+      interface ResendApiResponse {
+        id?: string;
+        name?: string;
+        message?: string;
+        error?: { message?: string };
+      }
+      let data: ResendApiResponse | null = null;
+      try {
+        data = rawText ? (JSON.parse(rawText) as ResendApiResponse) : null;
+      } catch {
+        data = null;
+      }
       if (res.ok && data?.id) {
-        console.info(`[EmailService:Resend] Email delivered to ${maskEmail(params.to)}: id=${data.id} via ${fromAddress}`);
+        logger.info(
+          { event: "EMAIL_OTP_SENT", provider: "resend", messageId: data.id, from: fromAddress, to: maskEmail(params.to) },
+          `[EmailService:Resend] Email delivered to ${maskEmail(params.to)}`,
+        );
         return { success: true, messageId: data.id };
       }
-      const errMsg = data?.message || data?.error?.message || "Failed to send email via Resend";
-      console.warn(`[EmailService:Resend] Delivery rejected by Resend API for ${maskEmail(params.to)}: status=${res.status}`, data);
-      lastProviderError = errMsg;
+      const errMsg =
+        data?.message ||
+        data?.error?.message ||
+        (rawText ? rawText.slice(0, 200) : null) ||
+        `Resend API rejected request (HTTP ${res.status})`;
+      logger.warn(
+        {
+          event: "EMAIL_OTP_REJECTED",
+          provider: "resend",
+          status: res.status,
+          from: fromAddress,
+          to: maskEmail(params.to),
+          errorName: data?.name,
+          errorMessage: errMsg,
+        },
+        `[EmailService:Resend] Delivery rejected for ${maskEmail(params.to)}: HTTP ${res.status}`,
+      );
+      lastProviderError = `Resend error (HTTP ${res.status}): ${errMsg}`;
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : "Failed to connect to Resend API";
-      console.error(`[EmailService:Resend] Connection error while dispatching to ${maskEmail(params.to)}:`, err);
-      lastProviderError = errMsg;
+      logger.error(
+        { event: "EMAIL_OTP_ERROR", provider: "resend", to: maskEmail(params.to), error: errMsg },
+        `[EmailService:Resend] Connection error while dispatching to ${maskEmail(params.to)}`,
+      );
+      lastProviderError = `Resend connection failed: ${errMsg}`;
     }
   }
 
@@ -251,11 +321,13 @@ If you did not request this, please ignore this email.
     }
   }
 
-  // If a real provider was configured but failed to deliver, do not pretend success
+  // If a real provider was configured but failed to deliver, surface a structured 502 error (not unhandled 500)
   if (providerAttempted) {
-    throw new Error(
+    throw new AppError(
       lastProviderError ||
         "Unable to deliver verification email. Please check your email configuration.",
+      502,
+      "EMAIL_DELIVERY_FAILED",
     );
   }
 

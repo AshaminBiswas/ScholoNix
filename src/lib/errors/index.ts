@@ -115,6 +115,10 @@ export function toErrorResponse(error: unknown): NextResponse {
   }
 
   const isDev = process.env.NODE_ENV === "development";
+  console.error(
+    "[API:UnexpectedError]",
+    error instanceof Error ? { name: error.name, message: error.message } : String(error),
+  );
   return NextResponse.json(
     {
       error: {

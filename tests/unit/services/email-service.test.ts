@@ -58,6 +58,11 @@ describe("Email Service & Recipient Validation", () => {
     expect(getSenderAddress()).not.toContain("onboarding@resend.dev");
     expect(getSenderAddress()).toContain("scholonix.com");
 
+    // Case 4: Handles quoted env values or accidental "Name <email>" inside RESEND_FROM_EMAIL
+    process.env.RESEND_FROM_NAME = '"ScholoNix"';
+    process.env.RESEND_FROM_EMAIL = '"ScholoNix <noreply@scholonix.com>"';
+    expect(getSenderAddress()).toBe("ScholoNix <noreply@scholonix.com>");
+
     process.env = originalEnv;
   });
 

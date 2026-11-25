@@ -20,11 +20,22 @@ export interface RenderOtpEmailOptions {
  * - Responsive footer with team signoff and unsubscribe pill
  */
 export function renderOtpEmailHtml(options: RenderOtpEmailOptions): string {
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const vercelHost =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  const fallbackOrigin =
+    configuredAppUrl &&
+    (!vercelHost || !configuredAppUrl.includes("localhost"))
+      ? configuredAppUrl
+      : vercelHost
+        ? `https://${vercelHost}`
+        : "http://localhost:3000";
+
   const {
     code,
     purpose,
     expiresInMinutes = 5,
-    appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+    appUrl = fallbackOrigin,
     logoUrl: explicitLogoUrl,
   } = options;
 
