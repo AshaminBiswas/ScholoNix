@@ -5,7 +5,7 @@ import { z } from "zod";
  * Server-only environment variable validation schema.
  * Prevents accidental startup or build execution with missing critical configurations.
  */
-const serverEnvSchema = z.object({
+export const serverEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
   // Database
@@ -17,18 +17,51 @@ const serverEnvSchema = z.object({
     .string()
     .url("REDIS_URL must be a valid URL")
     .default("redis://localhost:6379"),
+  UPSTASH_REDIS_REST_URL: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => {
+      if (!value) return true;
+      try {
+        const parsed = new URL(value);
+        return parsed.protocol === "https:" || parsed.protocol === "http:";
+      } catch {
+        return false;
+      }
+    }, "UPSTASH_REDIS_REST_URL must be a valid HTTP(S) URL"),
+  UPSTASH_REDIS_REST_TOKEN: z.string().trim().optional(),
+  KV_REST_API_URL: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => {
+      if (!value) return true;
+      try {
+        const parsed = new URL(value);
+        return parsed.protocol === "https:" || parsed.protocol === "http:";
+      } catch {
+        return false;
+      }
+    }, "KV_REST_API_URL must be a valid HTTP(S) URL"),
+  KV_REST_API_TOKEN: z.string().trim().optional(),
 
   // Authentication
   AUTH_SECRET: z
     .string()
-    .min(32, "AUTH_SECRET must be at least 32 characters for secure session hashing")
-    .default("development_secret_key_needs_replacement_in_production_32chars"),
+    .min(32, "AUTH_SECRET must be at least 32 characters for secure session hashing"),
   AUTH_SESSION_TTL_SECONDS: z.coerce.number().default(28800),
   AUTH_COOKIE_NAME: z.string().default("__Host-school_session"),
 
   // Logging & Observability
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
   SENTRY_DSN: z.string().url().optional().or(z.literal("")),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional().or(z.literal("")),
+  NEXT_PUBLIC_GLITCHTIP_TRACES_SAMPLE_RATE: z.string().optional().or(z.literal("")),
+  SENTRY_URL: z.string().url().optional().or(z.literal("")),
+  SENTRY_ORG: z.string().optional().or(z.literal("")),
+  SENTRY_PROJECT: z.string().optional().or(z.literal("")),
+  SENTRY_AUTH_TOKEN: z.string().optional().or(z.literal("")),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional().or(z.literal("")),
 
   // Email notifications (optional integrations)

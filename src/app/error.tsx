@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 interface RootErrorProps {
   error: Error & { digest?: string };
@@ -9,6 +10,7 @@ interface RootErrorProps {
 
 export default function RootError({ error, reset }: RootErrorProps) {
   useEffect(() => {
+    Sentry.captureException(error);
     console.error("Unhandled application error:", error.digest ?? error.message);
   }, [error]);
 

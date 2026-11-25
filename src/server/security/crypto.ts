@@ -2,9 +2,25 @@ import "server-only";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 
-const DEFAULT_AUTH_SECRET =
-  process.env.AUTH_SECRET ||
-  "scholonix_super_secret_auth_key_needs_32_characters_minimum";
+let ephemeralTestAuthSecret: string | null = null;
+
+function getAuthSecret(): string {
+  const configured = process.env.AUTH_SECRET?.trim().replace(/^(['"])(.*)\1$/, "$2").trim();
+  if (configured) {
+    return configured;
+  }
+
+  if (process.env.NODE_ENV === "test") {
+    if (!ephemeralTestAuthSecret) {
+      ephemeralTestAuthSecret = crypto.randomBytes(32).toString("hex");
+    }
+    return ephemeralTestAuthSecret;
+  }
+
+  throw new Error(
+    "AUTH_SECRET environment variable is required. Set a 32+ character secret in .env / .env.local or deployment environment variables.",
+  );
+}
 
 /**
  * Generates a cryptographically secure 6-digit numeric OTP.
@@ -19,7 +35,7 @@ export function generateSecureOtp(): string {
  * Creates an HMAC-SHA256 hash of an OTP code using the system secret.
  * Plaintext OTPs should NEVER be stored in the database.
  */
-export function hashOtp(code: string, secret: string = DEFAULT_AUTH_SECRET): string {
+export function hashOtp(code: string, secret: string = getAuthSecret()): string {
   return crypto.createHmac("sha256", secret).update(code.trim()).digest("hex");
 }
 
@@ -30,7 +46,7 @@ export function hashOtp(code: string, secret: string = DEFAULT_AUTH_SECRET): str
 export function verifyOtpHash(
   code: string,
   storedHash: string,
-  secret: string = DEFAULT_AUTH_SECRET,
+  secret: string = getAuthSecret(),
 ): boolean {
   try {
     const computedHash = hashOtp(code, secret);

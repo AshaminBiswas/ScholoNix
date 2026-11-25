@@ -23,15 +23,19 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  const isTelemetryTunnel = request.nextUrl.pathname === "/api/glitchtip-tunnel";
+
   // Safe Supabase session refresh: never fail request invocation if Supabase is unconfigured
-  try {
-    const supabaseRes = await updateSession(request);
-    if (supabaseRes) {
-      response = supabaseRes;
+  if (!isTelemetryTunnel) {
+    try {
+      const supabaseRes = await updateSession(request);
+      if (supabaseRes) {
+        response = supabaseRes;
+      }
+    } catch (err) {
+      // Graceful fallback: never fail request invocation if external session updater fails
+      console.warn("[Middleware] Supabase session update bypassed:", err);
     }
-  } catch (err) {
-    // Graceful fallback: never fail request invocation if external session updater fails
-    console.warn("[Middleware] Supabase session update bypassed:", err);
   }
 
   response.headers.set("x-request-id", requestHeaders.get("x-request-id")!);

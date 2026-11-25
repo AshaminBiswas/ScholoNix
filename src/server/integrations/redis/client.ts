@@ -1,9 +1,90 @@
 import "server-only";
 import Redis, { type RedisOptions } from "ioredis";
+import { Redis as UpstashRedis } from "@upstash/redis";
 
 const globalForRedis = globalThis as unknown as {
   redisClient: Redis | undefined;
+  upstashRedisClient: UpstashRedis | undefined;
 };
+
+export interface UpstashRedisConfig {
+  url: string;
+  token: string;
+}
+
+function sanitizeEnvValue(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  const unquoted = trimmed.replace(/^(['"])(.*)\1$/, "$2").trim();
+  return unquoted.length > 0 ? unquoted : undefined;
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolves Upstash REST credentials from UPSTASH_REDIS_REST_* or Vercel KV aliases.
+ */
+export function getUpstashRedisConfig(
+  overrides?: Partial<UpstashRedisConfig>,
+): UpstashRedisConfig | null {
+  const url =
+    sanitizeEnvValue(overrides?.url) ??
+    sanitizeEnvValue(process.env.UPSTASH_REDIS_REST_URL) ??
+    sanitizeEnvValue(process.env.KV_REST_API_URL);
+  const token =
+    sanitizeEnvValue(overrides?.token) ??
+    sanitizeEnvValue(process.env.UPSTASH_REDIS_REST_TOKEN) ??
+    sanitizeEnvValue(process.env.KV_REST_API_TOKEN);
+
+  if (!url || !token || !isValidHttpUrl(url)) {
+    return null;
+  }
+
+  return { url, token };
+}
+
+export function isUpstashConfigured(): boolean {
+  return getUpstashRedisConfig() !== null;
+}
+
+/**
+ * Creates a stateless HTTP-based Upstash Redis client for serverless runtimes.
+ */
+export function createUpstashRedisClient(
+  overrides?: Partial<UpstashRedisConfig>,
+): UpstashRedis | null {
+  const config = getUpstashRedisConfig(overrides);
+  if (!config) {
+    return null;
+  }
+
+  return new UpstashRedis({
+    url: config.url,
+    token: config.token,
+  });
+}
+
+export const upstashRedis: UpstashRedis | null =
+  process.env.NODE_ENV === "test"
+    ? null
+    : process.env.NODE_ENV === "development"
+      ? (globalForRedis.upstashRedisClient ?? createUpstashRedisClient())
+      : createUpstashRedisClient();
+
+if (process.env.NODE_ENV === "development" && upstashRedis) {
+  globalForRedis.upstashRedisClient = upstashRedis;
+}
+
+export { UpstashRedis };
 
 function createRedisClient(): Redis {
   const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";

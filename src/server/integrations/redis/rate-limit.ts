@@ -1,5 +1,5 @@
 import "server-only";
-import { redis } from "./client";
+import { redis, upstashRedis } from "./client";
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -45,23 +45,44 @@ export async function checkRateLimit(
   windowSeconds: number = 60,
 ): Promise<RateLimitResult> {
   const redisKey = `ratelimit:${key}`;
-  const isUnconfiguredLocal =
-    process.env.NODE_ENV === "test" ||
-    ((Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)) &&
-      (!process.env.REDIS_URL ||
-        process.env.REDIS_URL.includes("localhost") ||
-        process.env.REDIS_URL.includes("127.0.0.1")));
+  const isServerlessWithoutTcpRedis =
+    Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) &&
+    (!process.env.REDIS_URL ||
+      process.env.REDIS_URL.includes("localhost") ||
+      process.env.REDIS_URL.includes("127.0.0.1"));
 
-  if (isUnconfiguredLocal || redis.status === "end") {
+  if (process.env.NODE_ENV === "test") {
+    return checkMemoryRateLimit(redisKey, limit, windowSeconds);
+  }
+
+  if (!upstashRedis && (isServerlessWithoutTcpRedis || redis.status === "end")) {
     return checkMemoryRateLimit(redisKey, limit, windowSeconds);
   }
 
   try {
-    const current = await redis.incr(redisKey);
-    if (current === 1) {
-      await redis.expire(redisKey, windowSeconds);
+    let current: number;
+    let ttl: number;
+
+    if (upstashRedis) {
+      const [nextCount, existingTtl] = await upstashRedis
+        .pipeline()
+        .incr(redisKey)
+        .ttl(redisKey)
+        .exec<[number, number]>();
+
+      current = nextCount;
+      ttl = existingTtl;
+      if (current === 1 || ttl < 0) {
+        await upstashRedis.expire(redisKey, windowSeconds);
+        ttl = windowSeconds;
+      }
+    } else {
+      current = await redis.incr(redisKey);
+      if (current === 1) {
+        await redis.expire(redisKey, windowSeconds);
+      }
+      ttl = await redis.ttl(redisKey);
     }
-    const ttl = await redis.ttl(redisKey);
 
     return {
       allowed: current <= limit,

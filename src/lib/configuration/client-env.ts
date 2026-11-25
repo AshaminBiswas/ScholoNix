@@ -9,6 +9,8 @@ const clientEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
   NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional().or(z.literal("")),
+  NEXT_PUBLIC_GLITCHTIP_TRACES_SAMPLE_RATE: z.string().optional().or(z.literal("")),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
@@ -23,6 +25,9 @@ export function getClientEnv(): ClientEnv {
   const parsed = clientEnvSchema.safeParse({
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    NEXT_PUBLIC_GLITCHTIP_TRACES_SAMPLE_RATE:
+      process.env.NEXT_PUBLIC_GLITCHTIP_TRACES_SAMPLE_RATE,
   });
 
   if (!parsed.success) {
