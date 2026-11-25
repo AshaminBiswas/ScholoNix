@@ -92,6 +92,45 @@ body::-webkit-scrollbar {
   display: none;
 }
 
+/* Thin, brand-colored scrollbar utility for navigation drawers and menus */
+.school-menu-scrollbar {
+  --scrollbar-thumb: var(--brand-primary);
+  --scrollbar-track: var(--brand-lavender);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-gutter: stable;
+}
+
+@media (prefers-contrast: more) {
+  .school-menu-scrollbar {
+    --scrollbar-thumb: #000000;
+    --scrollbar-track: #ffffff;
+    scrollbar-width: auto;
+  }
+}
+
+/* Legacy fallback for browsers without standard scrollbar-color support */
+@supports not (scrollbar-color: auto) {
+  .school-menu-scrollbar {
+    scrollbar-width: auto;
+  }
+
+  .school-menu-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  .school-menu-scrollbar::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 9999px;
+  }
+
+  .school-menu-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
+}
+
 /* Headings default to dark navy for high contrast */
 h1,
 h2,

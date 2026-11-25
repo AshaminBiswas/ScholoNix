@@ -76,6 +76,7 @@ describe("SchoolWorkspaceShell single-tenant & in-portal help links", () => {
 
     const scrollableBody = sidebar?.querySelector(".overflow-y-auto");
     expect(scrollableBody).not.toBeNull();
+    expect(scrollableBody?.className).toContain("school-menu-scrollbar");
 
     const desktopToggle = document.querySelector("#desktop-sidebar-toggle-btn") as HTMLButtonElement;
     expect(desktopToggle).not.toBeNull();
@@ -88,5 +89,32 @@ describe("SchoolWorkspaceShell single-tenant & in-portal help links", () => {
     await userActor.click(desktopToggle);
     expect(desktopToggle.getAttribute("aria-expanded")).toBe("true");
     expect(sidebar?.className).toContain("lg:translate-x-0");
+  });
+
+  it("renders Admissions as a dropdown closed by default that toggles open on click", async () => {
+    const userActor = userEvent.setup();
+    render(
+      <SchoolWorkspaceShell school={school} user={user} activeNav="dashboard">
+        <div>Workspace Content</div>
+      </SchoolWorkspaceShell>,
+    );
+
+    const admissionsBtn = document.querySelector("#admissions-dropdown-btn") as HTMLButtonElement;
+    expect(admissionsBtn).not.toBeNull();
+    expect(admissionsBtn.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector("#admissions-submenu")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Applications" })).toBeNull();
+
+    await userActor.click(admissionsBtn);
+    expect(admissionsBtn.getAttribute("aria-expanded")).toBe("true");
+    expect(document.querySelector("#admissions-submenu")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Applications" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Enquiries" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Admitted Students" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Admission Settings" })).toBeTruthy();
+
+    await userActor.click(admissionsBtn);
+    expect(admissionsBtn.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector("#admissions-submenu")).toBeNull();
   });
 });

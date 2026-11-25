@@ -75,7 +75,7 @@ export function SchoolWorkspaceShell({
   const router = useRouter();
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [admissionsOpen, setAdmissionsOpen] = useState(true);
+  const [admissionsOpen, setAdmissionsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [portalModal, setPortalModal] = useState<"support" | "feedback" | null>(null);
 
@@ -382,10 +382,7 @@ export function SchoolWorkspaceShell({
               : "lg:-translate-x-full lg:invisible lg:pointer-events-none"
           }`}
         >
-          <div
-            className="h-full overflow-y-auto overscroll-contain px-3 py-4 flex flex-col justify-between"
-            style={{ scrollbarGutter: "stable" }}
-          >
+          <div className="h-full overflow-y-auto overscroll-contain school-menu-scrollbar px-3 py-4 flex flex-col justify-between">
             <nav aria-label="Primary school navigation" className="space-y-1">
               {/* Dashboard Item */}
               <Link
@@ -401,31 +398,48 @@ export function SchoolWorkspaceShell({
                 <span>Dashboard</span>
               </Link>
 
-              {/* Admissions with collapsible sub-items */}
+              {/* Admissions Dropdown (closed by default) */}
               <div className="pt-1">
                 <button
+                  id="admissions-dropdown-btn"
                   type="button"
                   onClick={() => setAdmissionsOpen((prev) => !prev)}
                   aria-expanded={admissionsOpen}
-                  className="flex w-full items-center justify-between rounded-[10px] px-3.5 py-2 text-xs font-semibold text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] cursor-pointer transition"
+                  aria-controls="admissions-submenu"
+                  className={`flex w-full items-center justify-between rounded-[10px] px-3.5 py-2 text-xs font-semibold cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
+                    admissionsOpen
+                      ? "bg-[#FAF8FE] text-[#663CF6]"
+                      : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6]"
+                  }`}
                 >
                   <span className="flex items-center gap-3">
                     <UserPlus className="h-4 w-4" aria-hidden="true" />
                     <span>Admissions</span>
                   </span>
                   <ChevronDown
-                    className={`h-3.5 w-3.5 text-[#76799C] transition-transform duration-200 ${
-                      admissionsOpen ? "rotate-0" : "-rotate-90"
+                    className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${
+                      admissionsOpen ? "rotate-180 text-[#663CF6]" : "rotate-0 text-[#76799C]"
                     }`}
                     aria-hidden="true"
                   />
                 </button>
                 {admissionsOpen && (
-                  <div className="ml-7 space-y-1 border-l-2 border-[#DDD6FE] pl-2.5 py-1 text-[11px] font-medium text-[#76799C]">
-                    <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Applications</p>
-                    <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Enquiries</p>
-                    <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Admitted Students</p>
-                    <p className="hover:text-[#663CF6] cursor-pointer py-0.5">Admission Settings</p>
+                  <div
+                    id="admissions-submenu"
+                    className="mt-1 ml-4 space-y-0.5 rounded-[12px] border border-[#EDE7FF] bg-[#FAF8FE]/80 p-1.5 text-[11px] font-medium text-[#4D5072]"
+                  >
+                    {["Applications", "Enquiries", "Admitted Students", "Admission Settings"].map(
+                      (subLabel) => (
+                        <button
+                          key={subLabel}
+                          type="button"
+                          onClick={() => setMobileSidebarOpen(false)}
+                          className="flex w-full items-center rounded-[8px] border-l-2 border-transparent px-2.5 py-1.5 text-left transition hover:border-[#663CF6] hover:bg-white hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer"
+                        >
+                          {subLabel}
+                        </button>
+                      ),
+                    )}
                   </div>
                 )}
               </div>
@@ -443,12 +457,14 @@ export function SchoolWorkspaceShell({
                 { icon: MessageSquare, label: "Communication" },
                 { icon: BarChart3, label: "Reports" },
                 { icon: Settings, label: "Settings" },
-              ].map((item, idx) => {
+              ].map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between rounded-[10px] px-3.5 py-2 text-xs font-semibold text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] cursor-pointer transition"
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className="flex w-full items-center justify-between rounded-[10px] px-3.5 py-2 text-left text-xs font-semibold text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer transition"
                   >
                     <div className="flex items-center gap-3">
                       <Icon className="h-4 w-4" aria-hidden="true" />
@@ -462,7 +478,7 @@ export function SchoolWorkspaceShell({
                       )}
                       <ChevronRight className="h-3 w-3 text-[#CAD0EB]" aria-hidden="true" />
                     </div>
-                  </div>
+                  </button>
                 );
               })}
 
