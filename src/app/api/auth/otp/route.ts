@@ -12,8 +12,10 @@ const sendOtpSchema = z
     phone: z.string().optional(),
     email: z.string().optional(),
     channel: z.enum(["EMAIL", "SMS"]).optional(),
+    type: z.enum(["email", "mobile"]).optional(),
     purpose: z.enum(["REGISTRATION", "LOGIN", "PASSWORD_RESET"]).default("REGISTRATION"),
     recipientName: z.string().optional(),
+    registrationSessionId: z.string().max(128).optional(),
   })
   .refine(
     (data) => Boolean(data.identifier || data.phone || data.email),
@@ -37,7 +39,8 @@ export async function POST(req: NextRequest) {
     const parsed = sendOtpSchema.parse(body);
 
     // Determine channel and target identifier
-    let channel: OtpChannel = parsed.channel || "SMS";
+    let channel: OtpChannel =
+      parsed.channel || (parsed.type === "email" ? "EMAIL" : parsed.type === "mobile" ? "SMS" : "SMS");
     let identifier = parsed.identifier || "";
 
     if (parsed.email) {
@@ -50,7 +53,7 @@ export async function POST(req: NextRequest) {
       channel = "EMAIL";
     }
 
-    if (!identifier) {
+    if (!identifier.trim()) {
       return NextResponse.json(
         { success: false, error: { message: "Valid mobile number or email address is required" } },
         { status: 400 },
@@ -58,10 +61,11 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await otpService.requestOtp({
-      identifier,
+      identifier: identifier.trim(),
       channel,
       purpose: parsed.purpose as OtpPurpose,
       recipientName: parsed.recipientName,
+      registrationSessionId: parsed.registrationSessionId,
       ipAddress: ip,
       userAgent,
     });
@@ -69,11 +73,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: result.message,
+      type: result.type,
       data: {
         channel: result.channel,
+        type: result.type,
+        challengeId: result.challengeId,
         destinationMasked: result.destinationMasked,
         cooldownSeconds: result.cooldownSeconds,
         expiresInMinutes: result.expiresInMinutes,
+        registrationSessionId: parsed.registrationSessionId || null,
       },
     });
   } catch (error: unknown) {

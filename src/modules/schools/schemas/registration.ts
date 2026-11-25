@@ -70,11 +70,12 @@ export const completeRegistrationSchema = z.object({
   administrator: administratorDetailsSchema,
   plan: z.enum(["starter", "professional", "enterprise"]).optional().default("professional"),
   billingCycle: z.enum(["monthly", "yearly"]).optional().default("monthly"),
-  emailVerificationToken: z.string().optional(),
-  mobileVerificationToken: z.string().optional(),
-  emailOtpCode: z.string().length(6).optional(),
-  mobileOtpCode: z.string().length(6).optional(),
-  otpCode: z.string().length(6).optional(), // Legacy compat
+  registrationSessionId: z.string().max(128).nullable().optional(),
+  emailVerificationToken: z.string().nullable().optional(),
+  mobileVerificationToken: z.string().nullable().optional(),
+  emailOtpCode: z.string().length(6).nullable().optional(),
+  mobileOtpCode: z.string().length(6).nullable().optional(),
+  otpCode: z.string().length(6).nullable().optional(), // Legacy compat
 });
 
 export type InstitutionDetailsInput = z.infer<typeof institutionDetailsSchema>;

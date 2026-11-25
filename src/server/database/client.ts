@@ -22,6 +22,5 @@ export const db: PrismaClient =
         : [{ emit: "stdout", level: "error" }],
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = db;
-}
+// Cache PrismaClient across module reloads and warm serverless container invocations
+globalForPrisma.prisma = db;

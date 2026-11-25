@@ -105,6 +105,10 @@ export function maskEmail(email: string): string {
 export function normalizePhone(rawPhone: string, defaultCountryCode: string = "+91"): string {
   const cleaned = rawPhone.replace(/[^\d+]/g, "").trim();
   if (cleaned.startsWith("+")) {
+    // Handle common Indian input like +91 09876543210 -> +919876543210
+    if (cleaned.startsWith("+910") && cleaned.length === 14) {
+      return `+91${cleaned.slice(4)}`;
+    }
     return cleaned;
   }
   // Strip leading 0

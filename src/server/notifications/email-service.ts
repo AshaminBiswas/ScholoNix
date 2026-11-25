@@ -21,6 +21,38 @@ export interface SendOtpEmailParams {
 }
 
 /**
+ * Validates whether an email address format is strictly valid before dispatching.
+ */
+export function isValidEmailAddress(email: string): boolean {
+  if (!email || typeof email !== "string") return false;
+  const trimmed = email.trim();
+  // Standard RFC 5322 compatible email regex
+  const regex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  return regex.test(trimmed) && trimmed.length <= 254;
+}
+
+/**
+ * Resolves the configured sender address using verified custom domain credentials.
+ * Prioritizes RESEND_FROM_NAME and RESEND_FROM_EMAIL.
+ * Always targets the verified domain scholonix.com, never testing sandbox onboarding@resend.dev.
+ */
+export function getSenderAddress(): string {
+  const fromName = process.env.RESEND_FROM_NAME || process.env.EMAIL_FROM_NAME || "ScholoNix";
+  const fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM_ADDRESS;
+
+  if (fromEmail) {
+    return `${fromName} <${fromEmail}>`;
+  }
+
+  if (process.env.EMAIL_FROM && !process.env.EMAIL_FROM.includes("onboarding@resend.dev")) {
+    return process.env.EMAIL_FROM;
+  }
+
+  // Verified ScholoNix production domain
+  return "ScholoNix <noreply@scholonix.com>";
+}
+
+/**
  * Creates a configured Nodemailer transporter or returns null if not configured.
  */
 function getTransporter() {
@@ -52,7 +84,11 @@ export async function sendOtpEmail(params: SendOtpEmailParams): Promise<{
   messageId?: string;
   simulated?: boolean;
 }> {
-  const fromAddress = process.env.EMAIL_FROM || "ScholoNix <onboarding@resend.dev>";
+  if (!isValidEmailAddress(params.to)) {
+    throw new Error(`Invalid recipient email address: "${params.to}". Please provide a valid email.`);
+  }
+
+  const fromAddress = getSenderAddress();
   const transporter = getTransporter();
 
   const subjectMap = {
@@ -91,17 +127,25 @@ If you did not request this, please ignore this email.
   const logoExists = fs.existsSync(logoPath);
   const logoBase64 = logoExists ? fs.readFileSync(logoPath).toString("base64") : null;
 
-  // 1. Resend API support (if RESEND_API_KEY or EMAIL_PROVIDER_API_KEY is configured)
+  // 1. Resend API support (prioritized for verified domain delivery)
   const resendApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_PROVIDER_API_KEY;
   if (resendApiKey) {
     providerAttempted = true;
     try {
       const resendBody: Record<string, unknown> = {
         from: fromAddress,
-        to: [params.to],
+        to: [params.to.trim().toLowerCase()],
         subject,
         html,
         text,
+        headers: {
+          "X-Entity-Ref-ID": `otp-${Date.now()}`,
+          "X-Auto-Response-Suppress": "OOF, AutoReply",
+        },
+        tags: [
+          { name: "category", value: "transactional" },
+          { name: "purpose", value: params.purpose.toLowerCase() },
+        ],
       };
       if (logoBase64) {
         resendBody.attachments = [
@@ -122,16 +166,16 @@ If you did not request this, please ignore this email.
         body: JSON.stringify(resendBody),
       });
       const data = await res.json();
-      if (res.ok) {
-        console.info(`[EmailService:Resend] Email delivered to ${maskEmail(params.to)}: id=${data.id}`);
+      if (res.ok && data?.id) {
+        console.info(`[EmailService:Resend] Email delivered to ${maskEmail(params.to)}: id=${data.id} via ${fromAddress}`);
         return { success: true, messageId: data.id };
       }
-      const errMsg = data?.message || "Failed to send email via Resend";
-      console.warn("[EmailService:Resend] Error response:", data);
+      const errMsg = data?.message || data?.error?.message || "Failed to send email via Resend";
+      console.warn(`[EmailService:Resend] Delivery rejected by Resend API for ${maskEmail(params.to)}: status=${res.status}`, data);
       lastProviderError = errMsg;
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : "Failed to connect to Resend API";
-      console.error("[EmailService:Resend] Failed to send via Resend:", err);
+      console.error(`[EmailService:Resend] Connection error while dispatching to ${maskEmail(params.to)}:`, err);
       lastProviderError = errMsg;
     }
   }

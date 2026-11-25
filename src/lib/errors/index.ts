@@ -33,6 +33,12 @@ export class AuthorizationError extends AppError {
   }
 }
 
+export class VerificationRequiredError extends AppError {
+  constructor(message: string = "Verification required before proceeding") {
+    super(message, 403, "VERIFICATION_REQUIRED");
+  }
+}
+
 export class TenantNotFoundError extends AppError {
   constructor(message: string = "School tenant not found or inactive") {
     super(message, 404, "TENANT_NOT_FOUND");
@@ -66,6 +72,14 @@ export class ConflictError extends AppError {
 export class RateLimitExceededError extends AppError {
   constructor(message: string = "Too many requests. Please try again later.") {
     super(message, 429, "RATE_LIMIT_EXCEEDED");
+  }
+}
+
+export class ServiceUnavailableError extends AppError {
+  constructor(
+    message: string = "Service temporarily unavailable. Please try again in a moment.",
+  ) {
+    super(message, 503, "SERVICE_UNAVAILABLE");
   }
 }
 

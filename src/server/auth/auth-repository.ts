@@ -2,8 +2,11 @@
 import "server-only";
 import fs from "fs";
 import path from "path";
+import { randomUUID } from "crypto";
 import { db } from "@/server/database/client";
 import { normalizePhone, generateSecureToken } from "@/server/security/crypto";
+import { ServiceUnavailableError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 
 export interface OtpRecord {
   id: string;
@@ -17,6 +20,7 @@ export interface OtpRecord {
   resendAfter: Date;
   verifiedAt: Date | null;
   verificationToken?: string | null;
+  metadata?: any;
   createdAt: Date;
 }
 
@@ -181,27 +185,104 @@ function saveStore(state: AuthStoreState): void {
 storeMemory = loadStore();
 
 /**
+ * Returns true when executing inside an ephemeral serverless runtime (e.g. Vercel),
+ * where in-memory RAM / local filesystem cannot be shared across HTTP invocations.
+ */
+function isServerlessRuntime(): boolean {
+  return Boolean(
+    process.env.VERCEL ||
+      process.env.VERCEL_ENV ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME,
+  );
+}
+
+/**
  * Checks if Prisma is connected and healthy.
+ * Never permanently caches `false` so transient cold-start issues self-heal cleanly.
  */
 let prismaAvailable: boolean | null = null;
+let prismaLastFailureAt = 0;
+const PRISMA_RETRY_COOLDOWN_MS = 10_000;
+
 async function isPrismaWorking(): Promise<boolean> {
   // In automated test environments, strictly use ephemeral in-memory state
   if (process.env.NODE_ENV === "test") {
     return false;
   }
-  if (prismaAvailable !== null) return prismaAvailable;
+  if (prismaAvailable === true) {
+    return true;
+  }
+  if (
+    prismaAvailable === false &&
+    Date.now() - prismaLastFailureAt < PRISMA_RETRY_COOLDOWN_MS
+  ) {
+    return false;
+  }
   try {
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("Database connection timeout")), 8000),
     );
     await Promise.race([db.$queryRaw`SELECT 1`, timeoutPromise]);
     prismaAvailable = true;
+    prismaLastFailureAt = 0;
     return true;
-  } catch {
+  } catch (err) {
     prismaAvailable = false;
-    console.info("[AuthRepository] PostgreSQL unreachable, operating with resilient persistent store.");
+    prismaLastFailureAt = Date.now();
+    logger.error(
+      { err: err instanceof Error ? err.message : String(err), serverless: isServerlessRuntime() },
+      "[AuthRepository] PostgreSQL connectivity check failed",
+    );
     return false;
   }
+}
+
+function handlePrismaRuntimeError(operation: string, err: unknown): void {
+  const message = err instanceof Error ? err.message : String(err);
+  prismaAvailable = false;
+  prismaLastFailureAt = Date.now();
+  logger.error(
+    { operation, error: message, serverless: isServerlessRuntime() },
+    `[AuthRepository] Prisma ${operation} failed`,
+  );
+  if (isServerlessRuntime()) {
+    throw new ServiceUnavailableError(
+      "Authentication database is temporarily unavailable. Please try again in a moment.",
+    );
+  }
+}
+
+function normalizeChannelIdentifier(identifier: string, channel: "EMAIL" | "SMS"): string {
+  return channel === "SMS" ? normalizePhone(identifier) : identifier.trim().toLowerCase();
+}
+
+function doesSessionMatch(metadata: unknown, registrationSessionId?: string | null): boolean {
+  if (!registrationSessionId) return true;
+  const metaSessionId =
+    metadata && typeof metadata === "object"
+      ? (metadata as Record<string, unknown>).registrationSessionId
+      : undefined;
+  if (!metaSessionId) return true;
+  return metaSessionId === registrationSessionId;
+}
+
+function mapPrismaOtpRecord(r: any): OtpRecord {
+  const metadataObj = (r.metadata && typeof r.metadata === "object" ? r.metadata : {}) as Record<string, any>;
+  return {
+    id: r.id,
+    identifier: r.identifier,
+    channel: r.channel,
+    purpose: r.purpose,
+    codeHash: r.codeHash,
+    attempts: r.attempts,
+    maxAttempts: r.maxAttempts,
+    expiresAt: new Date(r.expiresAt),
+    resendAfter: new Date(r.resendAfter),
+    verifiedAt: r.verifiedAt ? new Date(r.verifiedAt) : null,
+    verificationToken: metadataObj.token || null,
+    metadata: metadataObj,
+    createdAt: new Date(r.createdAt),
+  };
 }
 
 export const authRepository = {
@@ -210,10 +291,16 @@ export const authRepository = {
   // ----------------------------------------------------
 
   async saveOtp(record: Omit<OtpRecord, "id" | "createdAt">): Promise<OtpRecord> {
-    const id = `otp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const id = randomUUID();
+    const mergedMetadata: Record<string, any> = {
+      ...(record.metadata && typeof record.metadata === "object" ? record.metadata : {}),
+      ...(record.verificationToken ? { token: record.verificationToken, used: false } : {}),
+    };
+    const hasMetadata = Object.keys(mergedMetadata).length > 0;
     const fullRecord: OtpRecord = {
       ...record,
       id,
+      metadata: hasMetadata ? mergedMetadata : undefined,
       createdAt: new Date(),
     };
 
@@ -231,26 +318,22 @@ export const authRepository = {
             expiresAt: record.expiresAt,
             resendAfter: record.resendAfter,
             verifiedAt: record.verifiedAt,
-            metadata: record.verificationToken ? { token: record.verificationToken } : undefined,
+            metadata: hasMetadata ? mergedMetadata : undefined,
           },
         });
-        return {
-          id: created.id,
-          identifier: created.identifier,
-          channel: created.channel,
-          purpose: created.purpose,
-          codeHash: created.codeHash,
-          attempts: created.attempts,
-          maxAttempts: created.maxAttempts,
-          expiresAt: created.expiresAt,
-          resendAfter: created.resendAfter,
-          verifiedAt: created.verifiedAt,
-          verificationToken: (created.metadata as any)?.token || null,
-          createdAt: created.createdAt,
-        };
-      } catch {
-        console.warn("[AuthRepository] Prisma saveOtp failed, falling back to store");
+        const saved = mapPrismaOtpRecord(created);
+        if (!isServerlessRuntime()) {
+          storeMemory.otps[id] = saved;
+          saveStore(storeMemory);
+        }
+        return saved;
+      } catch (err) {
+        handlePrismaRuntimeError("saveOtp", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
     storeMemory.otps[id] = fullRecord;
@@ -262,57 +345,112 @@ export const authRepository = {
     identifier: string,
     channel: "EMAIL" | "SMS",
     purpose: "REGISTRATION" | "LOGIN" | "PASSWORD_RESET",
+    registrationSessionId?: string | null,
   ): Promise<OtpRecord | null> {
     const now = new Date();
+    const normalizedIdentifier = normalizeChannelIdentifier(identifier, channel);
 
     if (await isPrismaWorking()) {
       try {
-        const record = await (db as any).otpVerification.findFirst({
+        const candidates = await (db as any).otpVerification.findMany({
           where: {
-            identifier,
+            OR: [
+              { identifier: normalizedIdentifier },
+              { identifier: identifier.trim() },
+            ],
             channel,
             purpose,
             verifiedAt: null,
             expiresAt: { gt: now },
           },
           orderBy: { createdAt: "desc" },
+          take: 10,
         });
-        if (record) {
-          return {
-            id: record.id,
-            identifier: record.identifier,
-            channel: record.channel,
-            purpose: record.purpose,
-            codeHash: record.codeHash,
-            attempts: record.attempts,
-            maxAttempts: record.maxAttempts,
-            expiresAt: record.expiresAt,
-            resendAfter: record.resendAfter,
-            verifiedAt: record.verifiedAt,
-            verificationToken: (record.metadata as any)?.token || null,
-            createdAt: record.createdAt,
-          };
-        }
-        return null;
-      } catch {
-        console.warn("[AuthRepository] Prisma findActiveOtp failed, falling back to store");
+        const matched = (candidates || []).find(
+          (r: any) =>
+            r.attempts < r.maxAttempts &&
+            doesSessionMatch(r.metadata, registrationSessionId),
+        );
+        return matched ? mapPrismaOtpRecord(matched) : null;
+      } catch (err) {
+        handlePrismaRuntimeError("findActiveOtp", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
-    // Fallback store
-    const normalizedIdentifier =
-      channel === "SMS" ? normalizePhone(identifier) : identifier.trim().toLowerCase();
+    // Fallback / test store
+    const matchesFilter = (otps: Record<string, OtpRecord>) =>
+      Object.values(otps).filter(
+        (o) =>
+          (o.identifier === identifier ||
+            o.identifier === normalizedIdentifier ||
+            normalizeChannelIdentifier(o.identifier, channel) === normalizedIdentifier) &&
+          o.channel === channel &&
+          o.purpose === purpose &&
+          !o.verifiedAt &&
+          o.attempts < o.maxAttempts &&
+          new Date(o.expiresAt).getTime() > now.getTime() &&
+          doesSessionMatch(o.metadata, registrationSessionId),
+      );
+
+    let matches = matchesFilter(storeMemory.otps);
+    if (matches.length === 0) {
+      storeMemory = loadStore();
+      matches = matchesFilter(storeMemory.otps);
+    }
+
+    if (matches.length === 0) return null;
+    matches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return matches[0] || null;
+  },
+
+  async findLatestOtp(
+    identifier: string,
+    channel: "EMAIL" | "SMS",
+    purpose: "REGISTRATION" | "LOGIN" | "PASSWORD_RESET",
+    registrationSessionId?: string | null,
+  ): Promise<OtpRecord | null> {
+    const normalizedIdentifier = normalizeChannelIdentifier(identifier, channel);
+
+    if (await isPrismaWorking()) {
+      try {
+        const candidates = await (db as any).otpVerification.findMany({
+          where: {
+            OR: [
+              { identifier: normalizedIdentifier },
+              { identifier: identifier.trim() },
+            ],
+            channel,
+            purpose,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        });
+        const matched = (candidates || []).find((r: any) =>
+          doesSessionMatch(r.metadata, registrationSessionId),
+        );
+        return matched ? mapPrismaOtpRecord(matched) : null;
+      } catch (err) {
+        handlePrismaRuntimeError("findLatestOtp", err);
+      }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
+    }
 
     const matchesFilter = (otps: Record<string, OtpRecord>) =>
       Object.values(otps).filter(
         (o) =>
           (o.identifier === identifier ||
-            (channel === "SMS" && normalizePhone(o.identifier) === normalizedIdentifier) ||
-            (channel === "EMAIL" && o.identifier.trim().toLowerCase() === normalizedIdentifier)) &&
+            o.identifier === normalizedIdentifier ||
+            normalizeChannelIdentifier(o.identifier, channel) === normalizedIdentifier) &&
           o.channel === channel &&
           o.purpose === purpose &&
-          !o.verifiedAt &&
-          new Date(o.expiresAt).getTime() > now.getTime(),
+          doesSessionMatch(o.metadata, registrationSessionId),
       );
 
     let matches = matchesFilter(storeMemory.otps);
@@ -327,43 +465,144 @@ export const authRepository = {
   },
 
   async findOtpByToken(token: string): Promise<OtpRecord | null> {
+    if (!token) return null;
+
     if (await isPrismaWorking()) {
       try {
-        const record = await (db as any).otpVerification.findFirst({
-          where: {
-            metadata: {
-              path: ["token"],
-              equals: token,
-            },
-          },
-        });
-        if (record) {
-          return {
-            id: record.id,
-            identifier: record.identifier,
-            channel: record.channel,
-            purpose: record.purpose,
-            codeHash: record.codeHash,
-            attempts: record.attempts,
-            maxAttempts: record.maxAttempts,
-            expiresAt: record.expiresAt,
-            resendAfter: record.resendAfter,
-            verifiedAt: record.verifiedAt,
-            verificationToken: token,
-            createdAt: record.createdAt,
-          };
+        const records = await (db as any).$queryRaw`
+          SELECT id, identifier, channel, purpose, code_hash AS "codeHash",
+                 attempts, max_attempts AS "maxAttempts", expires_at AS "expiresAt",
+                 resend_after AS "resendAfter", verified_at AS "verifiedAt",
+                 metadata, created_at AS "createdAt"
+          FROM otp_verifications
+          WHERE metadata->>'token' = ${token}
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
+        if (Array.isArray(records) && records.length > 0) {
+          return mapPrismaOtpRecord({ ...records[0], metadata: { ...(records[0].metadata || {}), token } });
         }
-      } catch {
-        // Fallback
+        return null;
+      } catch (err) {
+        handlePrismaRuntimeError("findOtpByToken", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
-    let found = Object.values(storeMemory.otps).find((o) => o.verificationToken === token);
+    let found = Object.values(storeMemory.otps).find(
+      (o) => o.verificationToken === token || o.metadata?.token === token,
+    );
     if (!found) {
       storeMemory = loadStore();
-      found = Object.values(storeMemory.otps).find((o) => o.verificationToken === token);
+      found = Object.values(storeMemory.otps).find(
+        (o) => o.verificationToken === token || o.metadata?.token === token,
+      );
     }
     return found || null;
+  },
+
+  async markTokenUsed(token: string): Promise<void> {
+    if (!token) return;
+    const now = new Date();
+
+    if (await isPrismaWorking()) {
+      try {
+        await (db as any).$executeRaw`
+          UPDATE otp_verifications
+          SET metadata = jsonb_set(
+            jsonb_set(COALESCE(metadata, '{}'::jsonb), '{used}', 'true'::jsonb),
+            '{usedAt}', to_jsonb(${now.toISOString()}::text)
+          )
+          WHERE metadata->>'token' = ${token}
+        `;
+        return;
+      } catch (err) {
+        handlePrismaRuntimeError("markTokenUsed", err);
+      }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
+    }
+
+    for (const otp of Object.values(storeMemory.otps)) {
+      if (otp.verificationToken === token || otp.metadata?.token === token) {
+        otp.metadata = { ...(otp.metadata || {}), used: true, usedAt: now.toISOString() };
+      }
+    }
+    saveStore(storeMemory);
+  },
+
+  async findLatestVerifiedOtp(
+    identifier: string,
+    channel: "EMAIL" | "SMS",
+    purpose: "REGISTRATION" | "LOGIN" | "PASSWORD_RESET",
+    registrationSessionId?: string | null,
+  ): Promise<OtpRecord | null> {
+    const normalizedIdentifier = normalizeChannelIdentifier(identifier, channel);
+    const maxAgeMs = 60 * 60 * 1000; // Verified within last 60 minutes
+    const cutoff = new Date(Date.now() - maxAgeMs);
+
+    if (await isPrismaWorking()) {
+      try {
+        const records = await (db as any).$queryRaw`
+          SELECT id, identifier, channel, purpose, code_hash AS "codeHash",
+                 attempts, max_attempts AS "maxAttempts", expires_at AS "expiresAt",
+                 resend_after AS "resendAfter", verified_at AS "verifiedAt",
+                 metadata, created_at AS "createdAt"
+          FROM otp_verifications
+          WHERE (identifier = ${normalizedIdentifier} OR identifier = ${identifier.trim()})
+            AND channel = ${channel}::"OtpChannel"
+            AND purpose = ${purpose}::"OtpPurpose"
+            AND verified_at IS NOT NULL
+            AND verified_at > ${cutoff}
+            AND (metadata->>'used' IS NULL OR metadata->>'used' = 'false')
+          ORDER BY verified_at DESC
+          LIMIT 10
+        `;
+        if (Array.isArray(records)) {
+          const matched = records.find((r: any) =>
+            doesSessionMatch(r.metadata, registrationSessionId),
+          );
+          if (matched) {
+            return mapPrismaOtpRecord(matched);
+          }
+        }
+        return null;
+      } catch (err) {
+        handlePrismaRuntimeError("findLatestVerifiedOtp", err);
+      }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
+    }
+
+    const matchesFilter = (otps: Record<string, OtpRecord>) =>
+      Object.values(otps).filter(
+        (o) =>
+          (o.identifier === identifier ||
+            o.identifier === normalizedIdentifier ||
+            normalizeChannelIdentifier(o.identifier, channel) === normalizedIdentifier) &&
+          o.channel === channel &&
+          o.purpose === purpose &&
+          o.verifiedAt !== null &&
+          new Date(o.verifiedAt).getTime() > cutoff.getTime() &&
+          o.metadata?.used !== true &&
+          doesSessionMatch(o.metadata, registrationSessionId),
+      );
+
+    let matches = matchesFilter(storeMemory.otps);
+    if (matches.length === 0) {
+      storeMemory = loadStore();
+      matches = matchesFilter(storeMemory.otps);
+    }
+    if (matches.length === 0) return null;
+    matches.sort((a, b) => new Date(b.verifiedAt!).getTime() - new Date(a.verifiedAt!).getTime());
+    return matches[0] || null;
   },
 
   async incrementOtpAttempts(id: string): Promise<number> {
@@ -374,9 +613,13 @@ export const authRepository = {
           data: { attempts: { increment: 1 } },
         });
         return updated.attempts;
-      } catch {
-        // Fallback
+      } catch (err) {
+        handlePrismaRuntimeError("incrementOtpAttempts", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
     const otp = storeMemory.otps[id];
@@ -388,64 +631,123 @@ export const authRepository = {
     return 1;
   },
 
-  async markOtpVerified(id: string, token: string): Promise<void> {
-    const verifiedAt = new Date();
+  /**
+   * Atomically marks an active, unexpired, unlocked OTP as verified and issues the verification token.
+   * Returns false if a concurrent request already consumed, locked, or expired this challenge.
+   */
+  async consumeActiveOtp(id: string, token: string): Promise<boolean> {
+    const now = new Date();
 
     if (await isPrismaWorking()) {
       try {
-        await (db as any).otpVerification.update({
-          where: { id },
-          data: {
-            verifiedAt,
-            metadata: { token },
-          },
-        });
-        return;
-      } catch {
-        // Fallback
+        const updatedCount = await (db as any).$executeRaw`
+          UPDATE otp_verifications
+          SET verified_at = ${now},
+              metadata = jsonb_set(
+                jsonb_set(COALESCE(metadata, '{}'::jsonb), '{token}', to_jsonb(${token}::text)),
+                '{used}', 'false'::jsonb
+              )
+          WHERE id = ${id}::uuid
+            AND verified_at IS NULL
+            AND expires_at > ${now}
+            AND attempts < max_attempts
+        `;
+        if (storeMemory.otps[id]) {
+          storeMemory.otps[id].verifiedAt = now;
+          storeMemory.otps[id].verificationToken = token;
+          storeMemory.otps[id].metadata = {
+            ...(storeMemory.otps[id].metadata || {}),
+            token,
+            used: false,
+          };
+          if (!isServerlessRuntime()) saveStore(storeMemory);
+        }
+        return Number(updatedCount) === 1;
+      } catch (err) {
+        handlePrismaRuntimeError("consumeActiveOtp", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
     const otp = storeMemory.otps[id];
-    if (otp) {
-      otp.verifiedAt = verifiedAt;
-      otp.verificationToken = token;
-      saveStore(storeMemory);
+    if (
+      !otp ||
+      otp.verifiedAt !== null ||
+      new Date(otp.expiresAt).getTime() <= now.getTime() ||
+      otp.attempts >= otp.maxAttempts
+    ) {
+      return false;
     }
+    otp.verifiedAt = now;
+    otp.verificationToken = token;
+    otp.metadata = { ...(otp.metadata || {}), token, used: false };
+    saveStore(storeMemory);
+    return true;
+  },
+
+  async markOtpVerified(id: string, token: string): Promise<void> {
+    await this.consumeActiveOtp(id, token);
   },
 
   async invalidatePreviousOtps(
     identifier: string,
     channel: "EMAIL" | "SMS",
     purpose: "REGISTRATION" | "LOGIN" | "PASSWORD_RESET",
+    registrationSessionId?: string | null,
   ): Promise<void> {
     const now = new Date();
+    const normalizedIdentifier = normalizeChannelIdentifier(identifier, channel);
 
     if (await isPrismaWorking()) {
       try {
-        await (db as any).otpVerification.updateMany({
-          where: {
-            identifier,
-            channel,
-            purpose,
-            verifiedAt: null,
-          },
-          data: {
-            expiresAt: now,
-          },
-        });
+        if (registrationSessionId) {
+          await (db as any).$executeRaw`
+            UPDATE otp_verifications
+            SET expires_at = ${now}
+            WHERE (identifier = ${normalizedIdentifier} OR identifier = ${identifier.trim()})
+              AND channel = ${channel}::"OtpChannel"
+              AND purpose = ${purpose}::"OtpPurpose"
+              AND verified_at IS NULL
+              AND (metadata->>'registrationSessionId' IS NULL OR metadata->>'registrationSessionId' = ${registrationSessionId})
+          `;
+        } else {
+          await (db as any).otpVerification.updateMany({
+            where: {
+              OR: [
+                { identifier: normalizedIdentifier },
+                { identifier: identifier.trim() },
+              ],
+              channel,
+              purpose,
+              verifiedAt: null,
+            },
+            data: {
+              expiresAt: now,
+            },
+          });
+        }
         return;
-      } catch {
-        // Fallback
+      } catch (err) {
+        handlePrismaRuntimeError("invalidatePreviousOtps", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
     for (const otp of Object.values(storeMemory.otps)) {
       if (
-        otp.identifier === identifier &&
+        (otp.identifier === identifier ||
+          otp.identifier === normalizedIdentifier ||
+          normalizeChannelIdentifier(otp.identifier, channel) === normalizedIdentifier) &&
         otp.channel === channel &&
         otp.purpose === purpose &&
-        !otp.verifiedAt
+        !otp.verifiedAt &&
+        doesSessionMatch(otp.metadata, registrationSessionId)
       ) {
         otp.expiresAt = now;
       }
@@ -504,10 +806,14 @@ export const authRepository = {
           },
           include: { school: true },
         });
-        if (user) return user as unknown as UserRecord;
-      } catch {
-        // Fallback
+        return user ? (user as unknown as UserRecord) : null;
+      } catch (err) {
+        handlePrismaRuntimeError("findUserByIdentifier", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
     const userMatches = (users: Record<string, UserRecord>) =>
@@ -625,8 +931,8 @@ export const authRepository = {
       emailVerified?: boolean;
     };
   }): Promise<{ user: UserRecord; school: SchoolRecord }> {
-    const schoolId = `sch_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const userId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const schoolId = randomUUID();
+    const userId = randomUUID();
     const now = new Date();
 
     const schoolRecord: SchoolRecord = {
@@ -668,49 +974,73 @@ export const authRepository = {
 
     if (await isPrismaWorking()) {
       try {
-        const createdSchool = await (db as any).school.create({
-          data: {
-            id: schoolId,
-            name: schoolRecord.name,
-            slug: schoolRecord.slug,
-            code: schoolRecord.code,
-            category: schoolRecord.category,
-            affiliationBoard: schoolRecord.affiliationBoard,
-            contactPhone: schoolRecord.contactPhone,
-            website: schoolRecord.website,
-            addressLine: schoolRecord.addressLine || "",
-            city: schoolRecord.city || "",
-            state: schoolRecord.state || "",
-            pinCode: schoolRecord.pinCode || "",
-            country: schoolRecord.country,
-            status: "TRIAL",
-          },
+        const result = await (db as any).$transaction(async (tx: any) => {
+          const createdSchool = await tx.school.create({
+            data: {
+              id: schoolId,
+              name: schoolRecord.name,
+              slug: schoolRecord.slug,
+              code: schoolRecord.code,
+              category: schoolRecord.category,
+              affiliationBoard: schoolRecord.affiliationBoard,
+              contactPhone: schoolRecord.contactPhone || "",
+              contactEmail: schoolRecord.contactEmail,
+              website: schoolRecord.website,
+              addressLine: schoolRecord.addressLine || "",
+              city: schoolRecord.city || "",
+              state: schoolRecord.state || "",
+              pinCode: schoolRecord.pinCode || "",
+              country: schoolRecord.country,
+              status: "TRIAL",
+            },
+          });
+
+          const createdUser = await tx.user.create({
+            data: {
+              id: userId,
+              schoolId: createdSchool.id,
+              name: userRecord.name,
+              email: userRecord.email,
+              phone: userRecord.phone,
+              passwordHash: userRecord.passwordHash,
+              role: userRecord.role,
+              status: userRecord.status,
+              phoneVerified: userRecord.phoneVerified,
+              emailVerified: userRecord.emailVerified,
+              phoneVerifiedAt: userRecord.phoneVerifiedAt,
+              emailVerifiedAt: userRecord.emailVerifiedAt,
+            },
+          });
+
+          return { createdSchool, createdUser };
         });
 
-        const createdUser = await (db as any).user.create({
-          data: {
-            id: userId,
-            schoolId: createdSchool.id,
-            name: userRecord.name,
-            email: userRecord.email,
-            phone: userRecord.phone,
-            passwordHash: userRecord.passwordHash,
-            role: userRecord.role,
-            status: userRecord.status,
-            phoneVerified: userRecord.phoneVerified,
-            emailVerified: userRecord.emailVerified,
-            phoneVerifiedAt: userRecord.phoneVerifiedAt,
-            emailVerifiedAt: userRecord.emailVerifiedAt,
-          },
-        });
+        const createdSchoolRecord = result.createdSchool as unknown as SchoolRecord;
+        const createdUserRecord = {
+          ...(result.createdUser as unknown as UserRecord),
+          school: createdSchoolRecord,
+        };
+
+        if (!isServerlessRuntime()) {
+          storeMemory.schools[schoolId] = createdSchoolRecord;
+          storeMemory.users[userId] = createdUserRecord;
+          saveStore(storeMemory);
+        }
 
         return {
-          user: { ...(createdUser as unknown as UserRecord), school: createdSchool as any },
-          school: createdSchool as unknown as SchoolRecord,
+          user: createdUserRecord,
+          school: createdSchoolRecord,
         };
-      } catch {
-        console.warn("[AuthRepository] Prisma create school/user failed, storing locally");
+      } catch (err: any) {
+        if (err?.code === "P2002") {
+          throw err;
+        }
+        handlePrismaRuntimeError("createUserWithSchool", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
     storeMemory.schools[schoolId] = schoolRecord;
@@ -862,7 +1192,7 @@ export const authRepository = {
     ipAddress?: string | null;
     userAgent?: string | null;
   }): Promise<SessionRecord> {
-    const id = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const id = randomUUID();
     const record: SessionRecord = {
       id,
       userId: params.userId,
@@ -886,10 +1216,19 @@ export const authRepository = {
             userAgent: params.userAgent,
           },
         });
-        return created as unknown as SessionRecord;
-      } catch {
-        // Fallback
+        const createdRecord = created as unknown as SessionRecord;
+        if (!isServerlessRuntime()) {
+          storeMemory.sessions[id] = createdRecord;
+          saveStore(storeMemory);
+        }
+        return createdRecord;
+      } catch (err) {
+        handlePrismaRuntimeError("createSession", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
     storeMemory.sessions[id] = record;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   GraduationCap,
@@ -339,12 +339,159 @@ export function RegisterSchoolPage() {
   // Verified tracking to detect edits after verification
   const [verifiedPhoneNumber, setVerifiedPhoneNumber] = useState<string | null>(null);
   const [verifiedEmailAddress, setVerifiedEmailAddress] = useState<string | null>(null);
+  const [registrationSessionId, setRegistrationSessionId] = useState<string>("");
+  const [draftHydrated, setDraftHydrated] = useState(false);
+
+  // Synchronous submission locks to prevent double clicks / concurrent verify race conditions
+  const verifyingMobileRef = useRef(false);
+  const verifyingEmailRef = useRef(false);
+  const sendingMobileRef = useRef(false);
+  const sendingEmailRef = useRef(false);
 
   // In-step quick change states for Step 3
   const [isChangingPhoneInStep3, setIsChangingPhoneInStep3] = useState(false);
   const [inlineNewPhone, setInlineNewPhone] = useState("");
   const [isChangingEmailInStep3, setIsChangingEmailInStep3] = useState(false);
   const [inlineNewEmail, setInlineNewEmail] = useState("");
+
+  const createRegistrationSessionId = () => {
+    if (typeof window !== "undefined" && window.crypto?.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    return `reg_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  };
+
+  // Restore draft and verification state from localStorage on initial load
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem("school_registration_draft");
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft.institution) setInstitution(draft.institution);
+        if (draft.admin) setAdmin(draft.admin);
+        if (draft.selectedPlan) setSelectedPlan(draft.selectedPlan);
+        if (draft.billingCycle) setBillingCycle(draft.billingCycle);
+        if (draft.mobileVerificationToken) setMobileVerificationToken(draft.mobileVerificationToken);
+        if (draft.emailVerificationToken) setEmailVerificationToken(draft.emailVerificationToken);
+        if (draft.verifiedPhoneNumber) setVerifiedPhoneNumber(draft.verifiedPhoneNumber);
+        if (draft.verifiedEmailAddress) setVerifiedEmailAddress(draft.verifiedEmailAddress);
+        if (draft.mobileVerified) setMobileVerified(true);
+        if (draft.emailVerified) setEmailVerified(true);
+        setRegistrationSessionId(draft.registrationSessionId || createRegistrationSessionId());
+      } else {
+        setRegistrationSessionId(createRegistrationSessionId());
+      }
+    } catch {
+      setRegistrationSessionId(createRegistrationSessionId());
+    } finally {
+      setDraftHydrated(true);
+    }
+  }, []);
+
+  // Persist draft and tokens to localStorage whenever registration data changes
+  useEffect(() => {
+    if (typeof window === "undefined" || !draftHydrated) return;
+    try {
+      localStorage.setItem(
+        "school_registration_draft",
+        JSON.stringify({
+          registrationSessionId,
+          institution,
+          admin,
+          selectedPlan,
+          billingCycle,
+          mobileVerified,
+          emailVerified,
+          mobileVerificationToken,
+          emailVerificationToken,
+          verifiedPhoneNumber,
+          verifiedEmailAddress,
+        }),
+      );
+    } catch {}
+  }, [
+    draftHydrated,
+    registrationSessionId,
+    institution,
+    admin,
+    selectedPlan,
+    billingCycle,
+    mobileVerified,
+    emailVerified,
+    mobileVerificationToken,
+    emailVerificationToken,
+    verifiedPhoneNumber,
+    verifiedEmailAddress,
+  ]);
+
+  // Synchronize live verification status from the backend (single source of truth)
+  const syncVerificationWithBackend = async (
+    targetPhone?: string,
+    targetEmail?: string,
+    overridePhoneToken?: string | null,
+    overrideEmailToken?: string | null,
+  ) => {
+    const phone = (targetPhone ?? admin.adminPhone).trim();
+    const email = (targetEmail ?? admin.adminEmail).trim().toLowerCase();
+    if (!phone && !email) return null;
+
+    try {
+      const params = new URLSearchParams();
+      if (phone) params.set("phone", phone);
+      if (email) params.set("email", email);
+      const pToken = overridePhoneToken !== undefined ? overridePhoneToken : mobileVerificationToken;
+      const eToken = overrideEmailToken !== undefined ? overrideEmailToken : emailVerificationToken;
+      if (pToken) params.set("phoneToken", pToken);
+      if (eToken) params.set("emailToken", eToken);
+      if (registrationSessionId) params.set("registrationSessionId", registrationSessionId);
+
+      const res = await fetch(`/api/auth/otp/status?${params.toString()}`, {
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          if (phone) {
+            setMobileVerified(Boolean(json.data.isMobileVerified));
+            if (json.data.isMobileVerified) {
+              setVerifiedPhoneNumber(phone);
+              if (json.data.mobileVerificationToken) {
+                setMobileVerificationToken(json.data.mobileVerificationToken);
+              }
+            } else {
+              setVerifiedPhoneNumber(null);
+              setMobileVerificationToken(null);
+            }
+          }
+          if (email) {
+            setEmailVerified(Boolean(json.data.isEmailVerified));
+            if (json.data.isEmailVerified) {
+              setVerifiedEmailAddress(email);
+              if (json.data.emailVerificationToken) {
+                setEmailVerificationToken(json.data.emailVerificationToken);
+              }
+            } else {
+              setVerifiedEmailAddress(null);
+              setEmailVerificationToken(null);
+            }
+          }
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("[RegisterSchool] Verification sync error:", e);
+    }
+    return null;
+  };
+
+  // Re-verify with backend once draft is hydrated and upon entering Step 3 or Step 5
+  useEffect(() => {
+    if (draftHydrated && (currentStep === 3 || currentStep === 5)) {
+      syncVerificationWithBackend();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, draftHydrated]);
 
   // Resend Countdown Timers
   useEffect(() => {
@@ -451,18 +598,24 @@ export function RegisterSchoolPage() {
 
   // Mobile OTP Handlers
   const handleSendMobileOtp = async (overridePhone?: string) => {
+    if (sendingMobileRef.current) return;
     const targetPhone = (overridePhone || admin.adminPhone).trim();
     if (!targetPhone) {
       setMobileOtpError("Please enter mobile number in Step 2");
       return;
     }
+    sendingMobileRef.current = true;
     setIsSendingMobileOtp(true);
     setMobileOtpError(null);
     try {
       const res = await fetch("/api/auth/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: targetPhone, purpose: "REGISTRATION" }),
+        body: JSON.stringify({
+          phone: targetPhone,
+          purpose: "REGISTRATION",
+          registrationSessionId: registrationSessionId || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -475,16 +628,20 @@ export function RegisterSchoolPage() {
     } catch (err: unknown) {
       setMobileOtpError(err instanceof Error ? err.message : "Failed to send OTP");
     } finally {
+      sendingMobileRef.current = false;
       setIsSendingMobileOtp(false);
     }
   };
 
   const handleVerifyMobileOtp = async () => {
-    const code = mobileOtp.join("");
+    if (verifyingMobileRef.current) return;
+    const code = mobileOtp.map((d) => d.replace(/\D/g, "")).join("");
     if (code.length !== 6) {
       setMobileOtpError("Please enter all 6 digits of the mobile OTP");
       return;
     }
+    const targetPhone = admin.adminPhone.trim();
+    verifyingMobileRef.current = true;
     setIsVerifyingMobileOtp(true);
     setMobileOtpError(null);
     try {
@@ -492,34 +649,40 @@ export function RegisterSchoolPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          identifier: admin.adminPhone,
+          identifier: targetPhone,
           channel: "SMS",
+          type: "mobile",
           purpose: "REGISTRATION",
           code,
+          registrationSessionId: registrationSessionId || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error?.message || "Invalid verification code");
       }
+      const token = data.data?.verificationToken || null;
       setMobileVerified(true);
-      setVerifiedPhoneNumber(admin.adminPhone.trim());
-      setMobileVerificationToken(data.data?.verificationToken || null);
-      setMobileOtpSuccess("Mobile number verified successfully!");
+      setVerifiedPhoneNumber(targetPhone);
+      setMobileVerificationToken(token);
+      setMobileOtpSuccess(data.message || "Mobile number verified successfully!");
     } catch (err: unknown) {
       setMobileOtpError(err instanceof Error ? err.message : "Verification failed");
     } finally {
+      verifyingMobileRef.current = false;
       setIsVerifyingMobileOtp(false);
     }
   };
 
   // Email OTP Handlers
   const handleSendEmailOtp = async (overrideEmail?: string) => {
-    const targetEmail = (overrideEmail || admin.adminEmail).trim();
+    if (sendingEmailRef.current) return;
+    const targetEmail = (overrideEmail || admin.adminEmail).trim().toLowerCase();
     if (!targetEmail || !targetEmail.includes("@")) {
       setEmailOtpError("Please enter a valid email address");
       return;
     }
+    sendingEmailRef.current = true;
     setIsSendingEmailOtp(true);
     setEmailOtpError(null);
     try {
@@ -530,6 +693,7 @@ export function RegisterSchoolPage() {
           email: targetEmail,
           purpose: "REGISTRATION",
           recipientName: admin.adminName,
+          registrationSessionId: registrationSessionId || undefined,
         }),
       });
       const data = await res.json();
@@ -543,16 +707,20 @@ export function RegisterSchoolPage() {
     } catch (err: unknown) {
       setEmailOtpError(err instanceof Error ? err.message : "Failed to send email OTP");
     } finally {
+      sendingEmailRef.current = false;
       setIsSendingEmailOtp(false);
     }
   };
 
   const handleVerifyEmailOtp = async () => {
-    const code = emailOtp.join("");
+    if (verifyingEmailRef.current) return;
+    const code = emailOtp.map((d) => d.replace(/\D/g, "")).join("");
     if (code.length !== 6) {
       setEmailOtpError("Please enter all 6 digits of the email OTP");
       return;
     }
+    const targetEmail = admin.adminEmail.trim().toLowerCase();
+    verifyingEmailRef.current = true;
     setIsVerifyingEmailOtp(true);
     setEmailOtpError(null);
     try {
@@ -560,23 +728,27 @@ export function RegisterSchoolPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          identifier: admin.adminEmail.trim().toLowerCase(),
+          identifier: targetEmail,
           channel: "EMAIL",
+          type: "email",
           purpose: "REGISTRATION",
           code,
+          registrationSessionId: registrationSessionId || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error?.message || "Invalid verification code");
       }
+      const token = data.data?.verificationToken || null;
       setEmailVerified(true);
-      setVerifiedEmailAddress(admin.adminEmail.trim().toLowerCase());
-      setEmailVerificationToken(data.data?.verificationToken || null);
-      setEmailOtpSuccess("Email address verified successfully!");
+      setVerifiedEmailAddress(targetEmail);
+      setEmailVerificationToken(token);
+      setEmailOtpSuccess(data.message || "Email address verified successfully!");
     } catch (err: unknown) {
       setEmailOtpError(err instanceof Error ? err.message : "Verification failed");
     } finally {
+      verifyingEmailRef.current = false;
       setIsVerifyingEmailOtp(false);
     }
   };
@@ -623,20 +795,30 @@ export function RegisterSchoolPage() {
     setErrorMessage(null);
     goToStep(3);
 
-    // Automatically trigger OTP delivery if not already verified
-    if (!mobileVerified && !mobileOtpSent) {
+    // Sync with backend verification state
+    const backendStatus = await syncVerificationWithBackend();
+    const phoneAlreadyVerified = backendStatus?.isMobileVerified ?? mobileVerified;
+    const emailAlreadyVerified = backendStatus?.isEmailVerified ?? emailVerified;
+
+    // Automatically trigger OTP delivery ONLY if not already verified
+    if (!phoneAlreadyVerified && !mobileOtpSent) {
       handleSendMobileOtp();
     }
-    if (!emailVerified && !emailOtpSent) {
+    if (!emailAlreadyVerified && !emailOtpSent) {
       handleSendEmailOtp();
     }
   };
 
-  const handleStep3Next = () => {
-    if (!mobileVerified || !emailVerified) {
+  const handleStep3Next = async () => {
+    // Check against backend before progressing
+    const backendStatus = await syncVerificationWithBackend();
+    const phoneOk = backendStatus?.isMobileVerified ?? mobileVerified;
+    const emailOk = backendStatus?.isEmailVerified ?? emailVerified;
+
+    if (!phoneOk || !emailOk) {
       const unverified: string[] = [];
-      if (!mobileVerified) unverified.push("Mobile number");
-      if (!emailVerified) unverified.push("Email address");
+      if (!phoneOk) unverified.push("Mobile number");
+      if (!emailOk) unverified.push("Email address");
       setErrorMessage(`Please verify both: ${unverified.join(" and ")} before continuing.`);
       return;
     }
@@ -658,8 +840,18 @@ export function RegisterSchoolPage() {
       return;
     }
 
-    if (!mobileVerified || !emailVerified) {
-      setErrorMessage("Both mobile number and email must be verified before account activation.");
+    // Single source of truth: Verify against backend
+    const backendStatus = await syncVerificationWithBackend();
+    const phoneOk = backendStatus?.isMobileVerified ?? mobileVerified;
+    const emailOk = backendStatus?.isEmailVerified ?? emailVerified;
+
+    if (!phoneOk || !emailOk) {
+      const unverified: string[] = [];
+      if (!phoneOk) unverified.push("Mobile number");
+      if (!emailOk) unverified.push("Email address");
+      setErrorMessage(
+        `Please complete verification for: ${unverified.join(" and ")}. Both are required to activate your account.`,
+      );
       return;
     }
 
@@ -678,8 +870,11 @@ export function RegisterSchoolPage() {
         },
         plan: selectedPlan,
         billingCycle,
-        mobileVerificationToken,
-        emailVerificationToken,
+        registrationSessionId: registrationSessionId || undefined,
+        mobileVerificationToken:
+          backendStatus?.mobileVerificationToken || mobileVerificationToken || undefined,
+        emailVerificationToken:
+          backendStatus?.emailVerificationToken || emailVerificationToken || undefined,
       };
 
       const res = await fetch("/api/auth/register-school", {
@@ -693,6 +888,11 @@ export function RegisterSchoolPage() {
       if (!res.ok) {
         throw new Error(data.error?.message || "Failed to register school.");
       }
+
+      // Clear draft upon successful registration
+      try {
+        localStorage.removeItem("school_registration_draft");
+      } catch {}
 
       setRegistrationSuccess({
         schoolId: data.data.schoolId,
@@ -712,7 +912,18 @@ export function RegisterSchoolPage() {
     try {
       localStorage.setItem(
         "school_registration_draft",
-        JSON.stringify({ institution, admin }),
+        JSON.stringify({
+          institution,
+          admin,
+          selectedPlan,
+          billingCycle,
+          mobileVerified,
+          emailVerified,
+          mobileVerificationToken,
+          emailVerificationToken,
+          verifiedPhoneNumber,
+          verifiedEmailAddress,
+        }),
       );
       setSaveDraftMessage("Progress saved to your browser!");
       setTimeout(() => setSaveDraftMessage(null), 4000);
@@ -862,147 +1073,187 @@ export function RegisterSchoolPage() {
               currentStep >= 4 ? "w-full" : "lg:col-span-6"
             }`}
           >
-            <div className="rounded-[20px] border border-[#D0D6F0] bg-white p-6 shadow-[0_12px_32px_rgba(24,18,77,0.09)] sm:p-8">
+            <div className="rounded-[20px] border border-[#D0D6F0] bg-white p-4 shadow-[0_12px_32px_rgba(24,18,77,0.09)] sm:p-8">
               {/* Stepper Header */}
-              <div className="mb-8">
-                <div className="relative flex items-center justify-between">
-                  <div className="absolute left-0 top-1/2 -z-0 h-0.5 w-full -translate-y-1/2 bg-[#DFE3F5]" />
+              <div className="mb-7 sm:mb-8">
+                <div
+                  role="navigation"
+                  aria-label="Registration progress"
+                  className="relative grid grid-cols-5 items-start gap-1 sm:gap-2"
+                >
+                  {/* Connecting Track aligned to the exact center of the step circles */}
                   <div
-                    className="absolute left-0 top-1/2 -z-0 h-0.5 -translate-y-1/2 bg-[#663CF6] transition-all duration-300"
-                    style={{
-                      width: `${((currentStep - 1) / 4) * 100}%`,
-                    }}
-                  />
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-[10%] right-[10%] top-3.5 sm:top-4 z-0 h-0.5 -translate-y-1/2 rounded-full bg-[#DFE3F5]"
+                  >
+                    <div
+                      className="h-full rounded-full bg-[#663CF6] transition-all duration-300"
+                      style={{
+                        width: `${((currentStep - 1) / 4) * 100}%`,
+                      }}
+                    />
+                  </div>
 
                   {/* Step 1 */}
-                  <div className="relative z-10 flex flex-col items-center">
+                  <div className="relative z-10 flex min-w-0 flex-col items-center px-0.5">
                     <button
                       type="button"
                       onClick={() => goToStep(1)}
-                      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                      aria-label="Step 1: Institution Details"
+                      aria-current={currentStep === 1 ? "step" : undefined}
+                      className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full text-[11px] sm:text-xs font-bold transition-all ${
                         currentStep === 1
                           ? "bg-[#663CF6] text-white ring-4 ring-[#EDE7FF]"
                           : currentStep > 1
-                            ? "bg-[#663CF6] text-white"
-                            : "bg-[#ECEEF7] text-[#4D5072]"
+                            ? "bg-[#663CF6] text-white ring-2 ring-white"
+                            : "bg-[#ECEEF7] text-[#4D5072] ring-2 ring-white"
                       }`}
                     >
-                      {currentStep > 1 ? <Check className="h-4 w-4" /> : "1"}
+                      {currentStep > 1 ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : "1"}
                     </button>
-                    <span className="mt-1.5 text-center text-[11px] font-bold text-[#08093B]">
-                      Institution Details
+                    <span className="mt-1.5 w-full text-center text-[10px] sm:text-[11px] leading-tight font-bold text-[#08093B]">
+                      <span className="sm:hidden">School</span>
+                      <span className="hidden sm:inline">Institution Details</span>
                     </span>
                   </div>
 
                   {/* Step 2 */}
-                  <div className="relative z-10 flex flex-col items-center">
+                  <div className="relative z-10 flex min-w-0 flex-col items-center px-0.5">
                     <button
                       type="button"
                       onClick={() => {
                         if (!validateStep1()) goToStep(2);
                       }}
-                      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                      aria-label="Step 2: Administrator"
+                      aria-current={currentStep === 2 ? "step" : undefined}
+                      className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full text-[11px] sm:text-xs font-bold transition-all ${
                         currentStep === 2
                           ? "bg-[#663CF6] text-white ring-4 ring-[#EDE7FF]"
                           : currentStep > 2
-                            ? "bg-[#663CF6] text-white"
-                            : "bg-[#ECEEF7] text-[#4D5072]"
+                            ? "bg-[#663CF6] text-white ring-2 ring-white"
+                            : "bg-[#ECEEF7] text-[#4D5072] ring-2 ring-white"
                       }`}
                     >
-                      {currentStep > 2 ? <Check className="h-4 w-4" /> : "2"}
+                      {currentStep > 2 ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : "2"}
                     </button>
                     <span
-                      className={`mt-1.5 text-center text-[11px] ${
+                      className={`mt-1.5 w-full text-center text-[10px] sm:text-[11px] leading-tight ${
                         currentStep >= 2
                           ? "font-bold text-[#08093B]"
                           : "font-semibold text-[#4D5072]"
                       }`}
                     >
-                      Administrator
+                      <span className="sm:hidden">Admin</span>
+                      <span className="hidden sm:inline">Administrator</span>
                     </span>
                   </div>
 
                   {/* Step 3 */}
-                  <div className="relative z-10 flex flex-col items-center">
+                  <div className="relative z-10 flex min-w-0 flex-col items-center px-0.5">
                     <button
                       type="button"
                       onClick={() => {
                         if (!validateStep1() && !validateStep2()) goToStep(3);
                       }}
-                      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                      aria-label="Step 3: Verify & Confirm"
+                      aria-current={currentStep === 3 ? "step" : undefined}
+                      className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full text-[11px] sm:text-xs font-bold transition-all ${
                         currentStep === 3
                           ? "bg-[#663CF6] text-white ring-4 ring-[#EDE7FF]"
                           : currentStep > 3
-                            ? "bg-[#663CF6] text-white"
-                            : "bg-[#ECEEF7] text-[#4D5072]"
+                            ? "bg-[#663CF6] text-white ring-2 ring-white"
+                            : "bg-[#ECEEF7] text-[#4D5072] ring-2 ring-white"
                       }`}
                     >
-                      {currentStep > 3 ? <Check className="h-4 w-4" /> : "3"}
+                      {currentStep > 3 ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : "3"}
                     </button>
                     <span
-                      className={`mt-1.5 text-center text-[11px] ${
+                      className={`mt-1.5 w-full text-center text-[10px] sm:text-[11px] leading-tight ${
                         currentStep >= 3
                           ? "font-bold text-[#08093B]"
                           : "font-semibold text-[#4D5072]"
                       }`}
                     >
-                      Verify & Confirm
+                      <span className="sm:hidden">Verify</span>
+                      <span className="hidden sm:inline">Verify & Confirm</span>
                     </span>
                   </div>
 
                   {/* Step 4: Select Plan */}
-                  <div className="relative z-10 flex flex-col items-center">
+                  <div className="relative z-10 flex min-w-0 flex-col items-center px-0.5">
                     <button
                       type="button"
                       onClick={() => {
                         if (!validateStep1() && !validateStep2()) goToStep(4);
                       }}
-                      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                      aria-label="Step 4: Select Plan"
+                      aria-current={currentStep === 4 ? "step" : undefined}
+                      className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full text-[11px] sm:text-xs font-bold transition-all ${
                         currentStep === 4
                           ? "bg-[#663CF6] text-white ring-4 ring-[#EDE7FF]"
                           : currentStep > 4
-                            ? "bg-[#663CF6] text-white"
-                            : "bg-[#ECEEF7] text-[#4D5072]"
+                            ? "bg-[#663CF6] text-white ring-2 ring-white"
+                            : "bg-[#ECEEF7] text-[#4D5072] ring-2 ring-white"
                       }`}
                     >
-                      {currentStep > 4 ? <Check className="h-4 w-4" /> : "4"}
+                      {currentStep > 4 ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : "4"}
                     </button>
                     <span
-                      className={`mt-1.5 text-center text-[11px] ${
+                      className={`mt-1.5 w-full text-center text-[10px] sm:text-[11px] leading-tight ${
                         currentStep >= 4
                           ? "font-bold text-[#08093B]"
                           : "font-semibold text-[#4D5072]"
                       }`}
                     >
-                      Select Plan
+                      <span className="sm:hidden">Plan</span>
+                      <span className="hidden sm:inline">Select Plan</span>
                     </span>
                   </div>
 
                   {/* Step 5: Review & Create */}
-                  <div className="relative z-10 flex flex-col items-center">
+                  <div className="relative z-10 flex min-w-0 flex-col items-center px-0.5">
                     <button
                       type="button"
                       onClick={() => {
                         if (!validateStep1() && !validateStep2()) goToStep(5);
                       }}
-                      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                      aria-label="Step 5: Review & Create"
+                      aria-current={currentStep === 5 ? "step" : undefined}
+                      className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full text-[11px] sm:text-xs font-bold transition-all ${
                         currentStep === 5
                           ? "bg-[#663CF6] text-white ring-4 ring-[#EDE7FF]"
-                          : "bg-[#ECEEF7] text-[#4D5072]"
+                          : "bg-[#ECEEF7] text-[#4D5072] ring-2 ring-white"
                       }`}
                     >
                       5
                     </button>
                     <span
-                      className={`mt-1.5 text-center text-[11px] ${
+                      className={`mt-1.5 w-full text-center text-[10px] sm:text-[11px] leading-tight ${
                         currentStep === 5
                           ? "font-bold text-[#08093B]"
                           : "font-semibold text-[#4D5072]"
                       }`}
                     >
-                      Review & Create
+                      <span className="sm:hidden">Review</span>
+                      <span className="hidden sm:inline">Review & Create</span>
                     </span>
                   </div>
+                </div>
+
+                {/* Compact Mobile Current-Step Pill */}
+                <div className="mt-3 flex justify-center sm:hidden">
+                  <span className="inline-flex items-center rounded-full border border-[#DDD4FC] bg-[#F5F1FE] px-3 py-0.5 text-[11px] font-bold text-[#5A32E6]">
+                    Step {currentStep} of 5 &middot;{" "}
+                    {currentStep === 1
+                      ? "Institution Details"
+                      : currentStep === 2
+                        ? "Administrator"
+                        : currentStep === 3
+                          ? "Verify & Confirm"
+                          : currentStep === 4
+                            ? "Select Plan"
+                            : "Review & Create"}
+                  </span>
                 </div>
               </div>
 
@@ -1798,14 +2049,26 @@ export function RegisterSchoolPage() {
                                     id={`mobile-otp-${idx}`}
                                     type="text"
                                     inputMode="numeric"
-                                    maxLength={1}
+                                    autoComplete={idx === 0 ? "one-time-code" : "off"}
+                                    maxLength={idx === 0 ? 6 : 1}
                                     value={digit}
                                     onChange={(e) => {
                                       const val = e.target.value.replace(/\D/g, "");
+                                      if (val.length === 6 || (val.length > 1 && !digit)) {
+                                        const updated = [...mobileOtp];
+                                        for (let i = 0; i < 6 - idx && i < val.length; i++) {
+                                          updated[idx + i] = val[i] ?? "";
+                                        }
+                                        setMobileOtp(updated);
+                                        const nextIdx = Math.min(idx + val.length, 5);
+                                        document.getElementById(`mobile-otp-${nextIdx}`)?.focus();
+                                        return;
+                                      }
                                       const updated = [...mobileOtp];
-                                      updated[idx] = val.slice(-1);
+                                      const nextChar = digit && val.length > 1 ? val.slice(-1) : val.slice(-1);
+                                      updated[idx] = nextChar;
                                       setMobileOtp(updated);
-                                      if (val && idx < 5) {
+                                      if (nextChar && idx < 5) {
                                         document.getElementById(`mobile-otp-${idx + 1}`)?.focus();
                                       }
                                     }}
@@ -2034,14 +2297,26 @@ export function RegisterSchoolPage() {
                                     id={`email-otp-${idx}`}
                                     type="text"
                                     inputMode="numeric"
-                                    maxLength={1}
+                                    autoComplete={idx === 0 ? "one-time-code" : "off"}
+                                    maxLength={idx === 0 ? 6 : 1}
                                     value={digit}
                                     onChange={(e) => {
                                       const val = e.target.value.replace(/\D/g, "");
+                                      if (val.length === 6 || (val.length > 1 && !digit)) {
+                                        const updated = [...emailOtp];
+                                        for (let i = 0; i < 6 - idx && i < val.length; i++) {
+                                          updated[idx + i] = val[i] ?? "";
+                                        }
+                                        setEmailOtp(updated);
+                                        const nextIdx = Math.min(idx + val.length, 5);
+                                        document.getElementById(`email-otp-${nextIdx}`)?.focus();
+                                        return;
+                                      }
                                       const updated = [...emailOtp];
-                                      updated[idx] = val.slice(-1);
+                                      const nextChar = digit && val.length > 1 ? val.slice(-1) : val.slice(-1);
+                                      updated[idx] = nextChar;
                                       setEmailOtp(updated);
-                                      if (val && idx < 5) {
+                                      if (nextChar && idx < 5) {
                                         document.getElementById(`email-otp-${idx + 1}`)?.focus();
                                       }
                                     }}
@@ -2548,9 +2823,19 @@ export function RegisterSchoolPage() {
                               <strong className="text-[#08093B] font-bold">
                                 {admin.adminPhone}
                               </strong>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-bold text-[#15803D]">
-                                <Check className="h-3 w-3" /> Verified
-                              </span>
+                              {mobileVerified ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-bold text-[#15803D]">
+                                  <Check className="h-3 w-3" /> Verified
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => goToStep(3)}
+                                  className="inline-flex items-center gap-1 rounded-full bg-[#FEE2E2] px-2 py-0.5 text-[10px] font-bold text-[#DC2626] hover:bg-[#FECACA]"
+                                >
+                                  <X className="h-3 w-3" /> Verify now
+                                </button>
+                              )}
                             </div>
                           </div>
                           <div className="flex justify-between items-center">
@@ -2565,9 +2850,19 @@ export function RegisterSchoolPage() {
                               <strong className="text-[#08093B] font-bold truncate max-w-[150px]">
                                 {admin.adminEmail || "Not provided"}
                               </strong>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-bold text-[#15803D]">
-                                <Check className="h-3 w-3" /> Verified
-                              </span>
+                              {emailVerified ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-bold text-[#15803D]">
+                                  <Check className="h-3 w-3" /> Verified
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => goToStep(3)}
+                                  className="inline-flex items-center gap-1 rounded-full bg-[#FEE2E2] px-2 py-0.5 text-[10px] font-bold text-[#DC2626] hover:bg-[#FECACA]"
+                                >
+                                  <X className="h-3 w-3" /> Verify now
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2643,13 +2938,33 @@ export function RegisterSchoolPage() {
                           <Shield className="h-4 w-4 text-[#663CF6]" />
                           Verification Status
                         </span>
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-bold text-[#15803D]">
-                            <Check className="h-3.5 w-3.5" /> Mobile Verified
-                          </span>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-bold text-[#15803D]">
-                            <Check className="h-3.5 w-3.5" /> Email Verified (Optional)
-                          </span>
+                        <div className="flex items-center flex-wrap gap-2">
+                          {mobileVerified ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-bold text-[#15803D]">
+                              <Check className="h-3.5 w-3.5" /> Mobile Verified
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => goToStep(3)}
+                              className="inline-flex items-center gap-1 rounded-full bg-[#FEE2E2] px-3 py-1 text-xs font-bold text-[#DC2626] hover:bg-[#FECACA] transition-colors"
+                            >
+                              <X className="h-3.5 w-3.5" /> Mobile Required &mdash; Verify
+                            </button>
+                          )}
+                          {emailVerified ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-3 py-1 text-xs font-bold text-[#15803D]">
+                              <Check className="h-3.5 w-3.5" /> Email Verified
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => goToStep(3)}
+                              className="inline-flex items-center gap-1 rounded-full bg-[#FEE2E2] px-3 py-1 text-xs font-bold text-[#DC2626] hover:bg-[#FECACA] transition-colors"
+                            >
+                              <X className="h-3.5 w-3.5" /> Email Required &mdash; Verify
+                            </button>
+                          )}
                         </div>
                       </div>
 

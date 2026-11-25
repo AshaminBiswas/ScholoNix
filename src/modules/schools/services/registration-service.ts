@@ -3,7 +3,7 @@ import { hashPassword, normalizePhone } from "@/server/security/crypto";
 import { authRepository } from "@/server/auth/auth-repository";
 import { otpService } from "@/server/auth/otp-service";
 import { logAuditEvent } from "@/server/security/audit-logger";
-import { ConflictError, ValidationError } from "@/lib/errors";
+import { ConflictError, ValidationError, VerificationRequiredError } from "@/lib/errors";
 import type { CompleteRegistrationInput } from "../schemas/registration";
 
 /**
@@ -72,13 +72,17 @@ export async function registerSchool(
   // 2. Validate Dual Verification (Mobile + Email)
   let mobileVerified = false;
   let emailVerified = false;
+  let activeMobileToken = input.mobileVerificationToken || undefined;
+  let activeEmailToken = input.emailVerificationToken || undefined;
+  const registrationSessionId = input.registrationSessionId || undefined;
 
   // Check mobile verification token or code
-  if (input.mobileVerificationToken) {
+  if (activeMobileToken) {
     const val = await otpService.validateVerificationToken(
-      input.mobileVerificationToken,
+      activeMobileToken,
       "SMS",
       "REGISTRATION",
+      registrationSessionId,
     );
     if (val.valid) {
       if (val.identifier && normalizePhone(val.identifier) !== normalizedPhone) {
@@ -94,18 +98,35 @@ export async function registerSchool(
       channel: "SMS",
       purpose: "REGISTRATION",
       code: input.mobileOtpCode,
+      registrationSessionId,
       ipAddress: meta?.ipAddress,
       userAgent: meta?.userAgent,
     });
-    if (verifyRes.verified) mobileVerified = true;
+    if (verifyRes.verified) {
+      mobileVerified = true;
+      activeMobileToken = verifyRes.verificationToken;
+    }
+  } else {
+    // Check if backend has a valid, active verification record for this mobile
+    const status = await otpService.getVerificationStatus({
+      identifier: normalizedPhone,
+      channel: "SMS",
+      purpose: "REGISTRATION",
+      registrationSessionId,
+    });
+    if (status.isVerified && status.verificationToken) {
+      mobileVerified = true;
+      activeMobileToken = status.verificationToken;
+    }
   }
 
   // Check email verification token or code
-  if (input.emailVerificationToken) {
+  if (activeEmailToken) {
     const val = await otpService.validateVerificationToken(
-      input.emailVerificationToken,
+      activeEmailToken,
       "EMAIL",
       "REGISTRATION",
+      registrationSessionId,
     );
     if (val.valid) {
       if (val.identifier && val.identifier.toLowerCase() !== normalizedEmail) {
@@ -121,20 +142,36 @@ export async function registerSchool(
       channel: "EMAIL",
       purpose: "REGISTRATION",
       code: input.emailOtpCode,
+      registrationSessionId,
       ipAddress: meta?.ipAddress,
       userAgent: meta?.userAgent,
     });
-    if (verifyRes.verified) emailVerified = true;
+    if (verifyRes.verified) {
+      emailVerified = true;
+      activeEmailToken = verifyRes.verificationToken;
+    }
+  } else {
+    // Check if backend has a valid, active verification record for this email
+    const status = await otpService.getVerificationStatus({
+      identifier: normalizedEmail,
+      channel: "EMAIL",
+      purpose: "REGISTRATION",
+      registrationSessionId,
+    });
+    if (status.isVerified && status.verificationToken) {
+      emailVerified = true;
+      activeEmailToken = status.verificationToken;
+    }
   }
 
   // In production, both MUST be verified
   if (!mobileVerified || !emailVerified) {
-    // If not verified, throw descriptive validation error
+    // If not verified, throw descriptive verification required error (HTTP 403)
     const unverifiedList: string[] = [];
     if (!mobileVerified) unverifiedList.push("Mobile number");
     if (!emailVerified) unverifiedList.push("Email address");
 
-    throw new ValidationError(
+    throw new VerificationRequiredError(
       `Please complete verification for: ${unverifiedList.join(" and ")}. Both are required to activate your account.`,
     );
   }
@@ -146,7 +183,7 @@ export async function registerSchool(
   // 4. Hash administrator password
   const passwordHash = await hashPassword(administrator.password);
 
-  // 5. Create School tenant & Admin User
+  // 5. Create School tenant & Admin User transactionally
   const { school, user } = await authRepository.createUserWithSchool({
     school: {
       name: institution.name.trim(),
@@ -175,7 +212,15 @@ export async function registerSchool(
     },
   });
 
-  // 6. Record immutable audit log
+  // 6. Invalidate/consume verification tokens to prevent reuse
+  if (activeMobileToken) {
+    await otpService.consumeVerificationToken(activeMobileToken);
+  }
+  if (activeEmailToken) {
+    await otpService.consumeVerificationToken(activeEmailToken);
+  }
+
+  // 7. Record immutable audit log
   await logAuditEvent({
     schoolId: school.id,
     actorId: user.id,
