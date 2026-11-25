@@ -27,13 +27,26 @@ const nextConfig: NextConfig = {
   },
 };
 
+const sentryUrl = process.env.SENTRY_URL || "https://app.glitchtip.com";
+const isGlitchTip = sentryUrl.includes("glitchtip");
+
 export default withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  sentryUrl: process.env.SENTRY_URL || "https://app.glitchtip.com",
+  // GlitchTip does not implement Sentry's release/artifactbundle v2 upload APIs (causes 404 during next build);
+  // keep runtime instrumentation active and upload source maps manually via glitchtip-cli if needed.
+  authToken: isGlitchTip ? undefined : process.env.SENTRY_AUTH_TOKEN,
+  sentryUrl,
   silent: !process.env.CI,
+  telemetry: false,
+  release: isGlitchTip
+    ? {
+        create: false,
+        finalize: false,
+        setCommits: false,
+      }
+    : undefined,
   sourcemaps: {
-    disable: process.env.SENTRY_AUTH_TOKEN ? false : "disable-upload",
+    disable: isGlitchTip || !process.env.SENTRY_AUTH_TOKEN ? true : false,
   },
 });
