@@ -69,7 +69,7 @@ describe("ScholoNix Cryptography & Security Utilities", () => {
   });
 
   it("masks email addresses safely without revealing full localpart", () => {
-    expect(maskEmail("principal@sunriseis.edu.in")).toBe("p*******l@sunriseis.edu.in");
+    expect(maskEmail("testadmin@scholonix.example")).toBe("t*******n@scholonix.example");
     expect(maskEmail("ab@example.com")).toBe("a*@example.com");
   });
 });
@@ -188,16 +188,16 @@ describe("Auth Repository & Tenant Provisioning", () => {
 
     const { school, user } = await authRepository.createUserWithSchool({
       school: {
-        name: "Apex Global Academy",
-        slug: `apex-global-${Date.now()}`,
-        code: "APEX-101",
+        name: "Synthetic Test Academy",
+        slug: `synthetic-test-${Date.now()}`,
+        code: "SYN-101",
         category: "Co-Educational School",
         affiliationBoard: "CBSE",
         pinCode: "110001",
         country: "India",
       },
       user: {
-        name: "Dr. Vikram Seth",
+        name: "Synthetic Test Admin",
         email: uniqueEmail,
         phone: uniquePhone,
         passwordHash,
@@ -216,7 +216,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
     // Verify lookup by email
     const foundByEmail = await authRepository.findUserByIdentifier(uniqueEmail);
     expect(foundByEmail).toBeDefined();
-    expect(foundByEmail?.name).toBe("Dr. Vikram Seth");
+    expect(foundByEmail?.name).toBe("Synthetic Test Admin");
 
     // Verify lookup by phone
     const foundByPhone = await authRepository.findUserByIdentifier(uniquePhone);
@@ -260,7 +260,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
             contactPhone: phone,
           },
           administrator: {
-            adminName: "Mrs. Sunita Sharma",
+            adminName: "Synthetic Email Admin",
             designation: "Principal",
             adminPhone: phone,
             adminEmail: changedEmail, // Changed from originalEmail
@@ -285,7 +285,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
 
     try {
       const phone = `+919811${Math.floor(100000 + Math.random() * 900000)}`;
-      const email = `principal_${Date.now()}@vedicacademy.edu.in`;
+      const email = `admin_${Date.now()}@synthetic.example`;
 
       // Scenario 1 & 2: First-time registration with SMS and email OTP, correct code on first attempt
       const smsReq = await otpService.requestOtp({ identifier: phone, channel: "SMS", purpose: "REGISTRATION" });
@@ -334,23 +334,23 @@ describe("Auth Repository & Tenant Provisioning", () => {
       expect(emailStatus.isVerified).toBe(true);
 
       // Scenario 12: Attempt registration when only one channel is verified (must fail)
-      const unverifiedEmail = `unverified_${Date.now()}@vedicacademy.edu.in`;
+      const unverifiedEmail = `unverified_${Date.now()}@synthetic.example`;
       await expect(
         registerSchool({
           institution: {
-            name: "Partial Vedic Academy",
+            name: "Partial Synthetic Academy",
             category: "Co-Educational School",
             affiliationBoard: "CBSE",
             addressLine: "456 Campus Road",
             locality: "Main Campus",
-            city: "Varanasi",
+            city: "Testpur",
             state: "Uttar Pradesh",
             pinCode: "221001",
             country: "India",
             contactPhone: phone,
           },
           administrator: {
-            adminName: "Acharya Dev",
+            adminName: "Synthetic Scenario Admin",
             designation: "Principal",
             adminPhone: phone,
             adminEmail: unverifiedEmail, // Not verified!
@@ -366,19 +366,19 @@ describe("Auth Repository & Tenant Provisioning", () => {
       // Scenario 11: Complete Step 5 and successfully create the school account
       const regResult = await registerSchool({
         institution: {
-          name: "Vedic Heritage Academy",
+          name: "Synthetic Heritage Academy",
           category: "Co-Educational School",
           affiliationBoard: "CBSE",
           addressLine: "456 Campus Road",
           locality: "Main Campus",
-          city: "Varanasi",
+          city: "Testpur",
           state: "Uttar Pradesh",
           pinCode: "221001",
           country: "India",
           contactPhone: phone,
         },
         administrator: {
-          adminName: "Acharya Dev",
+          adminName: "Synthetic Scenario Admin",
           designation: "Principal",
           adminPhone: phone,
           adminEmail: email,
@@ -402,14 +402,14 @@ describe("Auth Repository & Tenant Provisioning", () => {
             affiliationBoard: "CBSE",
             addressLine: "789 Campus Road",
             locality: "Main Campus",
-            city: "Varanasi",
+            city: "Testpur",
             state: "Uttar Pradesh",
             pinCode: "221001",
             country: "India",
             contactPhone: phone,
           },
           administrator: {
-            adminName: "Acharya Dev",
+            adminName: "Synthetic Scenario Admin",
             designation: "Principal",
             adminPhone: `+919812${Math.floor(100000 + Math.random() * 900000)}`,
             adminEmail: `new_${Date.now()}@scholonix.com`,
@@ -690,7 +690,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
             country: "India",
           },
           administrator: {
-            adminName: "Principal Rao",
+            adminName: "Synthetic Route Admin",
             designation: "Principal",
             adminPhone: phone,
             adminEmail: email,
@@ -755,7 +755,7 @@ describe("Auth Repository & Tenant Provisioning", () => {
             country: "India",
           },
           administrator: {
-            adminName: "Principal Rao",
+            adminName: "Synthetic Route Admin",
             designation: "Principal",
             adminPhone: phone,
             adminEmail: email,

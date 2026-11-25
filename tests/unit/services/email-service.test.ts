@@ -9,11 +9,11 @@ import { renderOtpEmailHtml } from "@/server/notifications/email-template";
 describe("Email Service & Recipient Validation", () => {
   it("validates compliant email addresses across Gmail, Outlook, Yahoo, and custom business domains", () => {
     const validEmails = [
-      "principal@gmail.com",
+      "admin@gmail.com",
       "admin.scholonix@outlook.com",
       "director_west@yahoo.com",
-      "registrar@sunrise-academy.edu.in",
-      "contact+admissions@delhipublicschool.org",
+      "registrar@synthetic-academy.example",
+      "contact+admissions@synthetic-school.example",
       "info@scholonix.com",
     ];
 
@@ -70,7 +70,7 @@ describe("Email Service & Recipient Validation", () => {
     const html = renderOtpEmailHtml({
       code: "847291",
       purpose: "REGISTRATION",
-      recipientName: "Dr. Vikram Seth",
+      recipientName: "Synthetic Recipient",
       expiresInMinutes: 5,
     });
 

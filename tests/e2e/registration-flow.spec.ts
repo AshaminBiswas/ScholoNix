@@ -127,10 +127,10 @@ test.describe("School Registration Page Visual & Workflow", () => {
       page.getByRole("heading", { name: "Administrator Details", level: 2 }),
     ).toBeVisible();
 
-    // Verify fields
+    // Verify fields start empty (no prefilled demo/hardcoded administrator values)
     const nameInput = page.getByPlaceholder("e.g. Rohan Mehta");
     await expect(nameInput).toBeVisible();
-    await expect(nameInput).toHaveValue("Rohan Mehta");
+    await expect(nameInput).toHaveValue("");
 
     // Verify designation dropdown
     const select = page.locator("select").first();
@@ -288,10 +288,10 @@ test.describe("School Registration Page Visual & Workflow", () => {
           success: true,
           message: "School registered successfully",
           data: {
-            schoolId: "sch_123456",
-            schoolName: "Sunrise International School",
-            slug: "sunrise-international-school",
-            adminName: "Rohan Mehta",
+            schoolId: "sch_test_e2e",
+            schoolName: "Synthetic Test Academy",
+            slug: "synthetic-test-academy",
+            adminName: "Synthetic Admin",
           },
         }),
       });
@@ -305,12 +305,12 @@ test.describe("School Registration Page Visual & Workflow", () => {
     ).toBeVisible();
 
     // Verify Section 1: Institution Details
-    await expect(page.getByText("Sunrise International School")).toBeVisible();
+    await expect(page.getByText("Synthetic Test Academy")).toBeVisible();
     await expect(page.getByText("Co-Educational School")).toBeVisible();
     await expect(page.getByText("CBSE")).toBeVisible();
 
     // Verify Section 2: Administrator Details
-    await expect(page.getByText("Rohan Mehta")).toBeVisible();
+    await expect(page.getByText("Synthetic Admin")).toBeVisible();
     await expect(page.getByText("Principal", { exact: true })).toBeVisible();
 
     // Verify Section 3: Selected Plan
@@ -347,7 +347,7 @@ test.describe("School Registration Page Visual & Workflow", () => {
 
     await expect(
       page.getByText(
-        "Sunrise International School has been registered on School Management SaaS.",
+        "Synthetic Test Academy has been registered on School Management SaaS.",
       ),
     ).toBeVisible();
 

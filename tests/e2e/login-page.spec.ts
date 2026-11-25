@@ -39,11 +39,11 @@ test.describe("School Login Page Visual & Interactive Features", () => {
     await expect(page.locator("#tab-signin-password")).toBeVisible();
     await expect(page.locator("#tab-signin-password")).toContainText("Password");
 
-    // Mobile number input with flag & prefix
+    // Mobile number input with flag & prefix (no prefilled credentials)
     await expect(page.getByText("+91")).toBeVisible();
     const phoneInput = page.locator("#login-otp-phone-input");
     await expect(phoneInput).toBeVisible();
-    await expect(phoneInput).toHaveValue("98765 43210");
+    await expect(phoneInput).toHaveValue("");
 
     // Inline email switch link
     await expect(page.locator("#otp-mode-use-email-link")).toBeVisible();
@@ -68,12 +68,39 @@ test.describe("School Login Page Visual & Interactive Features", () => {
   });
 
   test("supports login with Email Address via Email OTP flow", async ({ page }) => {
+    const testEmail = `e2e.login.${Date.now()}@scholonix.example`;
+    await page.route("**/api/auth/otp", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: { cooldownSeconds: 60 },
+        }),
+      });
+    });
+    await page.route("**/api/auth/login", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            user: { name: "Synthetic Admin", email: testEmail, role: "SCHOOL_ADMIN" },
+            school: { name: "Synthetic Test Academy", slug: "synthetic-test-academy" },
+          },
+        }),
+      });
+    });
+
     await page.goto("/login");
 
-    // Switch to Email OTP tab
+    // Switch to Email OTP tab (starts empty without prefilled credentials)
     await page.locator("#tab-signin-email").click();
-    await expect(page.locator("#login-email-input")).toBeVisible();
-    await expect(page.locator("#login-email-input")).toHaveValue("principal@sunriseis.edu.in");
+    const emailInput = page.locator("#login-email-input");
+    await expect(emailInput).toBeVisible();
+    await expect(emailInput).toHaveValue("");
+    await emailInput.fill(testEmail);
 
     // Helper callout for email
     await expect(
@@ -87,14 +114,17 @@ test.describe("School Login Page Visual & Interactive Features", () => {
 
     // Verify OTP Verification view for Email
     await expect(page.getByRole("heading", { name: "OTP Verification", level: 2 })).toBeVisible();
-    await expect(page.getByText("We've sent a 6-digit OTP to principal@sunriseis.edu.in.")).toBeVisible();
+    await expect(page.getByText(`We've sent a 6-digit OTP to ${testEmail}.`)).toBeVisible();
 
     // Change email button
     const changeEmailBtn = page.locator("#change-mobile-btn");
     await expect(changeEmailBtn).toBeVisible();
     await expect(changeEmailBtn).toContainText("Change Email Address");
 
-    // Verify & Sign In
+    // Enter OTP digits and Verify & Sign In
+    for (let i = 0; i < 6; i++) {
+      await page.locator(`#otp-box-${i}`).fill(String(i + 1));
+    }
     await page.locator("#verify-and-signin-btn").click();
     await expect(page.getByRole("heading", { name: "Login Successful!", level: 3 })).toBeVisible();
   });
@@ -110,10 +140,10 @@ test.describe("School Login Page Visual & Interactive Features", () => {
     await expect(page.locator("#tab-signin-email")).toBeVisible();
     await expect(page.locator("#tab-signin-password")).toBeVisible();
 
-    // Form inputs for Password mode
+    // Form inputs for Password mode (start empty without prefilled credentials)
     const idInput = page.locator("#login-id-input");
     await expect(idInput).toBeVisible();
-    await expect(idInput).toHaveValue("principal@sunriseis.edu.in");
+    await expect(idInput).toHaveValue("");
 
     const passwordInput = page.locator("#login-password-input");
     await expect(passwordInput).toBeVisible();
@@ -146,14 +176,27 @@ test.describe("School Login Page Visual & Interactive Features", () => {
   test("sends OTP and navigates to OTP Verification state with 6 digit boxes and countdown", async ({
     page,
   }) => {
+    const testDigits = "90000 12345";
+    await page.route("**/api/auth/otp", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: { cooldownSeconds: 60 },
+        }),
+      });
+    });
+
     await page.goto("/login");
 
-    // Click Send OTP
+    // Enter synthetic mobile digits and click Send OTP
+    await page.locator("#login-otp-phone-input").fill(testDigits);
     await page.locator("#send-otp-btn").click();
 
     // Verify OTP Verification view
     await expect(page.getByRole("heading", { name: "OTP Verification", level: 2 })).toBeVisible();
-    await expect(page.getByText("We've sent a 6-digit OTP to +91 98765 43210.")).toBeVisible();
+    await expect(page.getByText(`We've sent a 6-digit OTP to +91 ${testDigits}.`)).toBeVisible();
 
     // 6 OTP boxes
     for (let i = 0; i < 6; i++) {
@@ -172,17 +215,34 @@ test.describe("School Login Page Visual & Interactive Features", () => {
   });
 
   test("successful verification opens Login Successful popup modal matching mockup", async ({ page }) => {
+    await page.route("**/api/auth/login", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            user: { name: "Synthetic Admin", role: "SCHOOL_ADMIN" },
+            school: { name: "Synthetic Test Academy", slug: "synthetic-test-academy" },
+          },
+        }),
+      });
+    });
+
     await page.goto("/login?mode=verify");
 
-    // Submit OTP verification
+    // Fill 6-digit OTP and submit verification
+    for (let i = 0; i < 6; i++) {
+      await page.locator(`#otp-box-${i}`).fill("1");
+    }
     const verifyBtn = page.locator("#verify-and-signin-btn");
     await expect(verifyBtn).toBeVisible();
     await verifyBtn.click();
 
     // Login Successful modal dialog
     await expect(page.getByRole("heading", { name: "Login Successful!", level: 3 })).toBeVisible();
-    await expect(page.getByText("Welcome back, Rohan Mehta!")).toBeVisible();
-    await expect(page.getByText("You have been signed in to Sunrise International School.")).toBeVisible();
+    await expect(page.getByText("Welcome back, Synthetic Admin!")).toBeVisible();
+    await expect(page.getByText("You have been signed in to Synthetic Test Academy.")).toBeVisible();
 
     // 3 Quick-access modules
     await expect(page.getByText("Go to Dashboard").first()).toBeVisible();

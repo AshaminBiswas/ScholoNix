@@ -79,7 +79,7 @@ test.describe("Platform Smoke & Landing Page Tests", () => {
     await expect(page.getByText("Made for Schools")).toBeVisible();
     const newsletterInput = page.getByPlaceholder("Enter your email");
     await expect(newsletterInput).toBeVisible();
-    await newsletterInput.fill("principal@sunriseis.edu.in");
+    await newsletterInput.fill(`newsletter.${Date.now()}@e2etest.example`);
     await page.getByLabel("Submit newsletter").click();
     await expect(page.getByText("Thank you for subscribing!")).toBeVisible();
   });

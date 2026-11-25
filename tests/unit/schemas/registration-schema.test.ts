@@ -8,14 +8,14 @@ import {
 describe("School Registration Schemas", () => {
   it("validates compliant institution details matching Indian school standards", () => {
     const validData = {
-      name: "Sunrise International School",
+      name: "Synthetic Test Academy",
       category: "Co-Educational School",
       affiliationBoard: "CBSE",
       contactPhone: "+91 98765 43210",
-      website: "https://www.sunriseis.edu.in",
-      addressLine: "123, Green Valley Road",
-      locality: "Sector 18",
-      city: "Noida",
+      website: "https://www.synthetic-test.example",
+      addressLine: "Plot 1, Test Road",
+      locality: "Sector 1",
+      city: "Testpur",
       state: "Uttar Pradesh",
       pinCode: "201301",
       country: "India",
@@ -27,11 +27,11 @@ describe("School Registration Schemas", () => {
 
   it("rejects invalid Indian PIN codes", () => {
     const invalidData = {
-      name: "Sunrise International School",
+      name: "Synthetic Test Academy",
       category: "Co-Educational School",
       contactPhone: "+91 98765 43210",
-      addressLine: "123, Green Valley Road",
-      city: "Noida",
+      addressLine: "Plot 1, Test Road",
+      city: "Testpur",
       state: "Uttar Pradesh",
       pinCode: "123", // Too short
     };

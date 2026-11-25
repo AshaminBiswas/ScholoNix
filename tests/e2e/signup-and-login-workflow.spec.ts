@@ -30,7 +30,7 @@ test.describe("Full School Signup & Login End-to-End Workflow", () => {
     await expect(page.getByRole("heading", { name: "Administrator Details", level: 2 })).toBeVisible();
 
     // STEP 2: Administrator Details
-    await page.locator("input[placeholder*='Rohan Mehta']").fill("Dr. Sunil Sharma");
+    await page.locator("input[placeholder*='Rohan Mehta']").fill("Synthetic Test Admin");
     await page.locator("input[placeholder*='98765 43210']").fill(testPhone);
     await page.locator("input[placeholder*='principal@sunrise']").fill(testEmail);
     await page.locator("input[type='password']").first().fill(passphrase);

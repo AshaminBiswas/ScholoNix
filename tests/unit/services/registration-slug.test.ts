@@ -6,8 +6,8 @@ import {
 
 describe("Registration Service Utilities", () => {
   it("generates clean URL-safe slugs from complex school names", () => {
-    expect(generateSlug("Sunrise International School")).toBe(
-      "sunrise-international-school",
+    expect(generateSlug("Synthetic Global Academy")).toBe(
+      "synthetic-global-academy",
     );
     expect(generateSlug("Delhi Public School (R.K. Puram)")).toBe(
       "delhi-public-school-rk-puram",
@@ -16,7 +16,7 @@ describe("Registration Service Utilities", () => {
   });
 
   it("generates concise institutional codes", () => {
-    const code = generateSchoolCode("Sunrise International School", "201301");
-    expect(code).toBe("SIS-301");
+    const code = generateSchoolCode("Synthetic Global Academy", "201301");
+    expect(code).toBe("SGA-301");
   });
 });

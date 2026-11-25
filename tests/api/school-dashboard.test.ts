@@ -46,7 +46,7 @@ describe("School Dashboard API & Strict Tenant Isolation", () => {
     expect(dashRes.status).toBe(401);
 
     const demoBypassAttempt = await dashboardGet(
-      new NextRequest("http://localhost/api/school/dashboard?demo=true&schoolId=sch_sunrise_001"),
+      new NextRequest("http://localhost/api/school/dashboard?demo=true&schoolId=sch_test_nonexistent"),
     );
     expect(demoBypassAttempt.status).toBe(401);
 

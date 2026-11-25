@@ -43,8 +43,7 @@ function scanDir(dir) {
             line.includes('test_secret') ||
             line.includes('dummy_') ||
             line.includes('mock_') ||
-            line.includes('test_key') ||
-            line.includes('DifferentPassword')
+            line.includes('test_key')
           ) continue;
 
           for (const pattern of secretPatterns) {
