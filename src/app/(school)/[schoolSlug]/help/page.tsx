@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { resolveTenantRouteAccess } from "@/server/school/resolve-tenant-route";
 import { SchoolHelpView } from "@/modules/school/components/school-help-view";
 import { TenantUnauthorizedView } from "@/modules/school/components/tenant-unauthorized-view";
+import { TenantServiceUnavailableView } from "@/modules/school/components/tenant-service-unavailable-view";
 import { buildSchoolShellProps } from "@/modules/school/utils/shell-props";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,14 @@ export default async function SchoolHelpPage({ params }: SchoolHelpPageProps) {
   const access = await resolveTenantRouteAccess(schoolSlug, `/${schoolSlug}/help`);
 
   if (!access.authorized) {
+    if (access.reason === "SERVICE_UNAVAILABLE") {
+      return (
+        <TenantServiceUnavailableView
+          schoolSlug={schoolSlug}
+          message={access.message}
+        />
+      );
+    }
     return (
       <TenantUnauthorizedView
         ownSchoolSlug={access.ownSchool.slug}

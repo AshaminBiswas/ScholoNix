@@ -114,7 +114,37 @@ describe("Per-School URL Route Authorization (resolveTenantRouteAccess)", () => 
     expect(crossTenantAttempt.authorized).toBe(false);
     if (!crossTenantAttempt.authorized) {
       expect(crossTenantAttempt.reason).toBe("TENANT_MISMATCH");
-      expect(crossTenantAttempt.ownSchool.id).toBe(schoolA.id);
+      if (crossTenantAttempt.reason === "TENANT_MISMATCH") {
+        expect(crossTenantAttempt.ownSchool.id).toBe(schoolA.id);
+      }
+    }
+  });
+
+  it("returns SERVICE_UNAVAILABLE instead of throwing when session verification encounters a transient database failure", async () => {
+    const { school: schoolA, user: userA } = await seedTenant("Resilience");
+    const sessionA = await sessionService.createSession(userA);
+    const cookieName = getSessionCookieName();
+    const { ServiceUnavailableError } = await import("@/lib/errors");
+
+    mockCookieGet.mockImplementation((name: string) =>
+      name === cookieName ? { value: sessionA.token } : undefined,
+    );
+
+    const spy = vi
+      .spyOn(sessionService, "verifyToken")
+      .mockRejectedValueOnce(new ServiceUnavailableError("Database temporarily unreachable"));
+
+    try {
+      const { resolveTenantRouteAccess } = await import("@/server/school/resolve-tenant-route");
+      const result = await resolveTenantRouteAccess(schoolA.slug, `/${schoolA.slug}`);
+      expect(result.authorized).toBe(false);
+      if (!result.authorized && result.reason === "SERVICE_UNAVAILABLE") {
+        expect(result.message).toMatch(/temporarily unreachable/i);
+      } else {
+        throw new Error(`Expected SERVICE_UNAVAILABLE, got ${JSON.stringify(result)}`);
+      }
+    } finally {
+      spy.mockRestore();
     }
   });
 });

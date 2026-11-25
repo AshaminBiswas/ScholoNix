@@ -3,6 +3,7 @@ import { authRepository, SchoolRecord, UserRecord } from "@/server/auth/auth-rep
 import { tenantCache } from "@/server/integrations/redis";
 import { ServiceUnavailableError, TenantMismatchError, TenantNotFoundError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { captureException } from "@/lib/observability/sentry";
 import { formatAvatarInitials, formatRoleLabel } from "@/modules/school/utils/shell-props";
 import { ADMISSION_STATUS_META } from "@/modules/school/admissions/types";
 import type { SchoolDashboardData } from "@/modules/school/types";
@@ -48,6 +49,66 @@ function getCurrentAcademicSession(): SchoolDashboardData["academicSession"] {
 }
 
 const DASHBOARD_CACHE_TTL_SECONDS = 60;
+
+function formatSafeIstDate(iso: string, includeTime: boolean = false): string {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) {
+    return "—";
+  }
+  return new Intl.DateTimeFormat(
+    "en-IN",
+    includeTime
+      ? {
+          day: "2-digit",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Asia/Kolkata",
+        }
+      : {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          timeZone: "Asia/Kolkata",
+        },
+  ).format(parsed);
+}
+
+function isValidCachedDashboardData(
+  cached: unknown,
+  expectedSchoolId: string,
+): cached is SchoolDashboardData {
+  if (!cached || typeof cached !== "object") return false;
+  const d = cached as Partial<SchoolDashboardData>;
+  return Boolean(
+    d.school?.id === expectedSchoolId &&
+      d.currentUser &&
+      d.academicSession &&
+      d.kpis?.totalStudents &&
+      d.kpis?.totalStaff &&
+      d.kpis?.pendingAdmissions &&
+      d.kpis?.feeDues &&
+      d.studentOverview &&
+      Array.isArray(d.studentOverview.sections) &&
+      d.attendanceToday &&
+      Array.isArray(d.todayTasks) &&
+      d.feeCollection &&
+      Array.isArray(d.feeCollection.monthlyTrends) &&
+      Array.isArray(d.upcomingEvents) &&
+      Array.isArray(d.recentAdmissions) &&
+      Array.isArray(d.recentActivities) &&
+      Array.isArray(d.classStrength) &&
+      d.academicPerformance &&
+      Array.isArray(d.academicPerformance.termTrends) &&
+      Array.isArray(d.academicPerformance.topClasses) &&
+      d.admissionFunnel &&
+      d.staffOverview &&
+      d.genderBreakdown &&
+      Array.isArray(d.keyInsights) &&
+      Array.isArray(d.notices) &&
+      d.communicationSummary,
+  );
+}
 
 function buildEmptyDashboardData(
   school: SchoolRecord,
@@ -157,79 +218,87 @@ async function buildLiveDashboardData(
       );
       return base;
     }
-    throw err;
+    captureException(err, {
+      schoolId: school.id,
+      tags: { area: "buildLiveDashboardData" },
+    });
+    return base;
   }
 
-  const pendingCount = snapshot.applications.filter(
-    (app) => app.status !== "ADMITTED" && app.status !== "REJECTED",
-  ).length;
-  const totalApps = snapshot.applications.length;
-  const shortlistedPipeline = snapshot.applications.filter(
-    (app) => app.status === "SHORTLISTED" || app.status === "ADMITTED",
-  ).length;
-  const admittedCount = snapshot.applications.filter((app) => app.status === "ADMITTED").length;
-  const conversionRate = totalApps > 0 ? roundToOneDecimal((admittedCount / totalApps) * 100) : 0;
+  try {
+    const pendingCount = snapshot.applications.filter(
+      (app) => app.status !== "ADMITTED" && app.status !== "REJECTED",
+    ).length;
+    const totalApps = snapshot.applications.length;
+    const shortlistedPipeline = snapshot.applications.filter(
+      (app) => app.status === "SHORTLISTED" || app.status === "ADMITTED",
+    ).length;
+    const admittedCount = snapshot.applications.filter((app) => app.status === "ADMITTED").length;
+    const conversionRate = totalApps > 0 ? roundToOneDecimal((admittedCount / totalApps) * 100) : 0;
 
-  base.kpis.totalStudents = {
-    value: admittedCount,
-    change: 0,
-  };
-  base.kpis.pendingAdmissions = {
-    value: pendingCount,
-    change: 0,
-  };
-  base.admissionFunnel = {
-    enquiries: snapshot.enquiries.length,
-    applications: totalApps,
-    shortlisted: shortlistedPipeline,
-    admitted: admittedCount,
-    conversionRate,
-    trendVsLastYear: 0,
-  };
-  base.recentAdmissions = snapshot.applications.slice(0, 5).map((app) => {
-    const mappedStatus =
-      app.status === "ADMITTED"
-        ? "Approved"
-        : app.status === "DOCUMENTS_PENDING"
-          ? "Documents Pending"
-          : app.status === "REJECTED"
-            ? "Waitlisted"
-            : "Under Review";
-    const meta = ADMISSION_STATUS_META[app.status];
-    return {
-      id: app.id,
-      name: app.studentName,
-      classApplied: app.gradeApplied,
-      status: mappedStatus,
-      statusColor: meta.textClass,
-      statusBg: `${meta.bgClass} ${meta.borderClass}`,
-      appliedOn: new Intl.DateTimeFormat("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        timeZone: "Asia/Kolkata",
-      }).format(new Date(app.appliedAt)),
-      initials: formatAvatarInitials(app.studentName),
-      avatarBg: "bg-[#EDE7FF] text-[#663CF6]",
+    base.kpis.totalStudents = {
+      value: admittedCount,
+      change: 0,
     };
-  });
-  base.recentActivities = snapshot.activities.slice(0, 5).map((act) => ({
-    id: act.id,
-    description: act.summary,
-    timestamp: new Intl.DateTimeFormat("en-IN", {
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "Asia/Kolkata",
-    }).format(new Date(act.createdAt)),
-    type: "admission",
-  }));
+    base.kpis.pendingAdmissions = {
+      value: pendingCount,
+      change: 0,
+    };
+    base.admissionFunnel = {
+      enquiries: snapshot.enquiries.length,
+      applications: totalApps,
+      shortlisted: shortlistedPipeline,
+      admitted: admittedCount,
+      conversionRate,
+      trendVsLastYear: 0,
+    };
+    base.recentAdmissions = snapshot.applications.slice(0, 5).map((app) => {
+      const mappedStatus =
+        app.status === "ADMITTED"
+          ? "Approved"
+          : app.status === "DOCUMENTS_PENDING"
+            ? "Documents Pending"
+            : app.status === "REJECTED"
+              ? "Waitlisted"
+              : "Under Review";
+      const meta = ADMISSION_STATUS_META[app.status] ?? ADMISSION_STATUS_META.UNDER_REVIEW;
+      return {
+        id: app.id,
+        name: app.studentName,
+        classApplied: app.gradeApplied,
+        status: mappedStatus,
+        statusColor: meta.textClass,
+        statusBg: `${meta.bgClass} ${meta.borderClass}`,
+        appliedOn: formatSafeIstDate(app.appliedAt, false),
+        initials: formatAvatarInitials(app.studentName),
+        avatarBg: "bg-[#EDE7FF] text-[#663CF6]",
+      };
+    });
+    base.recentActivities = snapshot.activities.slice(0, 5).map((act) => ({
+      id: act.id,
+      description: act.summary,
+      timestamp: formatSafeIstDate(act.createdAt, true),
+      type: "admission",
+    }));
 
-  return base;
+    return base;
+  } catch (err) {
+    captureException(err, {
+      schoolId: school.id,
+      tags: { area: "buildLiveDashboardData.map" },
+    });
+    return base;
+  }
 }
 
 export const schoolDashboardService = {
+  getSafeFallbackDashboardData(
+    school: SchoolRecord,
+    user?: Pick<UserRecord, "name" | "role"> | null,
+  ): SchoolDashboardData {
+    return buildEmptyDashboardData(school, user);
+  },
+
   /**
    * Fast path: builds or fetches tenant-cached dashboard state directly from the
    * already-verified session school & user records (0 redundant DB round-trips).
@@ -247,7 +316,7 @@ export const schoolDashboardService = {
 
     const cacheKey = `dashboard:v1:${user.id}`;
     const cached = await tenantCache.get<SchoolDashboardData>(school.id, cacheKey);
-    if (cached && cached.school?.id === school.id) {
+    if (isValidCachedDashboardData(cached, school.id)) {
       return { data: cached, cacheHit: true };
     }
 
@@ -277,7 +346,7 @@ export const schoolDashboardService = {
 
     const cacheKey = user ? `dashboard:v1:${user.id}` : "dashboard:v1:anon";
     const cached = await tenantCache.get<SchoolDashboardData>(school.id, cacheKey);
-    if (cached && cached.school?.id === school.id) {
+    if (isValidCachedDashboardData(cached, school.id)) {
       return cached;
     }
 

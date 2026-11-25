@@ -6,9 +6,11 @@ import { admissionsService } from "@/server/school/admissions-service";
 import { hasPermission } from "@/server/authorization/permissions";
 import { ServiceUnavailableError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { captureException } from "@/lib/observability/sentry";
 import { buildSchoolRoute, buildSchoolShellProps } from "@/modules/school/utils/shell-props";
 import { SchoolWorkspaceShell } from "@/modules/school/components/school-workspace-shell";
 import { TenantUnauthorizedView } from "@/modules/school/components/tenant-unauthorized-view";
+import { TenantServiceUnavailableView } from "@/modules/school/components/tenant-service-unavailable-view";
 import { AdmissionsWorkspace } from "@/modules/school/admissions/components/admissions-workspace";
 import type { AdmissionsOverviewData, AdmissionsTab } from "@/modules/school/admissions/types";
 
@@ -51,6 +53,14 @@ export default async function SchoolAdmissionsPage({
   );
 
   if (!access.authorized) {
+    if (access.reason === "SERVICE_UNAVAILABLE") {
+      return (
+        <TenantServiceUnavailableView
+          schoolSlug={schoolSlug}
+          message={access.message}
+        />
+      );
+    }
     return (
       <TenantUnauthorizedView
         ownSchoolSlug={access.ownSchool.slug}
@@ -115,6 +125,11 @@ export default async function SchoolAdmissionsPage({
       { schoolId: access.school.id, error: message },
       "[SchoolAdmissionsPage] Failed to load admissions overview",
     );
+    captureException(err, {
+      schoolId: access.school.id,
+      userId: access.session.user.id,
+      tags: { area: "SchoolAdmissionsPage.getOverview" },
+    });
     loadErrorMessage =
       err instanceof ServiceUnavailableError
         ? err.message
@@ -122,6 +137,10 @@ export default async function SchoolAdmissionsPage({
   }
 
   if (!initialData) {
+    const isMigrationPending = Boolean(
+      loadErrorMessage &&
+        /migration|tables are not provisioned/i.test(loadErrorMessage),
+    );
     return (
       <SchoolWorkspaceShell
         school={school}
@@ -134,7 +153,9 @@ export default async function SchoolAdmissionsPage({
             <DatabaseZap className="h-6 w-6" aria-hidden="true" />
           </div>
           <h1 className="text-lg font-extrabold text-[#08093B]">
-            Admissions Setup Pending Database Migration
+            {isMigrationPending
+              ? "Admissions Setup Pending Database Migration"
+              : "Admissions Data Temporarily Unavailable"}
           </h1>
           <p className="text-xs text-[#4D5072] leading-relaxed">{loadErrorMessage}</p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-1">

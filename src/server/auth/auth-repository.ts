@@ -201,6 +201,40 @@ const globalForAuthRepo = globalThis as unknown as {
 };
 const PRISMA_RETRY_COOLDOWN_MS = 30_000;
 const PRISMA_DEV_OP_TIMEOUT_MS = 3000;
+const PRISMA_SERVERLESS_OP_TIMEOUT_MS = 10_000;
+
+function isTransientConnectionError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as { code?: string }).code;
+  const message = err instanceof Error ? err.message : String(err);
+  return (
+    code === "P1001" ||
+    code === "P1002" ||
+    code === "P1017" ||
+    code === "P2024" ||
+    message.includes("Can't reach database server") ||
+    message.includes("ECONNRESET") ||
+    message.includes("ETIMEDOUT") ||
+    message.includes("Connection terminated")
+  );
+}
+
+async function runWithTimeout<T>(operation: string, timeoutMs: number, fn: () => Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      fn(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Database ${operation} timeout after ${timeoutMs}ms`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 async function isPrismaWorking(): Promise<boolean> {
   // In automated test environments, strictly use ephemeral in-memory state
@@ -209,6 +243,11 @@ async function isPrismaWorking(): Promise<boolean> {
   }
   if (!process.env.DATABASE_URL?.trim()) {
     return false;
+  }
+  // In serverless production, never silence Prisma with a process-wide cooldown that falls back
+  // to empty in-memory stores and falsely invalidates active sessions.
+  if (isServerlessRuntime()) {
+    return true;
   }
   const unavailableUntil = globalForAuthRepo.authRepoPrismaUnavailableUntil || 0;
   if (unavailableUntil > Date.now()) {
@@ -219,27 +258,25 @@ async function isPrismaWorking(): Promise<boolean> {
 
 async function runPrismaOp<T>(operation: string, fn: () => Promise<T>): Promise<T> {
   if (isServerlessRuntime()) {
-    const result = await fn();
-    globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
-    return result;
+    const isReadOp = operation.startsWith("find") || operation.startsWith("get");
+    try {
+      const result = await runWithTimeout(operation, PRISMA_SERVERLESS_OP_TIMEOUT_MS, fn);
+      globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
+      return result;
+    } catch (err) {
+      if (isReadOp && isTransientConnectionError(err)) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        const retried = await runWithTimeout(operation, PRISMA_SERVERLESS_OP_TIMEOUT_MS, fn);
+        globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
+        return retried;
+      }
+      throw err;
+    }
   }
 
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const result = await Promise.race([
-      fn(),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(`Database ${operation} timeout after ${PRISMA_DEV_OP_TIMEOUT_MS}ms`)),
-          PRISMA_DEV_OP_TIMEOUT_MS,
-        );
-      }),
-    ]);
-    globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
-    return result;
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+  const result = await runWithTimeout(operation, PRISMA_DEV_OP_TIMEOUT_MS, fn);
+  globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
+  return result;
 }
 
 function handlePrismaRuntimeError(operation: string, err: unknown): void {
@@ -928,6 +965,10 @@ export const authRepository = {
       } catch (err) {
         handlePrismaRuntimeError("findUserById", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
     let found = storeMemory.users[id];
@@ -951,9 +992,14 @@ export const authRepository = {
           }),
         );
         if (school) return school as unknown as SchoolRecord;
+        return null;
       } catch (err) {
         handlePrismaRuntimeError("findSchoolById", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
     if (!storeMemory.schools[id]) {
       storeMemory = loadStore();
@@ -977,6 +1023,10 @@ export const authRepository = {
       } catch (err) {
         handlePrismaRuntimeError("findSchoolBySlug", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
     const matchInMemory = (schools: Record<string, SchoolRecord>) =>
@@ -1425,6 +1475,10 @@ export const authRepository = {
       } catch (err) {
         handlePrismaRuntimeError("findSessionByTokenHash", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
     let found = Object.values(storeMemory.sessions).find(

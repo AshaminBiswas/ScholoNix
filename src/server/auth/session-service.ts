@@ -46,13 +46,35 @@ export const sessionService = {
     const tokenHash = hashToken(rawToken);
     const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
 
-    await authRepository.createSession({
+    const created = await authRepository.createSession({
       userId: user.id,
       tokenHash,
       expiresAt,
       ipAddress: meta?.ipAddress,
       userAgent: meta?.userAgent,
     });
+
+    const resolvedSchool =
+      user.school ??
+      (user.schoolId
+        ? await authRepository.findSchoolById(user.schoolId).catch(() => null)
+        : null);
+    const { passwordHash: _omitted, ...safeUser } = user;
+    void _omitted;
+    const ttl = Math.min(
+      SESSION_CACHE_TTL_SECONDS,
+      Math.max(5, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
+    );
+    await systemCache.set<CachedSessionPayload>(
+      sessionCacheKey(tokenHash),
+      {
+        sessionId: created.id,
+        expiresAtMs: expiresAt.getTime(),
+        user: safeUser,
+        school: resolvedSchool,
+      },
+      ttl,
+    );
 
     return {
       token: rawToken,

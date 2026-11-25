@@ -307,24 +307,27 @@ export function buildLiveReminders(params: {
   const generated: AdmissionReminderRecord[] = [];
 
   if (settings.applicationDeadline) {
-    const formatted = new Intl.DateTimeFormat("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      timeZone: "Asia/Kolkata",
-    }).format(new Date(settings.applicationDeadline));
+    const parsedDeadline = new Date(settings.applicationDeadline);
+    if (!Number.isNaN(parsedDeadline.getTime())) {
+      const formatted = new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: "Asia/Kolkata",
+      }).format(parsedDeadline);
 
-    generated.push({
-      id: `sys-deadline-${schoolId}`,
-      schoolId,
-      title: `Admission last date for ${settings.currentAcademicYear}: ${formatted}.`,
-      academicYear: settings.currentAcademicYear,
-      dueDate: settings.applicationDeadline,
-      priority: "INFO",
-      isCompleted: false,
-      isSystemGenerated: true,
-      createdAt: settings.updatedAt,
-    });
+      generated.push({
+        id: `sys-deadline-${schoolId}`,
+        schoolId,
+        title: `Admission last date for ${settings.currentAcademicYear}: ${formatted}.`,
+        academicYear: settings.currentAcademicYear,
+        dueDate: settings.applicationDeadline,
+        priority: "INFO",
+        isCompleted: false,
+        isSystemGenerated: true,
+        createdAt: settings.updatedAt,
+      });
+    }
   }
 
   const pendingDocsCount = applicationsInYear.filter(

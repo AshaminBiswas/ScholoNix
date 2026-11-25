@@ -8,6 +8,7 @@ import {
 } from "@/modules/marketing/data/help-data";
 import { SchoolHelpArticleView } from "@/modules/school/components/school-help-article-view";
 import { TenantUnauthorizedView } from "@/modules/school/components/tenant-unauthorized-view";
+import { TenantServiceUnavailableView } from "@/modules/school/components/tenant-service-unavailable-view";
 import { buildSchoolShellProps } from "@/modules/school/utils/shell-props";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,14 @@ export default async function SchoolHelpArticlePage({
   );
 
   if (!access.authorized) {
+    if (access.reason === "SERVICE_UNAVAILABLE") {
+      return (
+        <TenantServiceUnavailableView
+          schoolSlug={schoolSlug}
+          message={access.message}
+        />
+      );
+    }
     return (
       <TenantUnauthorizedView
         ownSchoolSlug={access.ownSchool.slug}
