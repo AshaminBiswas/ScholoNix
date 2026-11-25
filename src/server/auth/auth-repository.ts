@@ -504,23 +504,31 @@ export const authRepository = {
     return found || null;
   },
 
-  async markTokenUsed(token: string): Promise<void> {
-    if (!token) return;
+  async consumeVerificationTokenAtomically(token: string): Promise<boolean> {
+    if (!token) return false;
     const now = new Date();
 
     if (await isPrismaWorking()) {
       try {
-        await (db as any).$executeRaw`
+        const updatedCount = await (db as any).$executeRaw`
           UPDATE otp_verifications
           SET metadata = jsonb_set(
             jsonb_set(COALESCE(metadata, '{}'::jsonb), '{used}', 'true'::jsonb),
             '{usedAt}', to_jsonb(${now.toISOString()}::text)
           )
           WHERE metadata->>'token' = ${token}
+            AND verified_at IS NOT NULL
+            AND (metadata->>'used' IS NULL OR metadata->>'used' = 'false')
         `;
-        return;
+        for (const otp of Object.values(storeMemory.otps)) {
+          if (otp.verificationToken === token || otp.metadata?.token === token) {
+            otp.metadata = { ...(otp.metadata || {}), used: true, usedAt: now.toISOString() };
+          }
+        }
+        if (!isServerlessRuntime()) saveStore(storeMemory);
+        return Number(updatedCount) === 1;
       } catch (err) {
-        handlePrismaRuntimeError("markTokenUsed", err);
+        handlePrismaRuntimeError("consumeVerificationTokenAtomically", err);
       }
     } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
       throw new ServiceUnavailableError(
@@ -528,12 +536,36 @@ export const authRepository = {
       );
     }
 
+    let consumed = false;
     for (const otp of Object.values(storeMemory.otps)) {
-      if (otp.verificationToken === token || otp.metadata?.token === token) {
+      if (
+        (otp.verificationToken === token || otp.metadata?.token === token) &&
+        otp.verifiedAt !== null &&
+        otp.metadata?.used !== true
+      ) {
         otp.metadata = { ...(otp.metadata || {}), used: true, usedAt: now.toISOString() };
+        consumed = true;
       }
     }
-    saveStore(storeMemory);
+    if (!consumed) {
+      storeMemory = loadStore();
+      for (const otp of Object.values(storeMemory.otps)) {
+        if (
+          (otp.verificationToken === token || otp.metadata?.token === token) &&
+          otp.verifiedAt !== null &&
+          otp.metadata?.used !== true
+        ) {
+          otp.metadata = { ...(otp.metadata || {}), used: true, usedAt: now.toISOString() };
+          consumed = true;
+        }
+      }
+    }
+    if (consumed) saveStore(storeMemory);
+    return consumed;
+  },
+
+  async markTokenUsed(token: string): Promise<void> {
+    await this.consumeVerificationTokenAtomically(token);
   },
 
   async findLatestVerifiedOtp(
@@ -790,19 +822,30 @@ export const authRepository = {
 
   async findUserByIdentifier(identifier: string): Promise<UserRecord | null> {
     const clean = identifier.trim().toLowerCase();
-    const phoneClean = identifier.replace(/[^\d+]/g, "").trim();
-    const normalizedPhone = normalizePhone(identifier);
+    const isEmail = clean.includes("@");
+    const phoneClean = isEmail ? "" : identifier.replace(/[^\d+]/g, "").trim();
+    const normalizedPhone = !isEmail && phoneClean.length >= 4 ? normalizePhone(identifier) : "";
 
     if (await isPrismaWorking()) {
       try {
+        const orConditions: any[] = [];
+        if (isEmail) {
+          orConditions.push({ email: { equals: clean, mode: "insensitive" } });
+        } else if (phoneClean.length >= 4) {
+          orConditions.push(
+            { phone: identifier.replace(/\s+/g, "") },
+            { phone: phoneClean },
+            { phone: normalizedPhone },
+          );
+        }
+
+        if (orConditions.length === 0) {
+          return null;
+        }
+
         const user = await (db as any).user.findFirst({
           where: {
-            OR: [
-              { email: { equals: clean, mode: "insensitive" } },
-              { phone: identifier.replace(/\s+/g, "") },
-              { phone: phoneClean },
-              { phone: normalizedPhone },
-            ],
+            OR: orConditions,
           },
           include: { school: true },
         });
@@ -818,8 +861,10 @@ export const authRepository = {
 
     const userMatches = (users: Record<string, UserRecord>) =>
       Object.values(users).find((u) => {
-        if (u.email && u.email.toLowerCase() === clean) return true;
-        if (u.phone) {
+        if (isEmail) {
+          return Boolean(u.email && u.email.toLowerCase() === clean);
+        }
+        if (u.phone && phoneClean.length >= 4) {
           const uClean = u.phone.replace(/[^\d+]/g, "");
           if (
             u.phone === identifier ||
@@ -1057,10 +1102,18 @@ export const authRepository = {
           where: { id: userId },
           data: { passwordHash: newPasswordHash },
         });
+        if (storeMemory.users[userId]) {
+          storeMemory.users[userId].passwordHash = newPasswordHash;
+          if (!isServerlessRuntime()) saveStore(storeMemory);
+        }
         return;
-      } catch {
-        // Fallback
+      } catch (err) {
+        handlePrismaRuntimeError("updateUserPassword", err);
       }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
     }
 
     const user = storeMemory.users[userId];
@@ -1068,6 +1121,39 @@ export const authRepository = {
       user.passwordHash = newPasswordHash;
       saveStore(storeMemory);
     }
+  },
+
+  async revokeAllUserSessions(userId: string): Promise<void> {
+    const now = new Date();
+
+    if (await isPrismaWorking()) {
+      try {
+        await (db as any).userSession.updateMany({
+          where: { userId, revokedAt: null },
+          data: { revokedAt: now },
+        });
+        for (const s of Object.values(storeMemory.sessions)) {
+          if (s.userId === userId && !s.revokedAt) {
+            s.revokedAt = now;
+          }
+        }
+        if (!isServerlessRuntime()) saveStore(storeMemory);
+        return;
+      } catch (err) {
+        handlePrismaRuntimeError("revokeAllUserSessions", err);
+      }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
+    }
+
+    for (const s of Object.values(storeMemory.sessions)) {
+      if (s.userId === userId && !s.revokedAt) {
+        s.revokedAt = now;
+      }
+    }
+    saveStore(storeMemory);
   },
 
   /**

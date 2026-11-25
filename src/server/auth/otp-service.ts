@@ -575,11 +575,11 @@ export const otpService = {
   },
 
   /**
-   * Marks a verification token as used so it cannot be reused.
+   * Atomically marks a verification token as used so it cannot be reused.
    */
-  async consumeVerificationToken(token: string): Promise<void> {
-    if (!token) return;
-    await authRepository.markTokenUsed(token);
+  async consumeVerificationToken(token: string): Promise<boolean> {
+    if (!token) return false;
+    return authRepository.consumeVerificationTokenAtomically(token);
   },
 
   /**

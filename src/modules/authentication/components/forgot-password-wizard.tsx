@@ -31,6 +31,17 @@ import { BrandLogo } from "@/components/ui/brand-logo";
 export type ForgotPasswordStep = 1 | 2 | 3 | 4;
 export type ResetChannel = "phone" | "email";
 
+const RESET_STATE_STORAGE_KEY = "scholonix_password_reset_state";
+
+interface PersistedResetState {
+  channel: ResetChannel;
+  countryDialCode: string;
+  phoneDigits: string;
+  phone: string;
+  email: string;
+  verificationToken: string | null;
+}
+
 interface ForgotPasswordWizardProps {
   initialStep?: ForgotPasswordStep;
   initialChannel?: ResetChannel;
@@ -49,8 +60,9 @@ export function ForgotPasswordWizard({
   const [phone, setPhone] = useState<string>("");
   const [email, setEmail] = useState<string>("");
 
-  // OTP Fields
+  // OTP & Verification Proof Fields
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
   const [resendTimer, setResendTimer] = useState<number>(0);
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -65,9 +77,55 @@ export function ForgotPasswordWizard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
 
-  // Sync with URL query parameters on mount
+  const persistResetState = (next: Partial<PersistedResetState>) => {
+    if (typeof window === "undefined") return;
+    try {
+      const payload: PersistedResetState = {
+        channel: next.channel ?? channel,
+        countryDialCode: next.countryDialCode ?? countryDialCode,
+        phoneDigits: next.phoneDigits ?? phoneDigits,
+        phone: next.phone ?? phone,
+        email: next.email ?? email,
+        verificationToken:
+          next.verificationToken !== undefined ? next.verificationToken : verificationToken,
+      };
+      window.sessionStorage.setItem(RESET_STATE_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // Ignore storage quota or private mode restrictions
+    }
+  };
+
+  const clearPersistedResetState = () => {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.removeItem(RESET_STATE_STORAGE_KEY);
+    } catch {
+      // Ignore storage errors
+    }
+  };
+
+  // Sync with URL query parameters and restore verified reset state across reloads
   useEffect(() => {
     if (typeof window !== "undefined") {
+      try {
+        const rawSaved = window.sessionStorage.getItem(RESET_STATE_STORAGE_KEY);
+        if (rawSaved) {
+          const saved = JSON.parse(rawSaved) as Partial<PersistedResetState>;
+          if (saved.channel === "email" || saved.channel === "phone") {
+            setChannel(saved.channel);
+          }
+          if (typeof saved.countryDialCode === "string") setCountryDialCode(saved.countryDialCode);
+          if (typeof saved.phoneDigits === "string") setPhoneDigits(saved.phoneDigits);
+          if (typeof saved.phone === "string") setPhone(saved.phone);
+          if (typeof saved.email === "string") setEmail(saved.email);
+          if (typeof saved.verificationToken === "string" && saved.verificationToken) {
+            setVerificationToken(saved.verificationToken);
+          }
+        }
+      } catch {
+        // Ignore corrupted session state
+      }
+
       const params = new URLSearchParams(window.location.search);
       const stepParam = params.get("step");
       const channelParam = params.get("channel");
@@ -89,6 +147,10 @@ export function ForgotPasswordWizard({
   const goToStep = (newStep: ForgotPasswordStep) => {
     setStep(newStep);
     setErrorMessage(null);
+    if (newStep === 1) {
+      setVerificationToken(null);
+      persistResetState({ verificationToken: null });
+    }
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("step", newStep.toString());
@@ -170,6 +232,8 @@ export function ForgotPasswordWizard({
         throw new Error(data.error?.message || "Failed to send verification code");
       }
 
+      setVerificationToken(null);
+      persistResetState({ verificationToken: null });
       setResendTimer(data.data?.cooldownSeconds || 60);
       goToStep(2);
     } catch (err: unknown) {
@@ -201,6 +265,9 @@ export function ForgotPasswordWizard({
         throw new Error(data.error?.message || "Could not resend OTP. Please try again.");
       }
 
+      setVerificationToken(null);
+      setOtp(["", "", "", "", "", ""]);
+      persistResetState({ verificationToken: null });
       setResendTimer(data.data?.cooldownSeconds || 60);
       setResendNotice("A new 6-digit verification code has been sent!");
       setTimeout(() => setResendNotice(null), 4000);
@@ -239,6 +306,10 @@ export function ForgotPasswordWizard({
         throw new Error(data.error?.message || "Invalid or expired verification code");
       }
 
+      const issuedToken: string | null =
+        data.data?.verificationToken || data.verificationToken || null;
+      setVerificationToken(issuedToken);
+      persistResetState({ verificationToken: issuedToken });
       goToStep(3);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Verification failed. Please try again.");
@@ -270,6 +341,12 @@ export function ForgotPasswordWizard({
       setErrorMessage("Confirm password does not match new password.");
       return;
     }
+    if (!recipientDisplay || (!verificationToken && otp.join("").length < 6)) {
+      setErrorMessage(
+        "Your OTP verification session expired or is missing. Please verify your mobile number or email again.",
+      );
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -279,17 +356,28 @@ export function ForgotPasswordWizard({
         body: JSON.stringify({
           recipient: recipientDisplay,
           channel,
-          otp: otp.join(""),
+          ...(verificationToken ? { verificationToken } : { otp: otp.join("") }),
           password,
           confirmPassword,
         }),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to update password");
+      const responseData = await res.json().catch(() => ({}));
+      if (!res.ok || !responseData.success) {
+        const fieldErrors = responseData?.error?.details as Record<string, string[]> | undefined;
+        const firstFieldMessage = fieldErrors
+          ? Object.values(fieldErrors).flat().find(Boolean)
+          : undefined;
+        throw new Error(
+          firstFieldMessage ||
+            responseData?.error?.message ||
+            responseData?.message ||
+            "Failed to update password",
+        );
       }
 
+      clearPersistedResetState();
+      setVerificationToken(null);
       goToStep(4);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to reset password";
@@ -489,7 +577,10 @@ export function ForgotPasswordWizard({
                             value={countryDialCode}
                             onChange={(c) => {
                               setCountryDialCode(c.dialCode);
-                              setPhone(`${c.dialCode} ${phoneDigits}`);
+                              const formattedPhone = phoneDigits.trim().startsWith("+")
+                                ? phoneDigits.trim()
+                                : `${c.dialCode} ${phoneDigits}`.trim();
+                              setPhone(formattedPhone);
                             }}
                           />
                           <div className="relative flex-1">
@@ -499,7 +590,10 @@ export function ForgotPasswordWizard({
                               onChange={(e) => {
                                 const val = e.target.value;
                                 setPhoneDigits(val);
-                                setPhone(`${countryDialCode} ${val}`);
+                                const formattedPhone = val.trim().startsWith("+")
+                                  ? val.trim()
+                                  : `${countryDialCode} ${val}`.trim();
+                                setPhone(formattedPhone);
                               }}
                               placeholder="98765 43210"
                               className="w-full rounded-[12px] border border-[#D6DBF0] bg-white px-3.5 py-3 text-sm font-semibold text-[#08093B] shadow-xs transition focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"

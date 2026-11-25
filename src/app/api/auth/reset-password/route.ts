@@ -4,7 +4,7 @@ import { checkRateLimit } from "@/server/integrations/redis";
 import { toErrorResponse, RateLimitExceededError } from "@/lib/errors";
 import { otpService, OtpChannel } from "@/server/auth/otp-service";
 import { authRepository } from "@/server/auth/auth-repository";
-import { hashPassword } from "@/server/security/crypto";
+import { hashPassword, normalizePhone } from "@/server/security/crypto";
 import { logAuditEvent } from "@/server/security/audit-logger";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,8 @@ const resetPasswordSchema = z
   .object({
     recipient: z.string().min(3, "Recipient required"),
     channel: z.enum(["phone", "email"]).default("phone"),
-    otp: z.string().length(6, "Valid 6-digit verification code required"),
+    verificationToken: z.string().min(16).optional(),
+    otp: z.string().length(6, "Valid 6-digit verification code required").optional(),
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")
@@ -22,10 +23,18 @@ const resetPasswordSchema = z
       .regex(/[0-9]/, "Must contain at least one number"),
     confirmPassword: z.string(),
   })
+  .refine((data) => Boolean(data.verificationToken || data.otp), {
+    message: "Verification proof (token or 6-digit OTP) is required.",
+    path: ["verificationToken"],
+  })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
+
+function normalizeResetIdentifier(raw: string, channel: OtpChannel): string {
+  return channel === "EMAIL" ? raw.trim().toLowerCase() : normalizePhone(raw);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,32 +51,75 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = resetPasswordSchema.parse(body);
 
-    const channel: OtpChannel = data.channel === "email" ? "EMAIL" : "SMS";
+    const channel: OtpChannel =
+      data.channel === "email" || data.recipient.includes("@") ? "EMAIL" : "SMS";
+    const normalizedRecipient = normalizeResetIdentifier(data.recipient, channel);
 
-    // 1. Verify OTP code
-    const verifyResult = await otpService.verifyOtp({
-      identifier: data.recipient,
-      channel,
-      purpose: "PASSWORD_RESET",
-      code: data.otp,
-      ipAddress: ip,
-      userAgent,
-    });
+    let tokenToConsume: string | undefined;
 
-    if (!verifyResult.verified) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            message: verifyResult.message,
-            remainingAttempts: verifyResult.remainingAttempts,
-          },
-        },
-        { status: 400 },
+    // 1. Validate verification proof: prefer the verificationToken issued in Step 2 (/api/auth/otp/verify)
+    //    to avoid re-consuming the already-used 6-digit OTP; also allow direct single-step otp submissions.
+    if (data.verificationToken) {
+      const tokenValidation = await otpService.validateVerificationToken(
+        data.verificationToken,
+        channel,
+        "PASSWORD_RESET",
       );
+
+      if (!tokenValidation.valid || !tokenValidation.identifier) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              message:
+                "Your verification session has expired or was already used. Please request a new OTP.",
+            },
+          },
+          { status: 400 },
+        );
+      }
+
+      const tokenIdentifier = normalizeResetIdentifier(tokenValidation.identifier, channel);
+      if (tokenIdentifier !== normalizedRecipient) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              message: "Verification token does not match the requested mobile number or email.",
+            },
+          },
+          { status: 400 },
+        );
+      }
+
+      tokenToConsume = data.verificationToken;
+    } else if (data.otp) {
+      const verifyResult = await otpService.verifyOtp({
+        identifier: data.recipient,
+        channel,
+        purpose: "PASSWORD_RESET",
+        code: data.otp,
+        ipAddress: ip,
+        userAgent,
+      });
+
+      if (!verifyResult.verified) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              message: verifyResult.message,
+              remainingAttempts: verifyResult.remainingAttempts,
+            },
+          },
+          { status: 400 },
+        );
+      }
+
+      tokenToConsume = verifyResult.verificationToken;
     }
 
-    // 2. Find user
+    // 2. Find user account
     const user = await authRepository.findUserByIdentifier(data.recipient);
     if (!user) {
       return NextResponse.json(
@@ -79,16 +131,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Hash new password and update in repository
+    // 3. Atomically consume the verification token so concurrent or repeated resets cannot replay it
+    if (tokenToConsume) {
+      const consumed = await otpService.consumeVerificationToken(tokenToConsume);
+      if (!consumed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              message: "This password reset verification has already been used. Please request a new OTP.",
+            },
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    // 4. Hash new password, update user record, and revoke existing sessions
     const newHash = await hashPassword(data.password);
     await authRepository.updateUserPassword(user.id, newHash);
+    await authRepository.revokeAllUserSessions(user.id);
 
-    // 4. Log audit event
+    // 5. Log audit event
     await logAuditEvent({
       action: "PASSWORD_RESET_SUCCESS",
       entityType: "User",
       entityId: user.id,
-      details: { identifier: data.recipient, channel },
+      details: { identifier: normalizedRecipient, channel },
       ipAddress: ip,
       userAgent,
     });
