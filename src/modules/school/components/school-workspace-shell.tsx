@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import type { Route } from "next";
 import { useRouter } from "next/navigation";
+import { buildSchoolRoute } from "@/modules/school/utils/shell-props";
+export { buildSchoolRoute };
 import {
   LayoutDashboard,
   Users,
@@ -59,12 +60,6 @@ interface SchoolWorkspaceShellProps {
   noticeCount?: number;
   onOpenSearch?: () => void;
   children: React.ReactNode;
-}
-
-export function buildSchoolRoute(schoolSlug: string, subPath: string = ""): Route {
-  const cleanSlug = encodeURIComponent(schoolSlug);
-  const cleanSub = subPath.replace(/^\/+/, "");
-  return (cleanSub ? `/${cleanSlug}/${cleanSub}` : `/${cleanSlug}`) as Route;
 }
 
 export function SchoolWorkspaceShell({

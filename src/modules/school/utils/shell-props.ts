@@ -1,4 +1,11 @@
+import type { Route } from "next";
 import type { SchoolShellSchool, SchoolShellUser } from "@/modules/school/components/school-workspace-shell";
+
+export function buildSchoolRoute(schoolSlug: string, subPath: string = ""): Route {
+  const cleanSlug = encodeURIComponent(schoolSlug);
+  const cleanSub = subPath.replace(/^\/+/, "");
+  return (cleanSub ? `/${cleanSlug}/${cleanSub}` : `/${cleanSlug}`) as Route;
+}
 
 export function formatAvatarInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);

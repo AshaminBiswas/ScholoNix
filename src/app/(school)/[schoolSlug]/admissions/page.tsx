@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, DatabaseZap } from "lucide-react";
 import { resolveTenantRouteAccess } from "@/server/school/resolve-tenant-route";
 import { admissionsService } from "@/server/school/admissions-service";
 import { hasPermission } from "@/server/authorization/permissions";
-import { buildSchoolShellProps } from "@/modules/school/utils/shell-props";
-import { SchoolWorkspaceShell, buildSchoolRoute } from "@/modules/school/components/school-workspace-shell";
+import { ServiceUnavailableError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { buildSchoolRoute, buildSchoolShellProps } from "@/modules/school/utils/shell-props";
+import { SchoolWorkspaceShell } from "@/modules/school/components/school-workspace-shell";
 import { TenantUnauthorizedView } from "@/modules/school/components/tenant-unauthorized-view";
 import { AdmissionsWorkspace } from "@/modules/school/admissions/components/admissions-workspace";
-import type { AdmissionsTab } from "@/modules/school/admissions/types";
+import type { AdmissionsOverviewData, AdmissionsTab } from "@/modules/school/admissions/types";
 
 export const dynamic = "force-dynamic";
 
@@ -95,14 +97,64 @@ export default async function SchoolAdmissionsPage({
     );
   }
 
-  const initialData = await admissionsService.getOverview({
-    userId: access.session.user.id,
-    userName: access.session.user.name,
-    role: access.session.user.role,
-    schoolId: access.school.id,
-    schoolSlug: access.school.slug,
-    schoolName: access.school.name,
-  });
+  let initialData: AdmissionsOverviewData | null = null;
+  let loadErrorMessage: string | null = null;
+
+  try {
+    initialData = await admissionsService.getOverview({
+      userId: access.session.user.id,
+      userName: access.session.user.name,
+      role: access.session.user.role,
+      schoolId: access.school.id,
+      schoolSlug: access.school.slug,
+      schoolName: access.school.name,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Admissions service unavailable.";
+    logger.error(
+      { schoolId: access.school.id, error: message },
+      "[SchoolAdmissionsPage] Failed to load admissions overview",
+    );
+    loadErrorMessage =
+      err instanceof ServiceUnavailableError
+        ? err.message
+        : "Unable to load admissions data right now. Please try again shortly.";
+  }
+
+  if (!initialData) {
+    return (
+      <SchoolWorkspaceShell
+        school={school}
+        user={user}
+        activeNav="admissions"
+        activeAdmissionsTab={activeTab}
+      >
+        <div className="mx-auto max-w-xl rounded-[22px] border border-amber-200 bg-white p-8 text-center shadow-xs space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+            <DatabaseZap className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <h1 className="text-lg font-extrabold text-[#08093B]">
+            Admissions Setup Pending Database Migration
+          </h1>
+          <p className="text-xs text-[#4D5072] leading-relaxed">{loadErrorMessage}</p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+            <Link
+              href={buildSchoolRoute(school.slug, "admissions")}
+              className="inline-flex items-center justify-center rounded-[12px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white hover:bg-[#4F27E8]"
+            >
+              Retry Loading Admissions
+            </Link>
+            <Link
+              href={buildSchoolRoute(school.slug)}
+              className="inline-flex items-center justify-center rounded-[12px] border border-[#D6DBF0] bg-white px-4 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6]"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </SchoolWorkspaceShell>
+    );
+  }
 
   return (
     <AdmissionsWorkspace

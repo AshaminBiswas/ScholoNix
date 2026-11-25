@@ -142,6 +142,11 @@ async function canUsePrisma(): Promise<boolean> {
   if (!process.env.DATABASE_URL?.trim()) {
     return false;
   }
+  // In serverless production, always fail fast cleanly via handlePrismaError rather than
+  // silently degrading to ephemeral read-only local disk storage.
+  if (isServerlessRuntime()) {
+    return true;
+  }
   const unavailableUntil = globalForAdmissionsRepo.admissionsRepoPrismaUnavailableUntil || 0;
   return unavailableUntil <= Date.now();
 }
@@ -203,8 +208,13 @@ function handlePrismaError(operation: string, err: unknown): void {
   }
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function setTransactionTenantContext(tx: any, schoolId: string): Promise<void> {
-  await tx.$executeRaw`SELECT set_config('app.current_school_id', ${schoolId}, true)`;
+  if (!UUID_REGEX.test(schoolId)) {
+    return;
+  }
+  await tx.$queryRaw`SELECT set_config('app.current_school_id', ${schoolId}, true)`;
 }
 
 function cloneDefaultChecklist(): AdmissionDocumentChecklistItem[] {
@@ -356,26 +366,24 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("getTenantSnapshot", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const [settingRow, appRows, enqRows, reminderRows, activityRows] = await Promise.all([
-              tx.admissionSetting.findUnique({ where: { schoolId } }),
-              tx.admissionApplication.findMany({
-                where: { schoolId },
-                orderBy: { appliedAt: "desc" },
-              }),
-              tx.admissionEnquiry.findMany({
-                where: { schoolId },
-                orderBy: { createdAt: "desc" },
-              }),
-              tx.admissionReminder.findMany({
-                where: { schoolId },
-                orderBy: { createdAt: "desc" },
-              }),
-              tx.admissionActivity.findMany({
-                where: { schoolId },
-                orderBy: { createdAt: "desc" },
-                take: 30,
-              }),
-            ]);
+            const settingRow = await tx.admissionSetting.findUnique({ where: { schoolId } });
+            const appRows = await tx.admissionApplication.findMany({
+              where: { schoolId },
+              orderBy: { appliedAt: "desc" },
+            });
+            const enqRows = await tx.admissionEnquiry.findMany({
+              where: { schoolId },
+              orderBy: { createdAt: "desc" },
+            });
+            const reminderRows = await tx.admissionReminder.findMany({
+              where: { schoolId },
+              orderBy: { createdAt: "desc" },
+            });
+            const activityRows = await tx.admissionActivity.findMany({
+              where: { schoolId },
+              orderBy: { createdAt: "desc" },
+              take: 30,
+            });
 
             const settings: AdmissionSettingRecord = settingRow
               ? mapPrismaSetting(settingRow)
