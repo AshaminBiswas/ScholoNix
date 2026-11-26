@@ -54,6 +54,7 @@ const DEFAULT_FILTERS: AdmissionsOverviewFilters = {
 async function invalidateTenantCaches(schoolId: string, actorId: string): Promise<void> {
   await Promise.all([
     tenantCache.del(schoolId, `dashboard:v1:${actorId}`),
+    admissionsRepository.invalidateTenantSnapshotCache(schoolId),
     tenantCache.del(schoolId, `admissions:ver`),
   ]);
 }
@@ -345,14 +346,23 @@ export const admissionsService = {
     isCompleted: boolean,
   ): Promise<AdmissionReminderRecord> {
     authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
-    return runScoped(ctx, () =>
-      admissionsRepository.toggleReminder(ctx.schoolId, reminderId, isCompleted),
-    );
+    return runScoped(ctx, async () => {
+      const updated = await admissionsRepository.toggleReminder(
+        ctx.schoolId,
+        reminderId,
+        isCompleted,
+      );
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      return updated;
+    });
   },
 
   async deleteReminder(ctx: AdmissionsActorContext, reminderId: string): Promise<void> {
     authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
-    return runScoped(ctx, () => admissionsRepository.deleteReminder(ctx.schoolId, reminderId));
+    return runScoped(ctx, async () => {
+      await admissionsRepository.deleteReminder(ctx.schoolId, reminderId);
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+    });
   },
 
   async exportApplicationsCsv(

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as React from "react";
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AdmissionsWorkspace } from "@/modules/school/admissions/components/admissions-workspace";
 import { DEFAULT_ADMISSION_GRADES, type AdmissionsOverviewData } from "@/modules/school/admissions/types";
@@ -14,6 +14,10 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   const school = {
     id: "11111111-1111-1111-1111-111111111111",
     name: "Synthetic Horizon School",
@@ -140,5 +144,36 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
 
     expect(screen.getByText("New Admission Application")).toBeTruthy();
     expect(screen.getByLabelText(/Student Name/i)).toBeTruthy();
+  });
+
+  it("switches tabs instantaneously via left sidebar Admissions dropdown links without refetching", async () => {
+    const actor = userEvent.setup();
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    render(
+      <AdmissionsWorkspace
+        school={school}
+        user={user}
+        initialData={emptyOverview}
+        initialTab="overview"
+      />,
+    );
+
+    // Submenu is open automatically while on admissions routes
+    await actor.click(screen.getByRole("link", { name: "Enquiries" }));
+    expect(screen.getByText(/No enquiries recorded yet/i)).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Enquiries" }).getAttribute("aria-selected")).toBe("true");
+
+    await actor.click(screen.getByRole("link", { name: "Admitted Students" }));
+    expect(screen.getByText(/No admitted students yet/i)).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Admitted Students" }).getAttribute("aria-selected")).toBe("true");
+
+    await actor.click(screen.getByRole("link", { name: "Admission Settings" }));
+    expect(screen.getByRole("heading", { name: "Admission Settings" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Settings" }).getAttribute("aria-selected")).toBe("true");
+
+    // Client-side instant switching must not issue slow network round-trips
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 });

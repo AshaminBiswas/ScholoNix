@@ -5,6 +5,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { db } from "@/server/database/client";
 import { BaseTenantRepository } from "@/server/repositories/base-tenant-repository";
+import { tenantCache } from "@/server/integrations/redis";
 import { ConflictError, NotFoundError, ServiceUnavailableError, TenantNotFoundError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import {
@@ -326,6 +327,33 @@ export interface ActorMeta {
   name: string;
 }
 
+export const ADMISSIONS_SNAPSHOT_CACHE_KEY = "admissions:snapshot:v1";
+const ADMISSIONS_SNAPSHOT_TTL_SECONDS = 60;
+
+export interface TenantAdmissionsSnapshot {
+  settings: AdmissionSettingRecord;
+  applications: AdmissionApplicationRecord[];
+  enquiries: AdmissionEnquiryRecord[];
+  reminders: AdmissionReminderRecord[];
+  activities: AdmissionActivityRecord[];
+}
+
+function isValidCachedSnapshot(
+  cached: unknown,
+  expectedSchoolId: string,
+): cached is TenantAdmissionsSnapshot {
+  if (!cached || typeof cached !== "object") return false;
+  const s = cached as Partial<TenantAdmissionsSnapshot>;
+  return Boolean(
+    s.settings &&
+      s.settings.schoolId === expectedSchoolId &&
+      Array.isArray(s.applications) &&
+      Array.isArray(s.enquiries) &&
+      Array.isArray(s.reminders) &&
+      Array.isArray(s.activities),
+  );
+}
+
 class AdmissionsTenantRepository extends BaseTenantRepository {
   private requireSchoolId(explicitSchoolId?: string): string {
     const sid = this.getSchoolId(explicitSchoolId);
@@ -333,6 +361,11 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
       throw new TenantNotFoundError("School tenant identifier is required.");
     }
     return sid.trim();
+  }
+
+  async invalidateTenantSnapshotCache(explicitSchoolId?: string): Promise<void> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    await tenantCache.del(schoolId, ADMISSIONS_SNAPSHOT_CACHE_KEY);
   }
 
   private getOrCreateFallbackSetting(store: AdmissionsStoreState, schoolId: string): StoredSetting {
@@ -352,18 +385,20 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     return store.settings[schoolId]!;
   }
 
-  async getTenantSnapshot(explicitSchoolId: string): Promise<{
-    settings: AdmissionSettingRecord;
-    applications: AdmissionApplicationRecord[];
-    enquiries: AdmissionEnquiryRecord[];
-    reminders: AdmissionReminderRecord[];
-    activities: AdmissionActivityRecord[];
-  }> {
+  async getTenantSnapshot(explicitSchoolId: string): Promise<TenantAdmissionsSnapshot> {
     const schoolId = this.requireSchoolId(explicitSchoolId);
+
+    const cached = await tenantCache.get<TenantAdmissionsSnapshot>(
+      schoolId,
+      ADMISSIONS_SNAPSHOT_CACHE_KEY,
+    );
+    if (isValidCachedSnapshot(cached, schoolId)) {
+      return cached;
+    }
 
     if (await canUsePrisma()) {
       try {
-        return await runPrismaOp("getTenantSnapshot", async () => {
+        const fresh = await runPrismaOp("getTenantSnapshot", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
             const settingRow = await tx.admissionSetting.findUnique({ where: { schoolId } });
@@ -405,6 +440,14 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
             };
           });
         });
+
+        await tenantCache.set(
+          schoolId,
+          ADMISSIONS_SNAPSHOT_CACHE_KEY,
+          fresh,
+          ADMISSIONS_SNAPSHOT_TTL_SECONDS,
+        );
+        return fresh;
       } catch (err) {
         handlePrismaError("getTenantSnapshot", err);
       }
@@ -422,13 +465,20 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     void _e;
     void _adm;
 
-    return {
+    const fallbackSnapshot: TenantAdmissionsSnapshot = {
       settings: publicSettings,
       applications: Object.values(store.applications).filter((r) => r.schoolId === schoolId),
       enquiries: Object.values(store.enquiries).filter((r) => r.schoolId === schoolId),
       reminders: Object.values(store.reminders).filter((r) => r.schoolId === schoolId),
       activities: store.activities.filter((a) => a.schoolId === schoolId).slice(0, 30),
     };
+    await tenantCache.set(
+      schoolId,
+      ADMISSIONS_SNAPSHOT_CACHE_KEY,
+      fallbackSnapshot,
+      ADMISSIONS_SNAPSHOT_TTL_SECONDS,
+    );
+    return fallbackSnapshot;
   }
 
   async createApplication(

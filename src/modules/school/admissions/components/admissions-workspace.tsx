@@ -193,14 +193,14 @@ export function AdmissionsWorkspace({
     setFeedbackBanner({ type, text });
   };
 
-  const handleTabSelect = (tab: AdmissionsTab) => {
+  const handleTabSelect = useCallback((tab: AdmissionsTab) => {
     setActiveTab(tab);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("tab", tab);
       window.history.replaceState({}, "", url.toString());
     }
-  };
+  }, []);
 
   const handleDownloadReport = () => {
     const qs = buildFilterQueryString(filters, school.slug);
@@ -409,9 +409,10 @@ export function AdmissionsWorkspace({
       user={user}
       activeNav="admissions"
       activeAdmissionsTab={activeTab}
+      onSelectAdmissionsTab={handleTabSelect}
       noticeCount={data.reminders.length}
       onOpenSearch={() => {
-        setActiveTab("applications");
+        handleTabSelect("applications");
       }}
     >
       {/* Breadcrumb & Page Header */}

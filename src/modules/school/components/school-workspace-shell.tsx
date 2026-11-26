@@ -57,6 +57,7 @@ interface SchoolWorkspaceShellProps {
   user: SchoolShellUser;
   activeNav: "dashboard" | "admissions" | "help";
   activeAdmissionsTab?: AdmissionsTab;
+  onSelectAdmissionsTab?: (tab: AdmissionsTab) => void;
   noticeCount?: number;
   onOpenSearch?: () => void;
   children: React.ReactNode;
@@ -67,6 +68,7 @@ export function SchoolWorkspaceShell({
   user,
   activeNav,
   activeAdmissionsTab,
+  onSelectAdmissionsTab,
   noticeCount = 0,
   onOpenSearch,
   children,
@@ -432,7 +434,22 @@ export function SchoolWorkspaceShell({
                         <Link
                           key={subItem.tab}
                           href={buildSchoolRoute(school.slug, `admissions?tab=${subItem.tab}`)}
-                          onClick={() => setMobileSidebarOpen(false)}
+                          prefetch={true}
+                          onClick={(e) => {
+                            setMobileSidebarOpen(false);
+                            if (
+                              activeNav === "admissions" &&
+                              onSelectAdmissionsTab &&
+                              !e.metaKey &&
+                              !e.ctrlKey &&
+                              !e.shiftKey &&
+                              !e.altKey &&
+                              e.button === 0
+                            ) {
+                              e.preventDefault();
+                              onSelectAdmissionsTab(subItem.tab);
+                            }
+                          }}
                           className={`flex w-full items-center rounded-[8px] border-l-2 px-2.5 py-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
                             isSubActive
                               ? "border-[#663CF6] bg-white font-bold text-[#663CF6] shadow-2xs"

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as React from "react";
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SchoolWorkspaceShell } from "@/modules/school/components/school-workspace-shell";
 
@@ -13,6 +13,10 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("SchoolWorkspaceShell single-tenant & in-portal help links", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   const school = {
     id: "11111111-1111-1111-1111-111111111111",
     name: "Synthetic Demo Academy",
@@ -131,5 +135,29 @@ describe("SchoolWorkspaceShell single-tenant & in-portal help links", () => {
     await userActor.click(admissionsBtn);
     expect(admissionsBtn.getAttribute("aria-expanded")).toBe("false");
     expect(document.querySelector("#admissions-submenu")).toBeNull();
+  });
+
+  it("switches Admissions tabs client-side without full navigation when onSelectAdmissionsTab is provided", async () => {
+    const userActor = userEvent.setup();
+    const onSelectAdmissionsTab = vi.fn();
+
+    render(
+      <SchoolWorkspaceShell
+        school={school}
+        user={user}
+        activeNav="admissions"
+        activeAdmissionsTab="overview"
+        onSelectAdmissionsTab={onSelectAdmissionsTab}
+      >
+        <div>Admissions Body</div>
+      </SchoolWorkspaceShell>,
+    );
+
+    const applicationsLink = screen.getByRole("link", { name: "Applications" });
+    await userActor.click(applicationsLink);
+    expect(onSelectAdmissionsTab).toHaveBeenCalledWith("applications");
+
+    await userActor.click(screen.getByRole("link", { name: "Admission Settings" }));
+    expect(onSelectAdmissionsTab).toHaveBeenCalledWith("settings");
   });
 });
