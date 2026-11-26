@@ -27,6 +27,7 @@ import { AtmosphericBackground } from "@/components/ui/atmospheric-background";
 import { SchoolIllustration } from "@/modules/schools/components/school-illustration";
 import { CountryCodeSelect } from "@/components/ui/country-code-select";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export type ForgotPasswordStep = 1 | 2 | 3 | 4;
 export type ResetChannel = "phone" | "email";
@@ -498,12 +499,17 @@ export function ForgotPasswordWizard({
   }[step];
 
   return (
-    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45] flex flex-col justify-between">
+    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45] flex flex-col justify-between dark:text-[#DCE1F9]">
       {/* Background Aurora & Wave Effect */}
       <AtmosphericBackground />
 
+      {/* Top Utility Bar */}
+      <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-end px-4 pt-4 sm:px-6 lg:px-8">
+        <ThemeToggle />
+      </div>
+
       {/* Main Two-Column Layout */}
-      <main className="relative z-10 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 flex-1 flex items-center">
+      <main className="relative z-10 mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8 flex-1 flex items-center">
         <div className="w-full grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-14">
           {/* =========================================================================
               LEFT COLUMN: Vector School Illustration & Badges
@@ -515,10 +521,10 @@ export function ForgotPasswordWizard({
 
             {/* Step Heading & Subtitle */}
             <div className="space-y-2.5 max-w-md">
-              <h1 className="text-3xl font-extrabold tracking-tight text-[#08093B] sm:text-4xl lg:text-5xl leading-tight">
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#08093B] sm:text-4xl lg:text-5xl leading-tight dark:text-[#F3F5FF]">
                 {leftContent.headline}
               </h1>
-              <p className="text-sm sm:text-base leading-relaxed text-[#4D5072] font-medium">
+              <p className="text-sm sm:text-base leading-relaxed text-[#4D5072] font-medium dark:text-[#9DA6CC]">
                 {leftContent.subtitle}
               </p>
             </div>
@@ -531,31 +537,31 @@ export function ForgotPasswordWizard({
             {/* Three Security & Convenience Value Badges */}
             <div className="grid grid-cols-3 gap-3 w-full max-w-md pt-2">
               {/* Badge 1: Shield */}
-              <div className="flex flex-col items-center text-center p-2 rounded-[14px] bg-white/70 border border-[#E2E8F0] shadow-xs backdrop-blur-xs transition-transform hover:-translate-y-1">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] text-[#5824EE] ring-1 ring-[#D4C4FE] mb-2 shadow-xs">
+              <div className="flex flex-col items-center text-center p-2 rounded-[14px] bg-white/70 border border-[#E2E8F0] shadow-xs backdrop-blur-xs transition-transform hover:-translate-y-1 dark:bg-[#141731]/80 dark:border-[#272B4D]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] text-[#5824EE] ring-1 ring-[#D4C4FE] mb-2 shadow-xs dark:bg-[#251D4A] dark:text-[#CBB8FF] dark:ring-[#4A3B8F]">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
-                <span className="text-[11px] font-bold text-[#08093B] leading-tight">
+                <span className="text-[11px] font-bold text-[#08093B] leading-tight dark:text-[#F3F5FF]">
                   {leftContent.badge1}
                 </span>
               </div>
 
               {/* Badge 2: Quick & Easy */}
-              <div className="flex flex-col items-center text-center p-2 rounded-[14px] bg-white/70 border border-[#E2E8F0] shadow-xs backdrop-blur-xs transition-transform hover:-translate-y-1">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] text-[#5824EE] ring-1 ring-[#D4C4FE] mb-2 shadow-xs">
+              <div className="flex flex-col items-center text-center p-2 rounded-[14px] bg-white/70 border border-[#E2E8F0] shadow-xs backdrop-blur-xs transition-transform hover:-translate-y-1 dark:bg-[#141731]/80 dark:border-[#272B4D]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] text-[#5824EE] ring-1 ring-[#D4C4FE] mb-2 shadow-xs dark:bg-[#251D4A] dark:text-[#CBB8FF] dark:ring-[#4A3B8F]">
                   <Zap className="h-5 w-5 fill-[#5824EE]/20" />
                 </div>
-                <span className="text-[11px] font-bold text-[#08093B] leading-tight">
+                <span className="text-[11px] font-bold text-[#08093B] leading-tight dark:text-[#F3F5FF]">
                   {leftContent.badge2}
                 </span>
               </div>
 
               {/* Badge 3: Keep Safe */}
-              <div className="flex flex-col items-center text-center p-2 rounded-[14px] bg-white/70 border border-[#E2E8F0] shadow-xs backdrop-blur-xs transition-transform hover:-translate-y-1">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] text-[#5824EE] ring-1 ring-[#D4C4FE] mb-2 shadow-xs">
+              <div className="flex flex-col items-center text-center p-2 rounded-[14px] bg-white/70 border border-[#E2E8F0] shadow-xs backdrop-blur-xs transition-transform hover:-translate-y-1 dark:bg-[#141731]/80 dark:border-[#272B4D]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] text-[#5824EE] ring-1 ring-[#D4C4FE] mb-2 shadow-xs dark:bg-[#251D4A] dark:text-[#CBB8FF] dark:ring-[#4A3B8F]">
                   <Lock className="h-5 w-5" />
                 </div>
-                <span className="text-[11px] font-bold text-[#08093B] leading-tight">
+                <span className="text-[11px] font-bold text-[#08093B] leading-tight dark:text-[#F3F5FF]">
                   {leftContent.badge3}
                 </span>
               </div>
@@ -566,7 +572,7 @@ export function ForgotPasswordWizard({
               RIGHT COLUMN: Interactive Step Form Card
               ========================================================================= */}
           <div className="order-1 lg:order-2 lg:col-span-6 w-full flex justify-center">
-            <div className="w-full max-w-lg rounded-[24px] border border-[#D6DBF0] bg-white/95 p-6 sm:p-8 shadow-[0_20px_50px_rgba(79,39,232,0.12)] backdrop-blur-md">
+            <div className="w-full max-w-lg rounded-[24px] border border-[#D6DBF0] bg-white/95 p-6 sm:p-8 shadow-[0_20px_50px_rgba(79,39,232,0.12)] backdrop-blur-md dark:border-[#2C325B] dark:bg-[#141731]/95 dark:shadow-[0_24px_56px_rgba(3,5,18,0.65)]">
               {/* Card Header Branding */}
               <div className="flex items-center justify-center mb-4">
                 <BrandLogo variant="full" className="h-7 sm:h-8" asLink={false} />
@@ -577,7 +583,7 @@ export function ForgotPasswordWizard({
                 <div
                   role="alert"
                   aria-live="assertive"
-                  className="mb-4 flex flex-col gap-2 rounded-[12px] border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600 animate-in fade-in"
+                  className="mb-4 flex flex-col gap-2 rounded-[12px] border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600 animate-in fade-in dark:border-red-800 dark:bg-red-950/50 dark:text-red-300"
                 >
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 shrink-0" />
@@ -587,7 +593,7 @@ export function ForgotPasswordWizard({
                     <button
                       type="button"
                       onClick={() => goToStep(1)}
-                      className="self-start rounded-lg border border-red-300 bg-white px-2.5 py-1 text-[11px] font-bold text-red-700 hover:bg-red-100 transition"
+                      className="self-start rounded-lg border border-red-300 bg-white px-2.5 py-1 text-[11px] font-bold text-red-700 hover:bg-red-100 transition dark:border-red-700 dark:bg-[#1A1020] dark:text-red-300 dark:hover:bg-red-950/70"
                     >
                       Request a New OTP
                     </button>
@@ -600,9 +606,9 @@ export function ForgotPasswordWizard({
                 <div
                   role="status"
                   aria-live="polite"
-                  className="mb-4 flex items-center gap-2 rounded-[12px] border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-700 animate-in fade-in"
+                  className="mb-4 flex items-center gap-2 rounded-[12px] border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-700 animate-in fade-in dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
                 >
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <span>{resendNotice}</span>
                 </div>
               )}
@@ -613,16 +619,16 @@ export function ForgotPasswordWizard({
               {step === 1 && (
                 <div>
                   <div className="text-center mb-6">
-                    <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] sm:text-3xl">
+                    <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] sm:text-3xl dark:text-[#F3F5FF]">
                       Forgot Password
                     </h2>
-                    <p className="mt-1.5 text-xs sm:text-sm font-medium text-[#4D5072]">
+                    <p className="mt-1.5 text-xs sm:text-sm font-medium text-[#4D5072] dark:text-[#9DA6CC]">
                       Reset your account password in a few simple steps.
                     </p>
                   </div>
 
                   {/* Channel Toggle Tabs */}
-                  <div className="grid grid-cols-2 p-1 rounded-[14px] bg-[#F1F3F9] border border-[#E2E8F0] mb-5">
+                  <div className="grid grid-cols-2 p-1 rounded-[14px] bg-[#F1F3F9] border border-[#E2E8F0] mb-5 dark:bg-[#0E1126] dark:border-[#262B4D]">
                     <button
                       type="button"
                       onClick={() => {
@@ -634,7 +640,7 @@ export function ForgotPasswordWizard({
                         "flex items-center justify-center gap-2 py-2.5 rounded-[10px] text-xs font-bold transition-all",
                         channel === "phone"
                           ? "bg-gradient-to-r from-[#663CF6] to-[#4F27E8] text-white shadow-sm"
-                          : "text-[#4D5072] hover:text-[#08093B]",
+                          : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]",
                       )}
                     >
                       <Smartphone className="h-4 w-4" />
@@ -651,7 +657,7 @@ export function ForgotPasswordWizard({
                         "flex items-center justify-center gap-2 py-2.5 rounded-[10px] text-xs font-bold transition-all",
                         channel === "email"
                           ? "bg-gradient-to-r from-[#663CF6] to-[#4F27E8] text-white shadow-sm"
-                          : "text-[#4D5072] hover:text-[#08093B]",
+                          : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]",
                       )}
                     >
                       <Mail className="h-4 w-4" />
@@ -665,7 +671,7 @@ export function ForgotPasswordWizard({
                       <div>
                         <label
                           htmlFor="forgot-password-phone-input"
-                          className="block text-xs font-bold text-[#08093B] mb-1.5"
+                          className="block text-xs font-bold text-[#08093B] mb-1.5 dark:text-[#F3F5FF]"
                         >
                           Mobile Number <span className="text-red-500">*</span>
                         </label>
@@ -695,7 +701,7 @@ export function ForgotPasswordWizard({
                                 setPhone(formattedPhone);
                               }}
                               placeholder="98765 43210"
-                              className="w-full rounded-[12px] border border-[#D6DBF0] bg-white px-3.5 py-3 text-sm font-semibold text-[#08093B] shadow-xs transition focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
+                              className="w-full rounded-[12px] border border-[#D6DBF0] bg-white px-3.5 py-3 text-sm font-semibold text-[#08093B] shadow-xs transition focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20 dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD]"
                             />
                           </div>
                         </div>
@@ -704,12 +710,12 @@ export function ForgotPasswordWizard({
                       <div>
                         <label
                           htmlFor="forgot-password-email-input"
-                          className="block text-xs font-bold text-[#08093B] mb-1.5"
+                          className="block text-xs font-bold text-[#08093B] mb-1.5 dark:text-[#F3F5FF]"
                         >
                           Email Address <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
-                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C]" />
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C] dark:text-[#9DA6CC]" />
                           <input
                             id="forgot-password-email-input"
                             type="email"
@@ -717,7 +723,7 @@ export function ForgotPasswordWizard({
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="principal@sunriseis.edu.in"
-                            className="w-full rounded-[12px] border border-[#D6DBF0] bg-white pl-10 pr-3.5 py-3 text-sm font-semibold text-[#08093B] shadow-xs transition focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
+                            className="w-full rounded-[12px] border border-[#D6DBF0] bg-white pl-10 pr-3.5 py-3 text-sm font-semibold text-[#08093B] shadow-xs transition focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20 dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD]"
                           />
                         </div>
                       </div>
@@ -737,9 +743,9 @@ export function ForgotPasswordWizard({
                     {/* Divider with 'or' */}
                     <div className="relative flex items-center justify-center my-4">
                       <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-[#DFE3F5]" />
+                        <div className="w-full border-t border-[#DFE3F5] dark:border-[#262B4D]" />
                       </div>
-                      <span className="relative bg-white px-3 text-xs font-semibold text-[#76799C]">
+                      <span className="relative bg-white px-3 text-xs font-semibold text-[#76799C] dark:bg-[#141731] dark:text-[#9DA6CC]">
                         or
                       </span>
                     </div>
@@ -747,7 +753,7 @@ export function ForgotPasswordWizard({
                     {/* Secondary Action: Back to Login */}
                     <Link
                       href="/login"
-                      className="flex items-center justify-center gap-2 w-full rounded-[14px] border-[1.5px] border-[#D6DBF0] bg-white py-3 text-sm font-bold text-[#4F27E8] hover:border-[#4F27E8] hover:bg-[#F7F4FF] transition-all"
+                      className="flex items-center justify-center gap-2 w-full rounded-[14px] border-[1.5px] border-[#D6DBF0] bg-white py-3 text-sm font-bold text-[#4F27E8] hover:border-[#4F27E8] hover:bg-[#F7F4FF] transition-all dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C4B5FD] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1E2245]"
                     >
                       <ArrowLeft className="h-4 w-4" />
                       <span>Back to Login</span>
@@ -755,15 +761,15 @@ export function ForgotPasswordWizard({
                   </form>
 
                   {/* Security Trust Callout */}
-                  <div className="mt-6 flex items-start gap-3 rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFF] p-3.5">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#5824EE]">
+                  <div className="mt-6 flex items-start gap-3 rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFF] p-3.5 dark:border-[#2E2A5C] dark:bg-[#10142C]">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#5824EE] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                       <ShieldCheck className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-[#08093B]">
+                      <div className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
                         Your data is secure
                       </div>
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-[#4D5072]">
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-[#4D5072] dark:text-[#9DA6CC]">
                         We use OTP verification to ensure only you can reset your password.
                       </p>
                     </div>
@@ -777,12 +783,12 @@ export function ForgotPasswordWizard({
               {step === 2 && (
                 <div>
                   <div className="text-center mb-6">
-                    <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] sm:text-3xl">
+                    <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] sm:text-3xl dark:text-[#F3F5FF]">
                       Verify OTP
                     </h2>
-                    <p className="mt-1.5 text-xs sm:text-sm font-medium text-[#4D5072]">
+                    <p className="mt-1.5 text-xs sm:text-sm font-medium text-[#4D5072] dark:text-[#9DA6CC]">
                       We&apos;ve sent a 6-digit OTP to{" "}
-                      <span className="font-bold text-[#08093B]">{recipientDisplay}</span>.
+                      <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">{recipientDisplay}</span>.
                     </p>
                   </div>
 
@@ -804,20 +810,20 @@ export function ForgotPasswordWizard({
                           onPaste={handleOtpPaste}
                           aria-label={`Digit ${index + 1}`}
                           className={cn(
-                            "h-11 sm:h-13 w-10 sm:w-12 flex-1 min-w-0 max-w-[48px] text-center text-lg sm:text-xl font-black text-[#08093B] rounded-[12px] border bg-white shadow-xs transition-all outline-none",
+                            "h-11 sm:h-13 w-10 sm:w-12 flex-1 min-w-0 max-w-[48px] text-center text-lg sm:text-xl font-black text-[#08093B] rounded-[12px] border bg-white shadow-xs transition-all outline-none dark:bg-[#10142C] dark:text-[#F3F5FF]",
                             digit
-                              ? "border-[#663CF6] ring-2 ring-[#663CF6]/20"
-                              : "border-[#D6DBF0] focus:border-[#663CF6] focus:ring-2 focus:ring-[#663CF6]/20",
+                              ? "border-[#663CF6] ring-2 ring-[#663CF6]/20 dark:border-[#8B5CF6] dark:ring-[#8B5CF6]/30"
+                              : "border-[#D6DBF0] focus:border-[#663CF6] focus:ring-2 focus:ring-[#663CF6]/20 dark:border-[#343B6B] dark:focus:border-[#8B5CF6] dark:focus:ring-[#8B5CF6]/30",
                           )}
                         />
                       ))}
                     </div>
 
                     {/* Resend Countdown Timer */}
-                    <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[#4D5072]">
-                      <Clock className="h-3.5 w-3.5 text-[#663CF6]" />
+                    <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[#4D5072] dark:text-[#9DA6CC]">
+                      <Clock className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" />
                       {isLoading ? (
-                        <span className="inline-flex items-center gap-1 text-[#663CF6]">
+                        <span className="inline-flex items-center gap-1 text-[#663CF6] dark:text-[#A78BFA]">
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           <span>Sending code...</span>
                         </span>
@@ -831,7 +837,7 @@ export function ForgotPasswordWizard({
                           type="button"
                           onClick={handleResendOtp}
                           disabled={isLoading}
-                          className="text-[#663CF6] font-bold hover:underline"
+                          className="text-[#663CF6] font-bold hover:underline dark:text-[#A78BFA]"
                         >
                           Resend OTP
                         </button>
@@ -843,7 +849,7 @@ export function ForgotPasswordWizard({
                       <button
                         type="button"
                         onClick={() => goToStep(1)}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] hover:underline"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] hover:underline dark:text-[#A78BFA]"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                         <span>Change Verification Method</span>
@@ -865,7 +871,7 @@ export function ForgotPasswordWizard({
                     <button
                       type="button"
                       onClick={() => goToStep(1)}
-                      className="flex items-center justify-center gap-2 w-full rounded-[14px] border-[1.5px] border-[#D6DBF0] bg-white py-3 text-sm font-bold text-[#4F27E8] hover:border-[#4F27E8] hover:bg-[#F7F4FF] transition-all"
+                      className="flex items-center justify-center gap-2 w-full rounded-[14px] border-[1.5px] border-[#D6DBF0] bg-white py-3 text-sm font-bold text-[#4F27E8] hover:border-[#4F27E8] hover:bg-[#F7F4FF] transition-all dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C4B5FD] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1E2245]"
                     >
                       <ArrowLeft className="h-4 w-4" />
                       <span>Back</span>
@@ -873,15 +879,15 @@ export function ForgotPasswordWizard({
                   </form>
 
                   {/* Security Trust Callout */}
-                  <div className="mt-6 flex items-start gap-3 rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFF] p-3.5">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#5824EE]">
+                  <div className="mt-6 flex items-start gap-3 rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFF] p-3.5 dark:border-[#2E2A5C] dark:bg-[#10142C]">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#5824EE] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                       <ShieldCheck className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-[#08093B]">
+                      <div className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
                         Your data is secure
                       </div>
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-[#4D5072]">
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-[#4D5072] dark:text-[#9DA6CC]">
                         We use OTP verification to ensure only you can access your account.
                       </p>
                     </div>
@@ -895,10 +901,10 @@ export function ForgotPasswordWizard({
               {step === 3 && (
                 <div>
                   <div className="text-center mb-6">
-                    <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] sm:text-3xl">
+                    <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] sm:text-3xl dark:text-[#F3F5FF]">
                       Create New Password
                     </h2>
-                    <p className="mt-1.5 text-xs sm:text-sm font-medium text-[#4D5072]">
+                    <p className="mt-1.5 text-xs sm:text-sm font-medium text-[#4D5072] dark:text-[#9DA6CC]">
                       Your account is verified. Now set a new password.
                     </p>
                   </div>
@@ -919,12 +925,12 @@ export function ForgotPasswordWizard({
                     <div>
                       <label
                         htmlFor="new-password-input"
-                        className="block text-xs font-bold text-[#08093B] mb-1.5"
+                        className="block text-xs font-bold text-[#08093B] mb-1.5 dark:text-[#F3F5FF]"
                       >
                         New Password <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C]" />
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C] dark:text-[#9DA6CC]" />
                         <input
                           id="new-password-input"
                           name="newPassword"
@@ -933,12 +939,12 @@ export function ForgotPasswordWizard({
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Enter new password"
-                          className="w-full rounded-[12px] border border-[#D6DBF0] bg-white pl-10 pr-10 py-3 text-sm font-semibold text-[#08093B] shadow-xs transition focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
+                          className="w-full rounded-[12px] border border-[#D6DBF0] bg-white pl-10 pr-10 py-3 text-sm font-semibold text-[#08093B] shadow-xs transition focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20 dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD]"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#76799C] hover:text-[#08093B]"
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#76799C] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
                           aria-label="Toggle password visibility"
                         >
                           {showPassword ? (
@@ -954,12 +960,12 @@ export function ForgotPasswordWizard({
                     <div>
                       <label
                         htmlFor="confirm-new-password-input"
-                        className="block text-xs font-bold text-[#08093B] mb-1.5"
+                        className="block text-xs font-bold text-[#08093B] mb-1.5 dark:text-[#F3F5FF]"
                       >
                         Confirm New Password <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C]" />
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C] dark:text-[#9DA6CC]" />
                         <input
                           id="confirm-new-password-input"
                           name="confirmNewPassword"
@@ -968,12 +974,12 @@ export function ForgotPasswordWizard({
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="Confirm new password"
-                          className="w-full rounded-[12px] border border-[#D6DBF0] bg-white pl-10 pr-10 py-3 text-sm font-semibold text-[#08093B] shadow-xs transition focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
+                          className="w-full rounded-[12px] border border-[#D6DBF0] bg-white pl-10 pr-10 py-3 text-sm font-semibold text-[#08093B] shadow-xs transition focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20 dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD]"
                         />
                         <button
                           type="button"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#76799C] hover:text-[#08093B]"
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#76799C] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
                           aria-label="Toggle confirm password visibility"
                         >
                           {showConfirmPassword ? (
@@ -986,8 +992,8 @@ export function ForgotPasswordWizard({
                     </div>
 
                     {/* Password Requirements Checklist Card */}
-                    <div className="rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFF] p-3.5 space-y-2 mt-4 text-left">
-                      <div className="text-xs font-bold text-[#08093B]">
+                    <div className="rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFF] p-3.5 space-y-2 mt-4 text-left dark:border-[#2E2A5C] dark:bg-[#10142C]">
+                      <div className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
                         Password must contain:
                       </div>
                       <ul className="space-y-1.5 text-xs">
@@ -995,16 +1001,16 @@ export function ForgotPasswordWizard({
                           className={cn(
                             "flex items-center gap-2 transition-colors",
                             hasMinLength
-                              ? "text-[#15803D] font-semibold"
-                              : "text-[#64748B]",
+                              ? "text-[#15803D] font-semibold dark:text-emerald-400"
+                              : "text-[#64748B] dark:text-[#9DA6CC]",
                           )}
                         >
                           <Check
                             className={cn(
                               "h-3.5 w-3.5 shrink-0",
                               hasMinLength
-                                ? "text-[#16A34A] stroke-[3]"
-                                : "text-[#94A3B8]",
+                                ? "text-[#16A34A] stroke-[3] dark:text-emerald-400"
+                                : "text-[#94A3B8] dark:text-[#6B7399]",
                             )}
                           />
                           <span>At least 8 characters</span>
@@ -1013,16 +1019,16 @@ export function ForgotPasswordWizard({
                           className={cn(
                             "flex items-center gap-2 transition-colors",
                             hasUppercase
-                              ? "text-[#15803D] font-semibold"
-                              : "text-[#64748B]",
+                              ? "text-[#15803D] font-semibold dark:text-emerald-400"
+                              : "text-[#64748B] dark:text-[#9DA6CC]",
                           )}
                         >
                           <Check
                             className={cn(
                               "h-3.5 w-3.5 shrink-0",
                               hasUppercase
-                                ? "text-[#16A34A] stroke-[3]"
-                                : "text-[#94A3B8]",
+                                ? "text-[#16A34A] stroke-[3] dark:text-emerald-400"
+                                : "text-[#94A3B8] dark:text-[#6B7399]",
                             )}
                           />
                           <span>At least one uppercase letter (A-Z)</span>
@@ -1031,16 +1037,16 @@ export function ForgotPasswordWizard({
                           className={cn(
                             "flex items-center gap-2 transition-colors",
                             hasLowercase
-                              ? "text-[#15803D] font-semibold"
-                              : "text-[#64748B]",
+                              ? "text-[#15803D] font-semibold dark:text-emerald-400"
+                              : "text-[#64748B] dark:text-[#9DA6CC]",
                           )}
                         >
                           <Check
                             className={cn(
                               "h-3.5 w-3.5 shrink-0",
                               hasLowercase
-                                ? "text-[#16A34A] stroke-[3]"
-                                : "text-[#94A3B8]",
+                                ? "text-[#16A34A] stroke-[3] dark:text-emerald-400"
+                                : "text-[#94A3B8] dark:text-[#6B7399]",
                             )}
                           />
                           <span>At least one lowercase letter (a-z)</span>
@@ -1049,16 +1055,16 @@ export function ForgotPasswordWizard({
                           className={cn(
                             "flex items-center gap-2 transition-colors",
                             hasNumber
-                              ? "text-[#15803D] font-semibold"
-                              : "text-[#64748B]",
+                              ? "text-[#15803D] font-semibold dark:text-emerald-400"
+                              : "text-[#64748B] dark:text-[#9DA6CC]",
                           )}
                         >
                           <Check
                             className={cn(
                               "h-3.5 w-3.5 shrink-0",
                               hasNumber
-                                ? "text-[#16A34A] stroke-[3]"
-                                : "text-[#94A3B8]",
+                                ? "text-[#16A34A] stroke-[3] dark:text-emerald-400"
+                                : "text-[#94A3B8] dark:text-[#6B7399]",
                             )}
                           />
                           <span>At least one number (0-9)</span>
@@ -1067,16 +1073,16 @@ export function ForgotPasswordWizard({
                           className={cn(
                             "flex items-center gap-2 transition-colors",
                             hasSpecialChar
-                              ? "text-[#15803D] font-semibold"
-                              : "text-[#64748B]",
+                              ? "text-[#15803D] font-semibold dark:text-emerald-400"
+                              : "text-[#64748B] dark:text-[#9DA6CC]",
                           )}
                         >
                           <Check
                             className={cn(
                               "h-3.5 w-3.5 shrink-0",
                               hasSpecialChar
-                                ? "text-[#16A34A] stroke-[3]"
-                                : "text-[#94A3B8]",
+                                ? "text-[#16A34A] stroke-[3] dark:text-emerald-400"
+                                : "text-[#94A3B8] dark:text-[#6B7399]",
                             )}
                           />
                           <span>At least one special character (e.g., !@#$%^&*)</span>
@@ -1100,7 +1106,7 @@ export function ForgotPasswordWizard({
                     {/* Back to Login Secondary Action */}
                     <Link
                       href="/login"
-                      className="flex items-center justify-center gap-2 w-full rounded-[14px] border-[1.5px] border-[#D6DBF0] bg-white py-3 text-sm font-bold text-[#4F27E8] hover:border-[#4F27E8] hover:bg-[#F7F4FF] transition-all"
+                      className="flex items-center justify-center gap-2 w-full rounded-[14px] border-[1.5px] border-[#D6DBF0] bg-white py-3 text-sm font-bold text-[#4F27E8] hover:border-[#4F27E8] hover:bg-[#F7F4FF] transition-all dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C4B5FD] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1E2245]"
                     >
                       <ArrowLeft className="h-4 w-4" />
                       <span>Back to Login</span>
@@ -1128,15 +1134,15 @@ export function ForgotPasswordWizard({
                     <div className="absolute bottom-2 -left-3 h-2 w-3 rounded-xs bg-[#3B82F6] -rotate-12" />
 
                     {/* Main Green Check Circle */}
-                    <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-tr from-[#16A34A] via-[#22C55E] to-[#4ADE80] shadow-[0_10px_25px_rgba(22,163,74,0.35)] ring-4 ring-white">
+                    <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-tr from-[#16A34A] via-[#22C55E] to-[#4ADE80] shadow-[0_10px_25px_rgba(22,163,74,0.35)] ring-4 ring-white dark:ring-[#141731]">
                       <Check className="h-10 w-10 text-white stroke-[3.5]" />
                     </div>
                   </div>
 
-                  <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] sm:text-3xl">
+                  <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] sm:text-3xl dark:text-[#F3F5FF]">
                     Password Changed Successfully!
                   </h2>
-                  <p className="mt-2 text-xs sm:text-sm font-medium text-[#4D5072] max-w-sm mx-auto leading-relaxed">
+                  <p className="mt-2 text-xs sm:text-sm font-medium text-[#4D5072] max-w-sm mx-auto leading-relaxed dark:text-[#9DA6CC]">
                     Your account password has been updated. Please use your new password
                     to sign in.
                   </p>
@@ -1154,7 +1160,7 @@ export function ForgotPasswordWizard({
                     {/* Secondary CTA: Go to Home */}
                     <Link
                       href="/"
-                      className="flex items-center justify-center gap-2 w-full rounded-[14px] border-[1.5px] border-[#D6DBF0] bg-white py-3.5 text-sm font-bold text-[#08093B] hover:border-[#4F27E8] hover:bg-[#F7F4FF] hover:text-[#4F27E8] transition-all"
+                      className="flex items-center justify-center gap-2 w-full rounded-[14px] border-[1.5px] border-[#D6DBF0] bg-white py-3.5 text-sm font-bold text-[#08093B] hover:border-[#4F27E8] hover:bg-[#F7F4FF] hover:text-[#4F27E8] transition-all dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1E2245]"
                     >
                       <Home className="h-4 w-4" />
                       <span>Go to Home</span>
@@ -1168,7 +1174,7 @@ export function ForgotPasswordWizard({
       </main>
 
       {/* Footer copyright */}
-      <footer className="relative z-10 py-4 text-center text-xs text-[#76799C]">
+      <footer className="relative z-10 py-4 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]">
         © 2026 ScholoNix. All rights reserved. · Secure Password Recovery
       </footer>
     </div>

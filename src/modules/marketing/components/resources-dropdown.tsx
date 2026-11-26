@@ -140,9 +140,11 @@ export function ResourcesDropdown({ className = "", active = false, onItemClick 
         aria-label="Toggle resources menu"
         className={
           active
-            ? `flex cursor-pointer items-center gap-1 rounded-full bg-[#8B5CF6] px-3.5 py-1 text-xs font-bold text-white shadow-xs transition-colors hover:bg-[#7C3AED] outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] focus-visible:ring-offset-2`
-            : `group flex cursor-pointer items-center gap-1 text-sm font-semibold transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] focus-visible:ring-offset-2 rounded-md ${
-                isOpen ? "text-[#663CF6]" : "text-[#4D5072] hover:text-[#663CF6]"
+            ? `flex cursor-pointer items-center gap-1 rounded-full bg-[#8B5CF6] px-3.5 py-1 text-xs font-bold text-white shadow-xs transition-colors hover:bg-[#7C3AED] outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#090B1A]`
+            : `group flex cursor-pointer items-center gap-1 text-sm font-semibold transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#090B1A] rounded-md ${
+                isOpen
+                  ? "text-[#663CF6] dark:text-[#C4B5FD]"
+                  : "text-[#4D5072] hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:text-[#C4B5FD]"
               }`
         }
       >
@@ -151,7 +153,7 @@ export function ResourcesDropdown({ className = "", active = false, onItemClick 
           className={`h-3.5 w-3.5 transition-transform duration-200 ${
             active
               ? `text-white ${isOpen ? "rotate-180" : ""}`
-              : `${isOpen ? "rotate-180 text-[#663CF6]" : "text-[#4D5072] group-hover:text-[#663CF6]"}`
+              : `${isOpen ? "rotate-180 text-[#663CF6] dark:text-[#C4B5FD]" : "text-[#4D5072] group-hover:text-[#663CF6] dark:text-[#B4BDD9] dark:group-hover:text-[#C4B5FD]"}`
           }`}
         />
       </button>
@@ -160,7 +162,7 @@ export function ResourcesDropdown({ className = "", active = false, onItemClick 
       <div
         role="menu"
         aria-orientation="vertical"
-        className={`absolute left-1/2 top-full z-50 mt-2.5 w-80 -translate-x-1/2 rounded-[20px] border border-[#D6DBF0]/90 bg-white/98 p-2.5 shadow-[0_18px_45px_rgba(24,18,77,0.14)] backdrop-blur-md transition-all duration-200 ease-out before:absolute before:-top-3 before:left-0 before:h-3 before:w-full before:content-[''] ${
+        className={`absolute left-1/2 top-full z-50 mt-2.5 w-80 -translate-x-1/2 rounded-[20px] border border-[#D6DBF0]/90 bg-white/98 p-2.5 shadow-[0_18px_45px_rgba(24,18,77,0.14)] backdrop-blur-md transition-all duration-200 ease-out before:absolute before:-top-3 before:left-0 before:h-3 before:w-full before:content-[''] dark:border-[#2E345B] dark:bg-[#141731]/98 dark:shadow-[0_20px_50px_rgba(3,5,18,0.7)] ${
           isOpen
             ? "visible translate-y-0 opacity-100 pointer-events-auto"
             : "invisible translate-y-2 opacity-0 pointer-events-none"
@@ -175,19 +177,19 @@ export function ResourcesDropdown({ className = "", active = false, onItemClick 
                 href={item.href}
                 role="menuitem"
                 onClick={handleItemSelect}
-                className="group/item flex items-center gap-3.5 rounded-[14px] p-2.5 text-left transition-all duration-150 hover:bg-[#F6F5FD]"
+                className="group/item flex items-center gap-3.5 rounded-[14px] p-2.5 text-left transition-all duration-150 hover:bg-[#F6F5FD] dark:hover:bg-[#1D2144]"
               >
                 {/* Purple Icon Badge */}
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60 transition-transform duration-200 group-hover/item:scale-105 group-hover/item:bg-[#E4DAFF]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60 transition-transform duration-200 group-hover/item:scale-105 group-hover/item:bg-[#E4DAFF] dark:bg-[#251D4A] dark:text-[#CBB8FF] dark:ring-[#4A3B8F] dark:group-hover/item:bg-[#312561]">
                   <Icon className="h-5 w-5" />
                 </div>
 
                 {/* Text Content */}
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-[#08093B] transition-colors group-hover/item:text-[#663CF6]">
+                  <span className="text-sm font-bold text-[#08093B] transition-colors group-hover/item:text-[#663CF6] dark:text-[#F3F5FF] dark:group-hover/item:text-[#C4B5FD]">
                     {item.title}
                   </span>
-                  <span className="text-xs font-normal text-[#5A5E7A] leading-relaxed">
+                  <span className="text-xs font-normal text-[#5A5E7A] leading-relaxed dark:text-[#9DA6CC]">
                     {item.description}
                   </span>
                 </div>
@@ -212,19 +214,19 @@ export function MobileResourcesMenu({ onItemClick }: MobileResourcesMenuProps) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between rounded-[10px] px-3 py-2 text-sm font-semibold text-[#1B1D45] transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+        className="flex w-full items-center justify-between rounded-[10px] px-3 py-2 text-sm font-semibold text-[#1B1D45] transition hover:bg-[#F2EEFD] hover:text-[#663CF6] dark:text-[#DCE1F9] dark:hover:bg-[#1D2144] dark:hover:text-[#C4B5FD]"
         aria-expanded={isOpen}
       >
         <span>Resources</span>
         <ChevronDown
           className={`h-4 w-4 transition-transform duration-200 ${
-            isOpen ? "rotate-180 text-[#663CF6]" : "text-[#4D5072]"
+            isOpen ? "rotate-180 text-[#663CF6] dark:text-[#C4B5FD]" : "text-[#4D5072] dark:text-[#9DA6CC]"
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="mt-1 ml-2 flex flex-col space-y-1 border-l-2 border-[#E0D7FE] pl-2">
+        <div className="mt-1 ml-2 flex flex-col space-y-1 border-l-2 border-[#E0D7FE] pl-2 dark:border-[#3D3170]">
           {RESOURCE_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
@@ -232,16 +234,16 @@ export function MobileResourcesMenu({ onItemClick }: MobileResourcesMenuProps) {
                 key={item.id}
                 href={item.href}
                 onClick={onItemClick}
-                className="group flex items-center gap-3 rounded-[12px] p-2 transition hover:bg-[#F6F5FD]"
+                className="group flex items-center gap-3 rounded-[12px] p-2 transition hover:bg-[#F6F5FD] dark:hover:bg-[#1D2144]"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6]">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-[#08093B] group-hover:text-[#663CF6]">
+                  <span className="text-xs font-bold text-[#08093B] group-hover:text-[#663CF6] dark:text-[#F3F5FF] dark:group-hover:text-[#C4B5FD]">
                     {item.title}
                   </span>
-                  <span className="text-[11px] text-[#6B7280]">
+                  <span className="text-[11px] text-[#6B7280] dark:text-[#9DA6CC]">
                     {item.description}
                   </span>
                 </div>

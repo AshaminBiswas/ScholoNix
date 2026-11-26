@@ -30,6 +30,7 @@ import { AtmosphericBackground } from "@/components/ui/atmospheric-background";
 import { Button } from "@/components/ui/button";
 import { ResourcesDropdown, MobileResourcesMenu } from "./resources-dropdown";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 interface PricingTier {
   id: "starter" | "professional" | "enterprise";
@@ -58,11 +59,11 @@ const PRICING_TIERS: PricingTier[] = [
     tagline: "Ideal for small schools getting started with digital school management.",
     monthlyPrice: 1999,
     yearlyPrice: 1599,
-    iconBg: "bg-[#EDE7FF]",
-    iconColor: "text-[#663CF6]",
-    iconRing: "ring-[#DDD6FE]",
-    borderColor: "border-[#DDD6FE]/80",
-    bgGradient: "bg-gradient-to-br from-white/95 via-[#F6F2FF]/90 to-[#EDE7FF]/80",
+    iconBg: "bg-[#EDE7FF] dark:bg-[#251D4A]",
+    iconColor: "text-[#663CF6] dark:text-[#B59CFF]",
+    iconRing: "ring-[#DDD6FE] dark:ring-[#3B306E]",
+    borderColor: "border-[#DDD6FE]/80 dark:border-[#3B306E]/90",
+    bgGradient: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#F6F2FF]/90 dark:via-[#1D1940]/90 to-[#EDE7FF]/80 dark:to-[#251D4A]/85",
     shadow: "shadow-[0_8px_30px_rgba(102,60,246,0.06)]",
     topStripe: "from-[#7C3AED] via-[#8B5CF6] to-[#A78BFA]",
     blobColor: "bg-[#8B5CF6]/15",
@@ -83,11 +84,11 @@ const PRICING_TIERS: PricingTier[] = [
     monthlyPrice: 3999,
     yearlyPrice: 3199,
     popular: true,
-    iconBg: "bg-[#E0F2FE]",
-    iconColor: "text-[#0284C7]",
-    iconRing: "ring-[#BAE6FD]",
-    borderColor: "border-[#BAE6FD]/80",
-    bgGradient: "bg-gradient-to-br from-white/98 via-[#F0F5FE]/95 to-[#EDE7FF]/85",
+    iconBg: "bg-[#E0F2FE] dark:bg-[#132645]",
+    iconColor: "text-[#0284C7] dark:text-[#56C2FF]",
+    iconRing: "ring-[#BAE6FD] dark:ring-[#1E4670]",
+    borderColor: "border-[#BAE6FD]/80 dark:border-[#1E4670]/90",
+    bgGradient: "bg-gradient-to-br from-white/98 dark:from-[#141731]/98 via-[#F0F5FE]/95 dark:via-[#15203E]/95 to-[#EDE7FF]/85 dark:to-[#251D4A]/85",
     shadow: "shadow-[0_12px_36px_rgba(2,132,199,0.08)]",
     topStripe: "from-[#663CF6] via-[#0284C7] to-[#38BDF8]",
     blobColor: "bg-[#0284C7]/20",
@@ -107,11 +108,11 @@ const PRICING_TIERS: PricingTier[] = [
     tagline: "Best for large schools or school groups with multi-branch requirements.",
     monthlyPrice: 7999,
     yearlyPrice: 6399,
-    iconBg: "bg-[#FEF3C7]",
-    iconColor: "text-[#D97706]",
-    iconRing: "ring-[#FDE68A]",
-    borderColor: "border-[#FDE68A]/80",
-    bgGradient: "bg-gradient-to-br from-white/95 via-[#FFFBEB]/90 to-[#FEF3C7]/80",
+    iconBg: "bg-[#FEF3C7] dark:bg-[#2B2010]",
+    iconColor: "text-[#D97706] dark:text-[#FBBF24]",
+    iconRing: "ring-[#FDE68A] dark:ring-[#6E4F1A]",
+    borderColor: "border-[#FDE68A]/80 dark:border-[#6E4F1A]/90",
+    bgGradient: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FFFBEB]/90 dark:via-[#261E10]/90 to-[#FEF3C7]/80 dark:to-[#2E2210]/85",
     shadow: "shadow-[0_8px_30px_rgba(217,119,6,0.06)]",
     topStripe: "from-[#D97706] via-[#F59E0B] to-[#FCD34D]",
     blobColor: "bg-[#D97706]/15",
@@ -196,11 +197,11 @@ const TRUST_BADGES = [
     icon: Zap,
     title: "Quick Setup",
     desc: "Get started in minutes.",
-    iconColor: "text-[#663CF6]",
-    iconBg: "bg-[#EDE7FF]",
-    iconRing: "ring-[#DDD6FE]",
-    bgGradient: "bg-gradient-to-br from-white/95 via-[#F6F2FF]/90 to-[#EDE7FF]/75",
-    borderColor: "border-[#DDD6FE]/80",
+    iconColor: "text-[#663CF6] dark:text-[#B59CFF]",
+    iconBg: "bg-[#EDE7FF] dark:bg-[#251D4A]",
+    iconRing: "ring-[#DDD6FE] dark:ring-[#3B306E]",
+    bgGradient: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#F6F2FF]/90 dark:via-[#1D1940]/90 to-[#EDE7FF]/75",
+    borderColor: "border-[#DDD6FE]/80 dark:border-[#3B306E]/90",
     topStripe: "from-[#7C3AED] to-[#A78BFA]",
     hoverShadow: "hover:shadow-[0_16px_32px_rgba(102,60,246,0.14)]",
   },
@@ -208,11 +209,11 @@ const TRUST_BADGES = [
     icon: Cloud,
     title: "Cloud-Based",
     desc: "Access anytime, anywhere.",
-    iconColor: "text-[#0284C7]",
-    iconBg: "bg-[#E0F2FE]",
-    iconRing: "ring-[#BAE6FD]",
-    bgGradient: "bg-gradient-to-br from-white/95 via-[#F0F8FF]/90 to-[#E0F2FE]/75",
-    borderColor: "border-[#BAE6FD]/80",
+    iconColor: "text-[#0284C7] dark:text-[#56C2FF]",
+    iconBg: "bg-[#E0F2FE] dark:bg-[#132645]",
+    iconRing: "ring-[#BAE6FD] dark:ring-[#1E4670]",
+    bgGradient: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#F0F8FF]/90 dark:via-[#12223D]/90 to-[#E0F2FE]/75 dark:to-[#14294A]/80",
+    borderColor: "border-[#BAE6FD]/80 dark:border-[#1E4670]/90",
     topStripe: "from-[#0284C7] to-[#7DD3FC]",
     hoverShadow: "hover:shadow-[0_16px_32px_rgba(2,132,199,0.14)]",
   },
@@ -220,11 +221,11 @@ const TRUST_BADGES = [
     icon: ShieldCheck,
     title: "Data Secure",
     desc: "Your school data is always protected.",
-    iconColor: "text-[#15803D]",
-    iconBg: "bg-[#DCFCE7]",
-    iconRing: "ring-[#BBF7D0]",
-    bgGradient: "bg-gradient-to-br from-white/95 via-[#F0FDF4]/90 to-[#DCFCE7]/75",
-    borderColor: "border-[#BBF7D0]/80",
+    iconColor: "text-[#15803D] dark:text-[#4ADE80]",
+    iconBg: "bg-[#DCFCE7] dark:bg-[#0F2C24]",
+    iconRing: "ring-[#BBF7D0] dark:ring-[#1B5742]",
+    bgGradient: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#F0FDF4]/90 dark:via-[#0F2620]/90 to-[#DCFCE7]/75 dark:to-[#102E25]/80",
+    borderColor: "border-[#BBF7D0]/80 dark:border-[#1B5742]/90",
     topStripe: "from-[#15803D] to-[#86EFAC]",
     hoverShadow: "hover:shadow-[0_16px_32px_rgba(21,128,61,0.14)]",
   },
@@ -232,11 +233,11 @@ const TRUST_BADGES = [
     icon: Headphones,
     title: "Expert Support",
     desc: "Get help from our dedicated team.",
-    iconColor: "text-[#D946EF]",
-    iconBg: "bg-[#FAE8FF]",
-    iconRing: "ring-[#F5D0FE]",
-    bgGradient: "bg-gradient-to-br from-white/95 via-[#FDF4FF]/90 to-[#FAE8FF]/75",
-    borderColor: "border-[#F5D0FE]/80",
+    iconColor: "text-[#D946EF] dark:text-[#F0ABFC]",
+    iconBg: "bg-[#FAE8FF] dark:bg-[#2B173D]",
+    iconRing: "ring-[#F5D0FE] dark:ring-[#5D296E]",
+    bgGradient: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FDF4FF]/90 dark:via-[#251738]/90 to-[#FAE8FF]/75 dark:to-[#2E1842]/80",
+    borderColor: "border-[#F5D0FE]/80 dark:border-[#5D296E]/90",
     topStripe: "from-[#D946EF] to-[#F0ABFC]",
     hoverShadow: "hover:shadow-[0_16px_32px_rgba(217,70,239,0.14)]",
   },
@@ -292,21 +293,21 @@ export function PricingPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45]">
+    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45] dark:text-[#F3F5FF]">
       {/* Background Ambience */}
       <AtmosphericBackground />
 
       {/* =========================================================================
           1. HEADER / NAVBAR
           ========================================================================= */}
-      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] dark:border-[#2C3159] bg-white/95 dark:bg-[#141731]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           {/* Logo */}
           <BrandLogo className="h-8 sm:h-9" />
 
           {/* Desktop Nav */}
-          <nav className="hidden items-center gap-7 text-sm font-semibold text-[#4D5072] md:flex">
-            <Link href="/features" className="transition-colors hover:text-[#663CF6]">
+          <nav className="hidden items-center gap-7 text-sm font-semibold text-[#4D5072] dark:text-[#B4B9DA] md:flex">
+            <Link href="/features" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Features
             </Link>
             {/* Active Pricing Pill matching design */}
@@ -316,7 +317,7 @@ export function PricingPage() {
             >
               Pricing
             </Link>
-            <Link href="/for-schools" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/for-schools" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               For Schools
             </Link>
             <ResourcesDropdown />
@@ -324,9 +325,10 @@ export function PricingPage() {
 
           {/* Action CTAs & Mobile Hamburger */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <Link
               href="/login"
-              className="hidden sm:inline-flex items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] bg-white px-3.5 py-1.5 text-xs font-bold text-[#4F27E8] shadow-xs transition hover:border-[#4F27E8] hover:bg-[#F7F4FF]"
+              className="hidden sm:inline-flex items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] dark:border-[#8B5CF6] bg-white dark:bg-[#141731] px-3.5 py-1.5 text-xs font-bold text-[#4F27E8] dark:text-[#C4B5FD] shadow-xs transition hover:border-[#4F27E8] dark:hover:border-[#9D7CFE] hover:bg-[#F7F4FF] dark:hover:bg-[#241E4A]"
             >
               Sign In
             </Link>
@@ -341,7 +343,7 @@ export function PricingPage() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#D6DBF0] bg-white text-[#08093B] shadow-sm transition hover:bg-[#F2EEFD] hover:text-[#663CF6] md:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#08093B] dark:text-[#F3F5FF] shadow-sm transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] md:hidden"
               aria-label="Toggle navigation menu"
               aria-expanded={mobileMenuOpen}
             >
@@ -352,37 +354,37 @@ export function PricingPage() {
 
         {/* Mobile Nav Drawer */}
         {mobileMenuOpen && (
-          <div className="border-b border-[#D6DBF0] bg-white/98 px-4 pt-3 pb-6 shadow-xl backdrop-blur-lg md:hidden">
-            <nav className="flex flex-col space-y-3 text-sm font-semibold text-[#1B1D45]">
+          <div className="border-b border-[#D6DBF0] dark:border-[#2C3159] bg-white/98 dark:bg-[#141731]/98 px-4 pt-3 pb-6 shadow-xl backdrop-blur-lg md:hidden">
+            <nav className="flex flex-col space-y-3 text-sm font-semibold text-[#1B1D45] dark:text-[#F3F5FF]">
               <Link
                 href="/features"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Features
               </Link>
               <Link
                 href="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] bg-[#EDE7FF] px-3 py-2 font-bold text-[#663CF6]"
+                className="rounded-[10px] bg-[#EDE7FF] dark:bg-[#251D4A] px-3 py-2 font-bold text-[#663CF6] dark:text-[#B59CFF]"
               >
                 Pricing
               </Link>
               <Link
                 href="/for-schools"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 For Schools
               </Link>
               <MobileResourcesMenu onItemClick={() => setMobileMenuOpen(false)} />
             </nav>
 
-            <div className="mt-4 flex flex-col gap-2.5 border-t border-[#DFE3F5] pt-4">
+            <div className="mt-4 flex flex-col gap-2.5 border-t border-[#DFE3F5] dark:border-[#2C3159] pt-4">
               <Link
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex w-full items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] bg-white py-2.5 text-xs font-bold text-[#4F27E8] shadow-xs"
+                className="flex w-full items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] dark:border-[#8B5CF6] bg-white dark:bg-[#141731] py-2.5 text-xs font-bold text-[#4F27E8] dark:text-[#C4B5FD] shadow-xs"
               >
                 Sign In
               </Link>
@@ -404,43 +406,43 @@ export function PricingPage() {
       <section className="pt-10 pb-6 sm:pt-14 sm:pb-8 lg:pt-16 lg:pb-10">
         <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
           {/* Top Pill Badge */}
-          <div className="animate-hero-badge inline-flex items-center gap-1.5 rounded-full border border-[#D4C4FE] bg-[#EDE7FF] px-4 py-1 text-xs font-bold text-[#663CF6] shadow-xs">
+          <div className="animate-hero-badge inline-flex items-center gap-1.5 rounded-full border border-[#D4C4FE] dark:border-[#42357D] bg-[#EDE7FF] dark:bg-[#251D4A] px-4 py-1 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF] shadow-xs">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Pricing Plans</span>
           </div>
 
           {/* Main Title with Animated Iridescent Gradient */}
-          <h1 className="animate-hero-headline mt-4 text-3xl font-extrabold tracking-tight text-[#08093B] sm:text-4xl md:text-5xl leading-tight">
+          <h1 className="animate-hero-headline mt-4 text-3xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF] sm:text-4xl md:text-5xl leading-tight">
             Simple &amp;{" "}
-            <span className="bg-gradient-to-r from-[#663CF6] via-[#4F27E8] to-[#0284C7] bg-clip-text text-transparent animate-gradient-flow">
+            <span className="bg-gradient-to-r from-[#663CF6] dark:from-[#A98BFF] via-[#4F27E8] dark:via-[#C4B5FD] to-[#0284C7] dark:to-[#38BDF8] bg-clip-text text-transparent animate-gradient-flow">
               Transparent Pricing
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="animate-hero-subtitle mx-auto mt-3 max-w-2xl text-sm font-medium leading-relaxed text-[#4D5072] sm:text-base">
+          <p className="animate-hero-subtitle mx-auto mt-3 max-w-2xl text-sm font-medium leading-relaxed text-[#4D5072] dark:text-[#B4B9DA] sm:text-base">
             Choose a plan that fits your school&apos;s needs. No hidden charges. Cancel anytime.
           </p>
 
           {/* 3 Core Trust Values */}
-          <div className="animate-hero-checklist mt-4 flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-[#08093B] sm:gap-8 sm:text-sm">
+          <div className="animate-hero-checklist mt-4 flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] sm:gap-8 sm:text-sm">
             <div className="flex items-center gap-1.5">
-              <Check className="h-4 w-4 text-[#15803D]" strokeWidth={2.5} />
+              <Check className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80]" strokeWidth={2.5} />
               <span>Full Feature Access</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Check className="h-4 w-4 text-[#15803D]" strokeWidth={2.5} />
+              <Check className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80]" strokeWidth={2.5} />
               <span>Secure &amp; Reliable</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Check className="h-4 w-4 text-[#15803D]" strokeWidth={2.5} />
+              <Check className="h-4 w-4 text-[#15803D] dark:text-[#4ADE80]" strokeWidth={2.5} />
               <span>Dedicated Support</span>
             </div>
           </div>
 
           {/* Monthly / Yearly Billing Toggle with Smooth Sliding Pill */}
           <div className="mt-8 flex items-center justify-center">
-            <div className="relative inline-flex items-center rounded-full border border-[#D6DBF0] bg-white/95 p-1.5 shadow-xs backdrop-blur-md">
+            <div className="relative inline-flex items-center rounded-full border border-[#D6DBF0] dark:border-[#2C3159] bg-white/95 dark:bg-[#141731]/95 p-1.5 shadow-xs backdrop-blur-md">
               {/* Smooth Animated Sliding Indicator Pill */}
               <div
                 className={`absolute top-1.5 bottom-1.5 rounded-full bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] shadow-md transition-all duration-300 ease-out ${
@@ -456,7 +458,7 @@ export function PricingPage() {
                 className={`relative z-10 w-24 sm:w-28 py-2 text-xs font-bold rounded-full transition-colors duration-200 cursor-pointer ${
                   billingCycle === "monthly"
                     ? "text-white"
-                    : "text-[#4D5072] hover:text-[#08093B]"
+                    : "text-[#4D5072] dark:text-[#B4B9DA] hover:text-[#08093B] dark:hover:text-white"
                 }`}
               >
                 Monthly
@@ -469,13 +471,13 @@ export function PricingPage() {
                   className={`relative z-10 w-24 sm:w-28 py-2 text-xs font-bold rounded-full transition-colors duration-200 cursor-pointer ${
                     billingCycle === "yearly"
                       ? "text-white"
-                      : "text-[#4D5072] hover:text-[#08093B]"
+                      : "text-[#4D5072] dark:text-[#B4B9DA] hover:text-[#08093B] dark:hover:text-white"
                   }`}
                 >
                   Yearly
                 </button>
                 {/* Save 20% Floating Tag */}
-                <span className="absolute -top-3.5 -right-3 sm:-right-4 z-20 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#15803D] to-[#16A34A] px-2 py-0.5 text-[9px] font-extrabold tracking-tight text-white shadow-sm ring-2 ring-white">
+                <span className="absolute -top-3.5 -right-3 sm:-right-4 z-20 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#15803D] to-[#16A34A] px-2 py-0.5 text-[9px] font-extrabold tracking-tight text-white shadow-sm ring-2 ring-white dark:ring-[#141731]">
                   Save 20%
                 </span>
               </div>
@@ -502,8 +504,8 @@ export function PricingPage() {
                   onClick={() => setSelectedPlan(tier.id)}
                   className={`group relative flex flex-col justify-between rounded-[24px] ${tier.bgGradient} p-6 sm:p-8 cursor-pointer transition-all duration-400 ease-out will-change-transform ${
                     isSelected
-                      ? "border-[3.5px] border-[#663CF6] shadow-[0_22px_50px_rgba(102,60,246,0.22)] ring-4 ring-[#EDE7FF] scale-[1.02] -translate-y-1.5"
-                      : `border ${tier.borderColor} ${tier.shadow} hover:border-[#663CF6]/60 hover:shadow-[0_16px_36px_rgba(24,18,77,0.12)] hover:-translate-y-1.5 hover:scale-[1.01]`
+                      ? "border-[3.5px] border-[#663CF6] dark:border-[#8B5CF6] shadow-[0_22px_50px_rgba(102,60,246,0.22)] ring-4 ring-[#EDE7FF] dark:ring-[#663CF6]/35 scale-[1.02] -translate-y-1.5"
+                      : `border ${tier.borderColor} ${tier.shadow} hover:border-[#663CF6]/60 dark:hover:border-[#9D7CFE]/80 hover:shadow-[0_16px_36px_rgba(24,18,77,0.12)] hover:-translate-y-1.5 hover:scale-[1.01]`
                   }`}
                 >
                   {/* Clipped background elements container */}
@@ -523,13 +525,13 @@ export function PricingPage() {
                     />
 
                     {/* Shimmer sweep effect on hover */}
-                    <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent transition-transform duration-1000 ease-in-out group-hover:translate-x-full" />
+                    <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 dark:via-white/10 to-transparent transition-transform duration-1000 ease-in-out group-hover:translate-x-full" />
                   </div>
 
                   {/* Floating Most Popular Badge (outside overflow-hidden so not clipped) */}
                   {tier.popular && (
                     <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-4 py-1 text-[11px] font-extrabold uppercase tracking-wider text-white shadow-md ring-2 ring-white">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-4 py-1 text-[11px] font-extrabold uppercase tracking-wider text-white shadow-md ring-2 ring-white dark:ring-[#141731]">
                         <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
                         Most Popular
                       </span>
@@ -553,7 +555,7 @@ export function PricingPage() {
                         className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold transition-all duration-300 ${
                           isSelected
                             ? "bg-[#663CF6] text-white shadow-xs scale-105"
-                            : "bg-white/80 text-[#4D5072] border border-[#D6DBF0]/70 group-hover:border-[#663CF6]/50 group-hover:text-[#663CF6]"
+                            : "bg-white/80 dark:bg-[#141731]/80 text-[#4D5072] dark:text-[#B4B9DA] border border-[#D6DBF0]/70 dark:border-[#2C3159]/80 group-hover:border-[#663CF6]/50 dark:group-hover:border-[#9D7CFE]/70 group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD]"
                         }`}
                       >
                         {isSelected ? (
@@ -571,25 +573,25 @@ export function PricingPage() {
                     </div>
 
                     {/* Tier Title & Description */}
-                    <h3 className="mt-4 text-2xl font-extrabold tracking-tight text-[#08093B]">
+                    <h3 className="mt-4 text-2xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
                       {tier.name}
                     </h3>
-                    <p className="mt-1 text-xs font-medium leading-relaxed text-[#4D5072] min-h-[36px]">
+                    <p className="mt-1 text-xs font-medium leading-relaxed text-[#4D5072] dark:text-[#B4B9DA] min-h-[36px]">
                       {tier.tagline}
                     </p>
 
                     {/* Price Display */}
                     <div className="mt-4 pb-4 border-b border-black/[0.06]">
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#08093B] transition-all duration-300">
+                        <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF] transition-all duration-300">
                           ₹{price.toLocaleString("en-IN")}
                         </span>
-                        <span className="text-xs font-semibold text-[#4D5072]">
+                        <span className="text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                           /month
                         </span>
                       </div>
                       {billingCycle === "yearly" && (
-                        <p className="mt-1 text-[11px] font-bold text-[#15803D]">
+                        <p className="mt-1 text-[11px] font-bold text-[#15803D] dark:text-[#4ADE80]">
                           Billed annually (₹{(price * 12).toLocaleString("en-IN")}/year)
                         </p>
                       )}
@@ -602,7 +604,7 @@ export function PricingPage() {
                           variant={isSelected ? "gradient" : "secondary"}
                           className={`w-full rounded-[12px] py-3 text-xs font-bold transition-all duration-300 ${
                             !isSelected
-                              ? "border-[1.5px] border-[#8B5CF6] text-[#663CF6] hover:bg-[#F5F2FE]"
+                              ? "border-[1.5px] border-[#8B5CF6] dark:border-[#9D7CFE] text-[#663CF6] dark:text-[#B59CFF] hover:bg-[#F5F2FE] dark:hover:bg-[#251E4C]"
                               : "shadow-md hover:opacity-95 hover:scale-[1.01]"
                           }`}
                         >
@@ -618,14 +620,14 @@ export function PricingPage() {
                         const isPriority = feature.includes("Priority Support");
                         return (
                           <div key={idx} className="flex items-start gap-2.5">
-                            <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#DCFCE7] text-[#15803D] mt-0.5 shadow-2xs">
+                            <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#DCFCE7] dark:bg-[#0F2C24] text-[#15803D] dark:text-[#4ADE80] mt-0.5 shadow-2xs">
                               <Check className="h-3 w-3 stroke-[3]" />
                             </div>
                             <span
                               className={`text-xs ${
                                 isPriority
-                                  ? "font-extrabold text-[#08093B]"
-                                  : "font-medium text-[#1B1D45]"
+                                  ? "font-extrabold text-[#08093B] dark:text-[#F3F5FF]"
+                                  : "font-medium text-[#1B1D45] dark:text-[#F3F5FF]"
                               }`}
                             >
                               {feature}
@@ -647,21 +649,21 @@ export function PricingPage() {
           ========================================================================= */}
       <section className="py-10 sm:py-14 lg:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-[24px] border border-[#D6DBF0]/80 bg-white/95 backdrop-blur-sm p-6 shadow-[0_16px_40px_rgba(24,18,77,0.06)] sm:p-8 lg:p-10">
+          <div className="relative overflow-hidden rounded-[24px] border border-[#D6DBF0]/80 dark:border-[#2C3159]/90 bg-white/95 dark:bg-[#141731]/95 backdrop-blur-sm p-6 shadow-[0_16px_40px_rgba(24,18,77,0.06)] sm:p-8 lg:p-10">
             {/* Top decorative gradient bar */}
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#663CF6] via-[#38BDF8] to-[#10B981]" />
 
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EDE7FF] px-3 py-1 text-[11px] font-bold text-[#663CF6] ring-1 ring-[#D4C4FE]/60 mb-2.5">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] px-3 py-1 text-[11px] font-bold text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60 mb-2.5">
                   <Sparkles className="h-3 w-3" />
                   <span>Plan Breakdown</span>
                 </div>
-                <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] sm:text-3xl">
+                <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF] sm:text-3xl">
                   Feature Comparison
                 </h2>
-                <p className="mt-1 text-xs font-medium text-[#4D5072] sm:text-sm">
+                <p className="mt-1 text-xs font-medium text-[#4D5072] dark:text-[#B4B9DA] sm:text-sm">
                   See what&apos;s included in each plan and choose the right one for your school.
                 </p>
               </div>
@@ -671,33 +673,33 @@ export function PricingPage() {
             <div className="mt-8 overflow-x-auto">
               <table className="w-full min-w-[640px] text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#DFE3F5]">
-                    <th className="pb-4 text-xs font-bold uppercase tracking-wider text-[#08093B] w-[34%]">
+                  <tr className="border-b border-[#DFE3F5] dark:border-[#2C3159]">
+                    <th className="pb-4 text-xs font-bold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF] w-[34%]">
                       Features
                     </th>
-                    <th className="pb-4 text-center text-xs font-bold text-[#08093B] w-[22%]">
+                    <th className="pb-4 text-center text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] w-[22%]">
                       <div className="flex flex-col items-center gap-1">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] shadow-xs">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] shadow-xs">
                           <Sprout className="h-4 w-4" />
                         </div>
                         <span>Starter</span>
                       </div>
                     </th>
                     {/* Professional Column Header (Highlighted lavender tint) */}
-                    <th className="pb-4 text-center text-xs font-bold text-[#08093B] bg-gradient-to-b from-[#F3EFFF] to-[#FAF8FF] rounded-t-2xl w-[22%] border-x border-t border-[#E4DCFD]/80 shadow-xs">
+                    <th className="pb-4 text-center text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] bg-gradient-to-b from-[#F3EFFF] dark:from-[#1E1A42] to-[#FAF8FF] rounded-t-2xl w-[22%] border-x border-t border-[#E4DCFD]/80 dark:border-[#39306B]/90 shadow-xs">
                       <div className="flex flex-col items-center gap-1 pt-2 pb-1">
                         <span className="inline-block rounded-full bg-[#663CF6] px-2 py-0.5 text-[9px] font-extrabold tracking-wide uppercase text-white shadow-2xs">
                           Recommended
                         </span>
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E0F2FE] text-[#0284C7] shadow-xs">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E0F2FE] dark:bg-[#132645] text-[#0284C7] dark:text-[#56C2FF] shadow-xs">
                           <GraduationCap className="h-4 w-4" />
                         </div>
-                        <span className="text-[#663CF6] font-extrabold">Professional</span>
+                        <span className="text-[#663CF6] dark:text-[#B59CFF] font-extrabold">Professional</span>
                       </div>
                     </th>
-                    <th className="pb-4 text-center text-xs font-bold text-[#08093B] w-[22%]">
+                    <th className="pb-4 text-center text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] w-[22%]">
                       <div className="flex flex-col items-center gap-1">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FEF3C7] text-[#D97706] shadow-xs">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FEF3C7] dark:bg-[#2B2010] text-[#D97706] dark:text-[#FBBF24] shadow-xs">
                           <Crown className="h-4 w-4" />
                         </div>
                         <span>Enterprise</span>
@@ -706,64 +708,64 @@ export function PricingPage() {
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-[#F0F2FA] text-xs">
+                <tbody className="divide-y divide-[#F0F2FA] dark:divide-[#23284A] text-xs">
                   {COMPARISON_FEATURES.map((item, index) => (
                     <tr
                       key={index}
-                      className="hover:bg-[#F8F9FE] transition-colors duration-150"
+                      className="hover:bg-[#F8F9FE] dark:hover:bg-[#1E2248] transition-colors duration-150"
                     >
-                      <td className="py-3.5 font-semibold text-[#08093B]">
+                      <td className="py-3.5 font-semibold text-[#08093B] dark:text-[#F3F5FF]">
                         {item.name}
                       </td>
 
                       {/* Starter Value */}
-                      <td className="py-3.5 text-center text-[#4D5072]">
+                      <td className="py-3.5 text-center text-[#4D5072] dark:text-[#B4B9DA]">
                         {typeof item.starter === "boolean" ? (
                           item.starter ? (
-                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#DCFCE7] text-[#15803D] shadow-2xs">
+                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#DCFCE7] dark:bg-[#0F2C24] text-[#15803D] dark:text-[#4ADE80] shadow-2xs">
                               <Check className="h-3.5 w-3.5 stroke-[3]" />
                             </div>
                           ) : (
-                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#F1F5F9] text-[#94A3B8]">
+                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#F1F5F9] dark:bg-[#1B1F40] text-[#94A3B8] dark:text-[#8E95BA]">
                               <Minus className="h-3.5 w-3.5 stroke-[2.5]" />
                             </div>
                           )
                         ) : (
-                          <span className="font-bold text-[#08093B]">{item.starter}</span>
+                          <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">{item.starter}</span>
                         )}
                       </td>
 
                       {/* Professional Value (Tinted Column) */}
-                      <td className="py-3.5 text-center bg-[#FAF8FF] border-x border-[#E4DCFD]/60 text-[#4D5072]">
+                      <td className="py-3.5 text-center bg-[#FAF8FF] dark:bg-[#181B38] border-x border-[#E4DCFD]/60 dark:border-[#39306B]/70 text-[#4D5072] dark:text-[#B4B9DA]">
                         {typeof item.professional === "boolean" ? (
                           item.professional ? (
-                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#DCFCE7] text-[#15803D] shadow-2xs">
+                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#DCFCE7] dark:bg-[#0F2C24] text-[#15803D] dark:text-[#4ADE80] shadow-2xs">
                               <Check className="h-3.5 w-3.5 stroke-[3]" />
                             </div>
                           ) : (
-                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#F1F5F9] text-[#94A3B8]">
+                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#F1F5F9] dark:bg-[#1B1F40] text-[#94A3B8] dark:text-[#8E95BA]">
                               <Minus className="h-3.5 w-3.5 stroke-[2.5]" />
                             </div>
                           )
                         ) : (
-                          <span className="font-extrabold text-[#663CF6]">{item.professional}</span>
+                          <span className="font-extrabold text-[#663CF6] dark:text-[#B59CFF]">{item.professional}</span>
                         )}
                       </td>
 
                       {/* Enterprise Value */}
-                      <td className="py-3.5 text-center text-[#4D5072]">
+                      <td className="py-3.5 text-center text-[#4D5072] dark:text-[#B4B9DA]">
                         {typeof item.enterprise === "boolean" ? (
                           item.enterprise ? (
-                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#DCFCE7] text-[#15803D] shadow-2xs">
+                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#DCFCE7] dark:bg-[#0F2C24] text-[#15803D] dark:text-[#4ADE80] shadow-2xs">
                               <Check className="h-3.5 w-3.5 stroke-[3]" />
                             </div>
                           ) : (
-                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#F1F5F9] text-[#94A3B8]">
+                            <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#F1F5F9] dark:bg-[#1B1F40] text-[#94A3B8] dark:text-[#8E95BA]">
                               <Minus className="h-3.5 w-3.5 stroke-[2.5]" />
                             </div>
                           )
                         ) : (
-                          <span className="font-bold text-[#08093B]">{item.enterprise}</span>
+                          <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">{item.enterprise}</span>
                         )}
                       </td>
                     </tr>
@@ -793,7 +795,7 @@ export function PricingPage() {
                     className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${badge.topStripe} opacity-80 group-hover:opacity-100 transition-opacity`}
                   />
                   {/* Ambient corner glow blob */}
-                  <div className="pointer-events-none absolute -bottom-6 -right-6 h-16 w-16 rounded-full bg-white/60 blur-lg transition-transform duration-500 group-hover:scale-150" />
+                  <div className="pointer-events-none absolute -bottom-6 -right-6 h-16 w-16 rounded-full bg-white/60 dark:bg-white/10 blur-lg transition-transform duration-500 group-hover:scale-150" />
 
                   <div
                     className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] ${badge.iconBg} ${badge.iconColor} ring-1 ${badge.iconRing} shadow-xs transition-all duration-400 group-hover:scale-110 group-hover:rotate-6`}
@@ -801,10 +803,10 @@ export function PricingPage() {
                     <IconComp className="h-5 w-5" />
                   </div>
                   <div className="relative z-10">
-                    <h3 className="text-xs sm:text-sm font-extrabold text-[#08093B] group-hover:text-[#663CF6] transition-colors">
+                    <h3 className="text-xs sm:text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition-colors">
                       {badge.title}
                     </h3>
-                    <p className="text-[11px] font-medium text-[#4D5072] leading-snug mt-0.5">
+                    <p className="text-[11px] font-medium text-[#4D5072] dark:text-[#B4B9DA] leading-snug mt-0.5">
                       {badge.desc}
                     </p>
                   </div>
@@ -820,26 +822,26 @@ export function PricingPage() {
           ========================================================================= */}
       <section className="py-10 sm:py-14 lg:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-[24px] border border-[#D6DBF0]/80 bg-white/95 backdrop-blur-sm p-6 shadow-[0_16px_40px_rgba(24,18,77,0.05)] sm:p-8 lg:p-10">
+          <div className="relative overflow-hidden rounded-[24px] border border-[#D6DBF0]/80 dark:border-[#2C3159]/90 bg-white/95 dark:bg-[#141731]/95 backdrop-blur-sm p-6 shadow-[0_16px_40px_rgba(24,18,77,0.05)] sm:p-8 lg:p-10">
             {/* Top decorative gradient bar */}
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#663CF6] via-[#A855F7] to-[#EC4899]" />
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
               {/* Left Column: Icon & Title */}
               <div className="lg:col-span-4 space-y-4">
-                <div className="relative flex h-14 w-14 items-center justify-center rounded-[18px] bg-gradient-to-br from-[#EDE7FF] to-[#DDD6FE] text-[#663CF6] shadow-sm ring-1 ring-[#D4C4FE]">
+                <div className="relative flex h-14 w-14 items-center justify-center rounded-[18px] bg-gradient-to-br from-[#EDE7FF] dark:from-[#231B47] to-[#DDD6FE] text-[#663CF6] dark:text-[#B59CFF] shadow-sm ring-1 ring-[#D4C4FE] dark:ring-[#42357D]">
                   <HelpCircle className="h-7 w-7" />
                   <MessageSquare className="absolute -bottom-1 -right-1 h-5 w-5 fill-[#663CF6] text-white" />
                 </div>
                 <div>
-                  <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EDE7FF] px-3 py-1 text-[11px] font-bold text-[#663CF6] ring-1 ring-[#D4C4FE]/60 mb-2">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] px-3 py-1 text-[11px] font-bold text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60 mb-2">
                     <Sparkles className="h-3 w-3" />
                     <span>Got Questions?</span>
                   </div>
-                  <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] sm:text-3xl">
+                  <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF] sm:text-3xl">
                     Frequently Asked Questions
                   </h2>
-                  <p className="mt-2 text-xs font-medium leading-relaxed text-[#4D5072] sm:text-sm">
+                  <p className="mt-2 text-xs font-medium leading-relaxed text-[#4D5072] dark:text-[#B4B9DA] sm:text-sm">
                     Find answers to common questions about our pricing and plans.
                   </p>
                 </div>
@@ -854,14 +856,14 @@ export function PricingPage() {
                       key={index}
                       className={`rounded-[16px] border transition-all duration-300 overflow-hidden ${
                         isOpen
-                          ? "border-[#C4B5FD] bg-[#FAF8FF] shadow-xs"
-                          : "border-[#E2E8F0] bg-white hover:border-[#CBD5E1] hover:bg-[#F8FAFC]/60"
+                          ? "border-[#C4B5FD] dark:border-[#4B3D91] bg-[#FAF8FF] dark:bg-[#181B38] shadow-xs"
+                          : "border-[#E2E8F0] dark:border-[#2C3159] bg-white dark:bg-[#141731] hover:border-[#CBD5E1] dark:hover:border-[#4B538F] hover:bg-[#F8FAFC]/60 dark:hover:bg-[#1E2248]/70"
                       }`}
                     >
                       <button
                         type="button"
                         onClick={() => toggleFaq(index)}
-                        className="flex w-full items-center justify-between p-4.5 sm:p-5 text-left text-xs sm:text-sm font-extrabold text-[#08093B] hover:text-[#663CF6] transition-colors gap-3"
+                        className="flex w-full items-center justify-between p-4.5 sm:p-5 text-left text-xs sm:text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] transition-colors gap-3"
                         aria-expanded={isOpen}
                       >
                         <span>{faq.question}</span>
@@ -869,7 +871,7 @@ export function PricingPage() {
                           className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
                             isOpen
                               ? "bg-[#663CF6] text-white shadow-xs rotate-180"
-                              : "bg-[#F1F5F9] text-[#475569]"
+                              : "bg-[#F1F5F9] dark:bg-[#1B1F40] text-[#475569] dark:text-[#B4B9DA]"
                           }`}
                         >
                           {isOpen ? (
@@ -881,7 +883,7 @@ export function PricingPage() {
                       </button>
 
                       {isOpen && (
-                        <div className="px-4.5 pb-5 sm:px-5 text-xs leading-relaxed text-[#4D5072] font-medium border-t border-[#E9D5FF]/60 pt-3.5">
+                        <div className="px-4.5 pb-5 sm:px-5 text-xs leading-relaxed text-[#4D5072] dark:text-[#B4B9DA] font-medium border-t border-[#E9D5FF]/60 dark:border-[#4A326E]/70 pt-3.5">
                           {faq.answer}
                         </div>
                       )}
@@ -916,7 +918,7 @@ export function PricingPage() {
 
               <Link href="/register?step=1">
                 <Button
-                  className="rounded-[12px] bg-white px-7 py-3.5 text-xs font-bold text-[#663CF6] shadow-md hover:bg-slate-50 transition-all duration-300 hover:scale-105 active:scale-[0.98]"
+                  className="rounded-[12px] bg-white dark:bg-[#141731] px-7 py-3.5 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF] shadow-md hover:bg-slate-50 dark:hover:bg-[#1D2145] transition-all duration-300 hover:scale-105 active:scale-[0.98]"
                 >
                   Register Now &rarr;
                 </Button>
@@ -929,13 +931,13 @@ export function PricingPage() {
       {/* =========================================================================
           8. FOOTER
           ========================================================================= */}
-      <footer className="border-t border-[#D6DBF0] bg-white py-12 sm:py-16">
+      <footer className="border-t border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-12">
             {/* Brand and Description (4 cols on desktop) */}
             <div className="space-y-4 sm:col-span-2 md:col-span-4">
               <BrandLogo className="h-8 sm:h-9" />
-              <p className="max-w-sm text-xs font-medium leading-relaxed text-[#4D5072]">
+              <p className="max-w-sm text-xs font-medium leading-relaxed text-[#4D5072] dark:text-[#B4B9DA]">
                 A comprehensive, cloud-based school management platform to simplify and
                 streamline your school operations.
               </p>
@@ -945,28 +947,28 @@ export function PricingPage() {
                 <a
                   href="#linkedin"
                   aria-label="LinkedIn"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] bg-[#F2EEFD] text-[#4F27E8] transition hover:bg-[#663CF6] hover:text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] dark:border-[#3E3275] bg-[#F2EEFD] dark:bg-[#251D4A] text-[#4F27E8] dark:text-[#C4B5FD] transition hover:bg-[#663CF6] hover:text-white"
                 >
                   <Linkedin className="h-4 w-4" />
                 </a>
                 <a
                   href="#youtube"
                   aria-label="YouTube"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] bg-[#F2EEFD] text-[#4F27E8] transition hover:bg-[#663CF6] hover:text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] dark:border-[#3E3275] bg-[#F2EEFD] dark:bg-[#251D4A] text-[#4F27E8] dark:text-[#C4B5FD] transition hover:bg-[#663CF6] hover:text-white"
                 >
                   <Youtube className="h-4 w-4" />
                 </a>
                 <a
                   href="#facebook"
                   aria-label="Facebook"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] bg-[#F2EEFD] text-[#4F27E8] transition hover:bg-[#663CF6] hover:text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] dark:border-[#3E3275] bg-[#F2EEFD] dark:bg-[#251D4A] text-[#4F27E8] dark:text-[#C4B5FD] transition hover:bg-[#663CF6] hover:text-white"
                 >
                   <Facebook className="h-4 w-4" />
                 </a>
                 <a
                   href="#instagram"
                   aria-label="Instagram"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] bg-[#F2EEFD] text-[#4F27E8] transition hover:bg-[#663CF6] hover:text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] dark:border-[#3E3275] bg-[#F2EEFD] dark:bg-[#251D4A] text-[#4F27E8] dark:text-[#C4B5FD] transition hover:bg-[#663CF6] hover:text-white"
                 >
                   <Instagram className="h-4 w-4" />
                 </a>
@@ -975,27 +977,27 @@ export function PricingPage() {
 
             {/* Product Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Product
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/features" className="hover:text-[#663CF6]">
+                  <Link href="/features" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Features
                   </Link>
                 </li>
                 <li>
-                  <Link href="/pricing" className="text-[#663CF6]">
+                  <Link href="/pricing" className="text-[#663CF6] dark:text-[#B59CFF]">
                     Pricing
                   </Link>
                 </li>
                 <li>
-                  <Link href="/for-schools" className="hover:text-[#663CF6]">
+                  <Link href="/for-schools" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     For Schools
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#integrations" className="hover:text-[#663CF6]">
+                  <Link href="/#integrations" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Integrations
                   </Link>
                 </li>
@@ -1004,27 +1006,27 @@ export function PricingPage() {
 
             {/* Resources Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Resources
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/#blog" className="hover:text-[#663CF6]">
+                  <Link href="/#blog" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link href="/help" className="hover:text-[#663CF6]">
+                  <Link href="/help" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Help Center
                   </Link>
                 </li>
                 <li>
-                  <Link href="/faqs" className="hover:text-[#663CF6]">
+                  <Link href="/faqs" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     FAQs
                   </Link>
                 </li>
                 <li>
-                  <Link href="/guides" className="hover:text-[#663CF6]">
+                  <Link href="/guides" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Guides
                   </Link>
                 </li>
@@ -1033,32 +1035,32 @@ export function PricingPage() {
 
             {/* Company Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Company
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/#about" className="hover:text-[#663CF6]">
+                  <Link href="/#about" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="hover:text-[#663CF6]">
+                  <Link href="/contact" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Contact Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/feedback" className="hover:text-[#663CF6]">
+                  <Link href="/feedback" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Give Feedback
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#privacy" className="hover:text-[#663CF6]">
+                  <Link href="/#privacy" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#terms" className="hover:text-[#663CF6]">
+                  <Link href="/#terms" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Terms of Service
                   </Link>
                 </li>
@@ -1067,10 +1069,10 @@ export function PricingPage() {
 
             {/* Stay Updated */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Stay Updated
               </h4>
-              <p className="text-xs font-medium text-[#4D5072]">
+              <p className="text-xs font-medium text-[#4D5072] dark:text-[#B4B9DA]">
                 Subscribe to get product updates, tips and school management insights.
               </p>
               <form onSubmit={handleSubscribe} className="flex gap-1.5 pt-1">
@@ -1080,7 +1082,7 @@ export function PricingPage() {
                   placeholder="Enter your email"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
-                  className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#1B1D45] shadow-xs placeholder:text-[#76799C] focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
+                  className="w-full rounded-[10px] border border-[#CAD0EB] dark:border-[#343A68] bg-white dark:bg-[#141731] px-3 py-2 text-xs text-[#1B1D45] dark:text-[#F3F5FF] shadow-xs placeholder:text-[#76799C] dark:placeholder:text-[#7A81AC] focus:border-[#663CF6] dark:focus:border-[#9D7CFE] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
                 />
                 <button
                   type="submit"
@@ -1091,7 +1093,7 @@ export function PricingPage() {
                 </button>
               </form>
               {subscribed && (
-                <p className="text-[10px] font-bold text-[#15803D]">
+                <p className="text-[10px] font-bold text-[#15803D] dark:text-[#4ADE80]">
                   Thank you for subscribing!
                 </p>
               )}
@@ -1099,13 +1101,13 @@ export function PricingPage() {
           </div>
 
           {/* Bottom Bar */}
-          <div className="mt-8 sm:mt-12 flex flex-col items-center justify-between gap-3 border-t border-[#DFE3F5] pt-6 text-xs text-[#4D5072] sm:flex-row">
+          <div className="mt-8 sm:mt-12 flex flex-col items-center justify-between gap-3 border-t border-[#DFE3F5] dark:border-[#2C3159] pt-6 text-xs text-[#4D5072] dark:text-[#B4B9DA] sm:flex-row">
             <p className="font-medium">
               &copy; {new Date().getFullYear()} ScholoNix. All rights
               reserved.
             </p>
-            <p className="flex items-center gap-1 font-semibold text-[#08093B]">
-              <span className="text-red-500">❤️</span> Made for Schools
+            <p className="flex items-center gap-1 font-semibold text-[#08093B] dark:text-[#F3F5FF]">
+              <span className="text-red-500 dark:text-rose-400">❤️</span> Made for Schools
             </p>
           </div>
         </div>

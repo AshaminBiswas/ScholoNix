@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 
 import type { AdmissionsTab } from "@/modules/school/admissions/types";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export interface SchoolShellSchool {
   id: string;
@@ -182,11 +183,11 @@ export function SchoolWorkspaceShell({
   };
 
   return (
-    <div className="relative min-h-screen bg-[#F4F6FC] text-[#1B1D45] flex flex-col font-sans overflow-x-clip">
+    <div className="relative min-h-screen bg-[#F4F6FC] text-[#1B1D45] flex flex-col font-sans overflow-x-clip dark:bg-[#090B1A] dark:text-[#DCE1F9] transition-colors duration-200">
       {/* =========================================================================
           1. TOP APP HEADER / BAR (Strictly single-tenant, no multi-school switcher)
           ========================================================================= */}
-      <header className="sticky top-0 z-40 h-14 border-b border-[#D6DBF0] bg-white/98 backdrop-blur-md px-3 sm:px-6 flex items-center shadow-xs">
+      <header className="sticky top-0 z-40 h-14 border-b border-[#D6DBF0] bg-white/98 backdrop-blur-md px-3 sm:px-6 flex items-center shadow-xs dark:border-[#272B4D] dark:bg-[#0E1026]/95">
         <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
           {/* Left: Sidebar Toggle Controls & Single Verified School Pill */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -194,7 +195,7 @@ export function SchoolWorkspaceShell({
               id="mobile-sidebar-toggle-btn"
               type="button"
               onClick={() => setMobileSidebarOpen((prev) => !prev)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:bg-[#FAF8FE] lg:hidden cursor-pointer"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:bg-[#FAF8FE] lg:hidden cursor-pointer dark:border-[#2E345B] dark:bg-[#161A36] dark:text-[#F3F5FF] dark:hover:border-[#8B5CF6] dark:hover:bg-[#201D47]"
               aria-label={mobileSidebarOpen ? "Hide menu bar" : "Open menu bar"}
               aria-expanded={mobileSidebarOpen}
               aria-controls="school-sidebar"
@@ -206,7 +207,7 @@ export function SchoolWorkspaceShell({
               id="desktop-sidebar-toggle-btn"
               type="button"
               onClick={() => setDesktopSidebarOpen((prev) => !prev)}
-              className="hidden lg:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:bg-[#FAF8FE] hover:text-[#663CF6] cursor-pointer"
+              className="hidden lg:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:bg-[#FAF8FE] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#161A36] dark:text-[#F3F5FF] dark:hover:border-[#8B5CF6] dark:hover:bg-[#201D47] dark:hover:text-[#C4B5FD]"
               aria-label={desktopSidebarOpen ? "Hide menu bar" : "Open menu bar"}
               aria-expanded={desktopSidebarOpen}
               aria-controls="school-sidebar"
@@ -223,7 +224,7 @@ export function SchoolWorkspaceShell({
             <Link
               id="active-school-badge"
               href={dashboardHref}
-              className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-[#D6DBF0] bg-[#FAF8FE] px-2.5 sm:px-3 py-1 text-xs font-bold text-[#08093B] shadow-xs transition hover:border-[#9B76FF] max-w-[190px] sm:max-w-xs"
+              className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-[#D6DBF0] bg-[#FAF8FE] px-2.5 sm:px-3 py-1 text-xs font-bold text-[#08093B] shadow-xs transition hover:border-[#9B76FF] max-w-[190px] sm:max-w-xs dark:border-[#2E345B] dark:bg-[#181B38] dark:text-[#F3F5FF] dark:hover:border-[#8B5CF6]"
               title={school.name}
             >
               <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#663CF6] text-white text-[10px]">
@@ -239,40 +240,42 @@ export function SchoolWorkspaceShell({
               <button
                 type="button"
                 onClick={onOpenSearch}
-                className="flex w-full items-center justify-between rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3.5 py-1.5 text-xs text-[#76799C] transition hover:border-[#663CF6] hover:bg-white cursor-pointer shadow-xs"
+                className="flex w-full items-center justify-between rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3.5 py-1.5 text-xs text-[#76799C] transition hover:border-[#663CF6] hover:bg-white cursor-pointer shadow-xs dark:border-[#30365C] dark:bg-[#141731] dark:text-[#9DA6CC] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1A1E3E]"
               >
                 <div className="flex items-center gap-2">
-                  <Search className="h-3.5 w-3.5 text-[#76799C]" />
+                  <Search className="h-3.5 w-3.5 text-[#76799C] dark:text-[#9DA6CC]" />
                   <span>Search students, staff, classes, fees, etc.</span>
                 </div>
-                <kbd className="rounded border border-[#D6DBF0] bg-white px-1.5 py-0.5 text-[10px] font-mono text-[#4D5072] shadow-xs">
+                <kbd className="rounded border border-[#D6DBF0] bg-white px-1.5 py-0.5 text-[10px] font-mono text-[#4D5072] shadow-xs dark:border-[#2E345B] dark:bg-[#0E1026] dark:text-[#C5CCF0]">
                   Ctrl + K
                 </kbd>
               </button>
             ) : (
               <Link
                 href={dashboardHref}
-                className="flex w-full items-center justify-between rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3.5 py-1.5 text-xs text-[#76799C] transition hover:border-[#663CF6] hover:bg-white shadow-xs"
+                className="flex w-full items-center justify-between rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3.5 py-1.5 text-xs text-[#76799C] transition hover:border-[#663CF6] hover:bg-white shadow-xs dark:border-[#30365C] dark:bg-[#141731] dark:text-[#9DA6CC] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1A1E3E]"
               >
                 <div className="flex items-center gap-2">
-                  <LayoutDashboard className="h-3.5 w-3.5 text-[#663CF6]" />
+                  <LayoutDashboard className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" />
                   <span>Back to {school.name} Dashboard</span>
                 </div>
               </Link>
             )}
           </div>
 
-          {/* Right: Notifications & User Profile (Help icon removed from top nav bar) */}
+          {/* Right: Theme Toggle, Notifications & User Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+
             {/* Notification Bell with Badge */}
             <button
               type="button"
-              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#D6DBF0] bg-white text-[#4D5072] transition hover:bg-[#F2EEFD] hover:text-[#663CF6] shadow-xs"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#D6DBF0] bg-white text-[#4D5072] transition hover:bg-[#F2EEFD] hover:text-[#663CF6] shadow-xs dark:border-[#2E345B] dark:bg-[#161A36] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6] dark:hover:bg-[#231D4B] dark:hover:text-[#D9CEFF]"
               aria-label="View notifications"
             >
               <Bell className="h-4 w-4" />
               {noticeCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-[#0E1026]">
                   {noticeCount}
                 </span>
               )}
@@ -283,28 +286,28 @@ export function SchoolWorkspaceShell({
               <button
                 type="button"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 rounded-full border border-[#D6DBF0] bg-white p-1 pr-2 sm:pr-3 transition hover:border-[#663CF6] shadow-xs cursor-pointer"
+                className="flex items-center gap-2 rounded-full border border-[#D6DBF0] bg-white p-1 pr-2 sm:pr-3 transition hover:border-[#663CF6] shadow-xs cursor-pointer dark:border-[#2E345B] dark:bg-[#161A36] dark:hover:border-[#8B5CF6]"
                 aria-expanded={userMenuOpen}
               >
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-tr from-[#663CF6] to-[#8B5CF6] text-xs font-bold text-white shadow-xs">
                   {user.avatarInitials}
                 </div>
                 <div className="hidden text-left sm:block">
-                  <p className="text-xs font-bold leading-tight text-[#08093B]">{user.name}</p>
-                  <p className="text-[10px] text-[#76799C] capitalize">{user.displayRole}</p>
+                  <p className="text-xs font-bold leading-tight text-[#08093B] dark:text-[#F3F5FF]">{user.name}</p>
+                  <p className="text-[10px] text-[#76799C] capitalize dark:text-[#9DA6CC]">{user.displayRole}</p>
                 </div>
-                <ChevronDown className="h-3 w-3 text-[#4D5072]" />
+                <ChevronDown className="h-3 w-3 text-[#4D5072] dark:text-[#9DA6CC]" />
               </button>
 
               {/* User Menu Dropdown */}
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-[16px] border border-[#D6DBF0] bg-white p-2 shadow-xl z-50">
-                  <div className="px-3 py-2 border-b border-[#DFE3F5]">
-                    <p className="text-xs font-bold text-[#08093B]">{user.name}</p>
-                    <p className="text-[11px] text-[#76799C] truncate">
+                <div className="absolute right-0 mt-2 w-56 rounded-[16px] border border-[#D6DBF0] bg-white p-2 shadow-xl z-50 dark:border-[#2E345B] dark:bg-[#141731] dark:shadow-black/60">
+                  <div className="px-3 py-2 border-b border-[#DFE3F5] dark:border-[#232746]">
+                    <p className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">{user.name}</p>
+                    <p className="text-[11px] text-[#76799C] truncate dark:text-[#9DA6CC]">
                       {user.email || user.displayRole}
                     </p>
-                    <span className="inline-block mt-1 rounded bg-[#EDE7FF] px-2 py-0.5 text-[10px] font-bold text-[#663CF6] max-w-full truncate">
+                    <span className="inline-block mt-1 rounded bg-[#EDE7FF] px-2 py-0.5 text-[10px] font-bold text-[#663CF6] max-w-full truncate dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                       {school.name}
                     </span>
                   </div>
@@ -312,7 +315,7 @@ export function SchoolWorkspaceShell({
                     <Link
                       href={helpHref}
                       onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs text-[#4D5072] hover:bg-[#F6F5FD] hover:text-[#663CF6]"
+                      className="flex items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs text-[#4D5072] hover:bg-[#F6F5FD] hover:text-[#663CF6] dark:text-[#C5CCF0] dark:hover:bg-[#1E2244] dark:hover:text-[#D9CEFF]"
                     >
                       <HelpCircle className="h-3.5 w-3.5" />
                       <span>Help Center</span>
@@ -320,7 +323,7 @@ export function SchoolWorkspaceShell({
                     <button
                       type="button"
                       onClick={() => openSupportModal("support")}
-                      className="flex w-full items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs text-[#4D5072] hover:bg-[#F6F5FD] hover:text-[#663CF6] cursor-pointer"
+                      className="flex w-full items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs text-[#4D5072] hover:bg-[#F6F5FD] hover:text-[#663CF6] cursor-pointer dark:text-[#C5CCF0] dark:hover:bg-[#1E2244] dark:hover:text-[#D9CEFF]"
                     >
                       <MessageSquare className="h-3.5 w-3.5" />
                       <span>Contact Support</span>
@@ -328,17 +331,17 @@ export function SchoolWorkspaceShell({
                     <button
                       type="button"
                       onClick={() => openSupportModal("feedback")}
-                      className="flex w-full items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs text-[#4D5072] hover:bg-[#F6F5FD] hover:text-[#663CF6] cursor-pointer"
+                      className="flex w-full items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs text-[#4D5072] hover:bg-[#F6F5FD] hover:text-[#663CF6] cursor-pointer dark:text-[#C5CCF0] dark:hover:bg-[#1E2244] dark:hover:text-[#D9CEFF]"
                     >
-                      <Sparkles className="h-3.5 w-3.5 text-[#663CF6]" />
+                      <Sparkles className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" />
                       <span>Give Feedback</span>
                     </button>
                   </div>
-                  <div className="border-t border-[#DFE3F5] pt-1">
+                  <div className="border-t border-[#DFE3F5] pt-1 dark:border-[#232746]">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 cursor-pointer"
+                      className="flex w-full items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 cursor-pointer dark:text-red-400 dark:hover:bg-red-950/50"
                     >
                       <LogOut className="h-3.5 w-3.5" />
                       <span>Sign Out</span>
@@ -358,7 +361,7 @@ export function SchoolWorkspaceShell({
         <aside
           id="school-sidebar"
           aria-label="School navigation menu"
-          className={`fixed top-14 left-0 bottom-0 z-30 w-64 h-[calc(100dvh-3.5rem)] border-r border-[#D6DBF0] bg-white transform transition-[transform,visibility] duration-300 ease-in-out ${
+          className={`fixed top-14 left-0 bottom-0 z-30 w-64 h-[calc(100dvh-3.5rem)] border-r border-[#D6DBF0] bg-white transform transition-[transform,visibility] duration-300 ease-in-out dark:border-[#272B4D] dark:bg-[#0E1026] ${
             mobileSidebarOpen
               ? "translate-x-0 visible pointer-events-auto"
               : "-translate-x-full invisible pointer-events-none"
@@ -377,7 +380,7 @@ export function SchoolWorkspaceShell({
                 className={`flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-xs font-bold transition ${
                   activeNav === "dashboard"
                     ? "bg-[#663CF6] text-white shadow-md"
-                    : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6]"
+                    : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:bg-[#191D3D] dark:hover:text-[#D9CEFF]"
                 }`}
               >
                 <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
@@ -396,8 +399,8 @@ export function SchoolWorkspaceShell({
                     activeNav === "admissions"
                       ? "bg-[#663CF6] text-white shadow-md"
                       : admissionsOpen
-                        ? "bg-[#FAF8FE] text-[#663CF6]"
-                        : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6]"
+                        ? "bg-[#FAF8FE] text-[#663CF6] dark:bg-[#1C1A3D] dark:text-[#C4B5FD]"
+                        : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:bg-[#191D3D] dark:hover:text-[#D9CEFF]"
                   }`}
                 >
                   <span className="flex items-center gap-3">
@@ -407,8 +410,8 @@ export function SchoolWorkspaceShell({
                   <ChevronDown
                     className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${
                       admissionsOpen
-                        ? `rotate-180 ${activeNav === "admissions" ? "text-white" : "text-[#663CF6]"}`
-                        : `rotate-0 ${activeNav === "admissions" ? "text-white" : "text-[#76799C]"}`
+                        ? `rotate-180 ${activeNav === "admissions" ? "text-white" : "text-[#663CF6] dark:text-[#A78BFA]"}`
+                        : `rotate-0 ${activeNav === "admissions" ? "text-white" : "text-[#76799C] dark:text-[#9DA6CC]"}`
                     }`}
                     aria-hidden="true"
                   />
@@ -416,7 +419,7 @@ export function SchoolWorkspaceShell({
                 {admissionsOpen && (
                   <div
                     id="admissions-submenu"
-                    className="mt-1 ml-4 space-y-0.5 rounded-[12px] border border-[#EDE7FF] bg-[#FAF8FE]/80 p-1.5 text-[11px] font-medium text-[#4D5072]"
+                    className="mt-1 ml-4 space-y-0.5 rounded-[12px] border border-[#EDE7FF] bg-[#FAF8FE]/80 p-1.5 text-[11px] font-medium text-[#4D5072] dark:border-[#2C285A] dark:bg-[#151836] dark:text-[#B4BDD9]"
                   >
                     {(
                       [
@@ -453,8 +456,8 @@ export function SchoolWorkspaceShell({
                           }}
                           className={`flex w-full items-center rounded-[8px] border-l-2 px-2.5 py-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
                             isSubActive
-                              ? "border-[#663CF6] bg-white font-bold text-[#663CF6] shadow-2xs"
-                              : "border-transparent text-[#4D5072] hover:border-[#663CF6] hover:bg-white hover:text-[#663CF6]"
+                              ? "border-[#663CF6] bg-white font-bold text-[#663CF6] shadow-2xs dark:border-[#8B5CF6] dark:bg-[#221D4C] dark:text-[#E2D9FF]"
+                              : "border-transparent text-[#4D5072] hover:border-[#663CF6] hover:bg-white hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1E2245] dark:hover:text-[#D9CEFF]"
                           }`}
                         >
                           {subItem.label}
@@ -485,7 +488,7 @@ export function SchoolWorkspaceShell({
                     key={item.label}
                     type="button"
                     onClick={() => setMobileSidebarOpen(false)}
-                    className="flex w-full items-center justify-between rounded-[10px] px-3.5 py-2 text-left text-xs font-semibold text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer transition"
+                    className="flex w-full items-center justify-between rounded-[10px] px-3.5 py-2 text-left text-xs font-semibold text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer transition dark:text-[#B4BDD9] dark:hover:bg-[#191D3D] dark:hover:text-[#D9CEFF]"
                   >
                     <div className="flex items-center gap-3">
                       <Icon className="h-4 w-4" aria-hidden="true" />
@@ -493,11 +496,11 @@ export function SchoolWorkspaceShell({
                     </div>
                     <div className="flex items-center gap-1.5">
                       {item.badge && (
-                        <span className="rounded-full bg-[#EDE7FF] px-2 py-0.5 text-[9px] font-extrabold text-[#663CF6]">
+                        <span className="rounded-full bg-[#EDE7FF] px-2 py-0.5 text-[9px] font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                           {item.badge}
                         </span>
                       )}
-                      <ChevronRight className="h-3 w-3 text-[#CAD0EB]" aria-hidden="true" />
+                      <ChevronRight className="h-3 w-3 text-[#CAD0EB] dark:text-[#4C5582]" aria-hidden="true" />
                     </div>
                   </button>
                 );
@@ -510,7 +513,7 @@ export function SchoolWorkspaceShell({
                 className={`flex items-center justify-between rounded-[12px] px-3.5 py-2.5 text-xs font-bold transition ${
                   activeNav === "help"
                     ? "bg-[#663CF6] text-white shadow-md"
-                    : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6]"
+                    : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:bg-[#191D3D] dark:hover:text-[#D9CEFF]"
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -518,19 +521,19 @@ export function SchoolWorkspaceShell({
                   <span>Help Center</span>
                 </div>
                 <ChevronRight
-                  className={`h-3 w-3 ${activeNav === "help" ? "text-white" : "text-[#CAD0EB]"}`}
+                  className={`h-3 w-3 ${activeNav === "help" ? "text-white" : "text-[#CAD0EB] dark:text-[#4C5582]"}`}
                   aria-hidden="true"
                 />
               </Link>
             </nav>
 
             {/* Sidebar Bottom Card: Connected School Status */}
-            <div className="mt-6 rounded-[14px] border border-[#DDD6FE] bg-gradient-to-br from-[#EDE7FF]/60 via-white to-[#F6F2FF] p-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#663CF6]">
+            <div className="mt-6 rounded-[14px] border border-[#DDD6FE] bg-gradient-to-br from-[#EDE7FF]/60 via-white to-[#F6F2FF] p-3 text-center dark:border-[#2E2A5C] dark:from-[#1D1840] dark:via-[#141731] dark:to-[#181B38]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#663CF6] dark:text-[#A78BFA]">
                 Connected School
               </p>
-              <p className="mt-1 text-xs font-extrabold text-[#08093B] truncate">{school.name}</p>
-              <p className="text-[10px] text-[#76799C]">
+              <p className="mt-1 text-xs font-extrabold text-[#08093B] truncate dark:text-[#F3F5FF]">{school.name}</p>
+              <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
                 {school.affiliationBoard} · {school.code}
               </p>
             </div>
@@ -540,7 +543,7 @@ export function SchoolWorkspaceShell({
         {/* Mobile Backdrop */}
         {mobileSidebarOpen && (
           <div
-            className="fixed inset-0 top-14 z-20 bg-black/30 backdrop-blur-xs lg:hidden"
+            className="fixed inset-0 top-14 z-20 bg-black/30 backdrop-blur-xs lg:hidden dark:bg-black/60"
             onClick={() => setMobileSidebarOpen(false)}
           />
         )}
@@ -563,7 +566,7 @@ export function SchoolWorkspaceShell({
                     <HelpCircle className="h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-base font-extrabold">Need Help or Have Suggestions?</h3>
+                    <h3 className="text-base font-extrabold text-white">Need Help or Have Suggestions?</h3>
                     <p className="mt-0.5 text-xs text-purple-100">
                       Access {school.name} help guides, contact support, or submit feedback inside your workspace.
                     </p>
@@ -573,7 +576,7 @@ export function SchoolWorkspaceShell({
                 <div className="flex flex-wrap items-center justify-center gap-3 shrink-0">
                   <Link
                     href={helpHref}
-                    className="inline-flex items-center gap-1.5 rounded-[12px] bg-white px-4 py-2 text-xs font-bold text-[#4F27E8] shadow-sm transition hover:bg-[#F6F5FD]"
+                    className="inline-flex items-center gap-1.5 rounded-[12px] bg-white px-4 py-2 text-xs font-bold text-[#4F27E8] shadow-sm transition hover:bg-[#F6F5FD] dark:bg-[#141731] dark:text-[#E2D9FF] dark:hover:bg-[#1E2247]"
                   >
                     <span>Help Guides</span>
                   </Link>
@@ -595,7 +598,7 @@ export function SchoolWorkspaceShell({
               </div>
             </div>
 
-            <footer className="border-t border-[#DFE3F5] pt-6 pb-4 text-xs text-[#76799C] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <footer className="border-t border-[#DFE3F5] pt-6 pb-4 text-xs text-[#76799C] flex flex-col sm:flex-row items-center justify-between gap-3 dark:border-[#232746] dark:text-[#9DA6CC]">
               <p>
                 &copy; {new Date().getFullYear()} ScholoNix · {school.name} Workspace
               </p>
@@ -603,18 +606,18 @@ export function SchoolWorkspaceShell({
                 <button
                   type="button"
                   onClick={() => openSupportModal("support")}
-                  className="hover:text-[#663CF6] cursor-pointer"
+                  className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD] cursor-pointer"
                 >
                   Support
                 </button>
                 <button
                   type="button"
                   onClick={() => openSupportModal("feedback")}
-                  className="hover:text-[#663CF6] cursor-pointer"
+                  className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD] cursor-pointer"
                 >
                   Feedback
                 </button>
-                <Link href={helpHref} className="hover:text-[#663CF6]">
+                <Link href={helpHref} className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                   Help Center
                 </Link>
               </div>
@@ -632,15 +635,15 @@ export function SchoolWorkspaceShell({
           role="dialog"
           aria-modal="true"
           aria-labelledby="portal-support-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 dark:bg-black/65"
         >
-          <div className="w-full max-w-md rounded-[20px] border border-[#D6DBF0] bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#DFE3F5] pb-3 mb-4">
+          <div className="w-full max-w-md rounded-[20px] border border-[#D6DBF0] bg-white p-6 shadow-2xl dark:border-[#2E345B] dark:bg-[#141731]">
+            <div className="flex items-center justify-between border-b border-[#DFE3F5] pb-3 mb-4 dark:border-[#232746]">
               <div>
-                <h3 id="portal-support-modal-title" className="text-base font-extrabold text-[#08093B]">
+                <h3 id="portal-support-modal-title" className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                   {portalModal === "support" ? "Contact School Support" : "Share Product Feedback"}
                 </h3>
-                <p className="text-[11px] text-[#76799C]">
+                <p className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
                   Submitting as {user.name} · {school.name}
                 </p>
               </div>
@@ -648,7 +651,7 @@ export function SchoolWorkspaceShell({
                 type="button"
                 onClick={() => setPortalModal(null)}
                 aria-label="Close dialog"
-                className="rounded-full p-1 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer"
+                className="rounded-full p-1 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer dark:text-[#9DA6CC] dark:hover:bg-[#1F2447] dark:hover:text-[#F3F5FF]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -658,8 +661,8 @@ export function SchoolWorkspaceShell({
               <div
                 className={`mb-4 flex items-start gap-2 rounded-[12px] border p-3 text-xs font-medium ${
                   submitFeedbackMsg.type === "success"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : "border-red-200 bg-red-50 text-red-700"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+                    : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300"
                 }`}
               >
                 <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
@@ -670,7 +673,7 @@ export function SchoolWorkspaceShell({
             <form onSubmit={handleSubmitPortalForm} className="space-y-3.5">
               {portalModal === "support" ? (
                 <div>
-                  <label className="block text-xs font-bold text-[#08093B] mb-1">
+                  <label className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
                     Subject <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -681,13 +684,13 @@ export function SchoolWorkspaceShell({
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="e.g. Fee receipt setup question"
-                    className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#DCE1F9] dark:placeholder:text-[#7A83AD]"
                   />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-[#08093B] mb-1">Category</label>
+                    <label className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">Category</label>
                     <select
                       value={feedbackCategory}
                       onChange={(e) =>
@@ -700,7 +703,7 @@ export function SchoolWorkspaceShell({
                             | "Administration & Billing",
                         )
                       }
-                      className="w-full rounded-[10px] border border-[#CAD0EB] px-2.5 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+                      className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-2.5 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#DCE1F9]"
                     >
                       <option value="General Experience">General Experience</option>
                       <option value="Feature Request">Feature Request</option>
@@ -710,11 +713,11 @@ export function SchoolWorkspaceShell({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[#08093B] mb-1">Rating</label>
+                    <label className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">Rating</label>
                     <select
                       value={rating}
                       onChange={(e) => setRating(Number(e.target.value))}
-                      className="w-full rounded-[10px] border border-[#CAD0EB] px-2.5 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+                      className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-2.5 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#DCE1F9]"
                     >
                       {[5, 4, 3, 2, 1].map((n) => (
                         <option key={n} value={n}>
@@ -727,7 +730,7 @@ export function SchoolWorkspaceShell({
               )}
 
               <div>
-                <label className="block text-xs font-bold text-[#08093B] mb-1">
+                <label className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
                   {portalModal === "support" ? "How can we help?" : "Your Feedback"}{" "}
                   <span className="text-red-500">*</span>
                 </label>
@@ -738,7 +741,7 @@ export function SchoolWorkspaceShell({
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Describe your request or feedback..."
-                  className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+                  className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#DCE1F9] dark:placeholder:text-[#7A83AD]"
                 />
               </div>
 
@@ -746,7 +749,7 @@ export function SchoolWorkspaceShell({
                 <button
                   type="button"
                   onClick={() => setPortalModal(null)}
-                  className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] hover:bg-[#F8FAFC] cursor-pointer"
+                  className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] hover:bg-[#F8FAFC] cursor-pointer dark:border-[#30365C] dark:text-[#C5CCF0] dark:hover:bg-[#1D2245]"
                 >
                   Close
                 </button>

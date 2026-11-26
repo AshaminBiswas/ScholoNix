@@ -33,6 +33,7 @@ import {
 import { AtmosphericBackground } from "@/components/ui/atmospheric-background";
 import { ResourcesDropdown, MobileResourcesMenu } from "./resources-dropdown";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import {
   GUIDE_CATEGORIES,
   FEATURED_GUIDE,
@@ -48,17 +49,17 @@ function GuidesHeroIllustration() {
   return (
     <div className="relative mx-auto flex w-full max-w-lg items-center justify-center p-4">
       {/* Ambient background glow */}
-      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/45 to-[#93C5FD]/40 blur-2xl filter" />
+      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/45 dark:from-[#663CF6]/25 to-[#93C5FD]/40 dark:to-[#0284C7]/25 blur-2xl filter" />
 
       {/* Floating Status Badges */}
-      <div className="absolute -top-3 left-6 z-20 flex animate-bounce items-center gap-1.5 rounded-full border border-[#D4C4FE]/80 bg-white/95 px-3 py-1 shadow-md shadow-[#663CF6]/10 backdrop-blur-md">
-        <Sparkles className="h-3.5 w-3.5 text-[#7C3AED]" />
-        <span className="text-xs font-bold text-[#08093B]">28 Comprehensive Guides</span>
+      <div className="absolute -top-3 left-6 z-20 flex animate-bounce items-center gap-1.5 rounded-full border border-[#D4C4FE]/80 dark:border-[#42357D]/90 bg-white/95 dark:bg-[#141731]/95 px-3 py-1 shadow-md shadow-[#663CF6]/10 backdrop-blur-md">
+        <Sparkles className="h-3.5 w-3.5 text-[#7C3AED] dark:text-[#B99BFF]" />
+        <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">28 Comprehensive Guides</span>
       </div>
 
-      <div className="absolute -bottom-2 right-4 z-20 flex items-center gap-1.5 rounded-full border border-[#BAE6FD] bg-white/95 px-3 py-1 shadow-md shadow-[#0284C7]/10 backdrop-blur-md">
-        <CheckCircle2 className="h-3.5 w-3.5 text-[#0284C7]" />
-        <span className="text-xs font-bold text-[#08093B]">Step-by-Step Walkthroughs</span>
+      <div className="absolute -bottom-2 right-4 z-20 flex items-center gap-1.5 rounded-full border border-[#BAE6FD] dark:border-[#1E4670] bg-white/95 dark:bg-[#141731]/95 px-3 py-1 shadow-md shadow-[#0284C7]/10 backdrop-blur-md">
+        <CheckCircle2 className="h-3.5 w-3.5 text-[#0284C7] dark:text-[#56C2FF]" />
+        <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Step-by-Step Walkthroughs</span>
       </div>
 
       <svg
@@ -285,18 +286,18 @@ export function GuidesPage() {
   }, [selectedCategory, searchQuery, activeJourney]);
 
   return (
-    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45]">
+    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45] dark:text-[#F3F5FF]">
       <AtmosphericBackground />
 
       {/* Floating Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-[100] flex animate-fade-in items-center gap-2 rounded-xl border border-[#D4C4FE] bg-white px-4 py-3 text-xs font-bold text-[#08093B] shadow-2xl shadow-[#663CF6]/20">
-          <CheckCircle2 className="h-4 w-4 text-[#10B981]" />
+        <div className="fixed top-20 right-6 z-[100] flex animate-fade-in items-center gap-2 rounded-xl border border-[#D4C4FE] dark:border-[#42357D] bg-white dark:bg-[#141731] px-4 py-3 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] shadow-2xl shadow-[#663CF6]/20">
+          <CheckCircle2 className="h-4 w-4 text-[#10B981] dark:text-[#34D399]" />
           <span>{toastMessage}</span>
           <button
             type="button"
             onClick={() => setToastMessage(null)}
-            className="ml-2 text-[#7C829E] hover:text-[#08093B]"
+            className="ml-2 text-[#7C829E] dark:text-[#969CC2] hover:text-[#08093B] dark:hover:text-white"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -306,30 +307,32 @@ export function GuidesPage() {
       {/* =========================================================================
           1. HEADER / NAVBAR
           ========================================================================= */}
-      <header className="sticky top-0 z-50 border-b border-[#E6EAF5]/80 bg-white/90 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-[#E6EAF5]/80 dark:border-[#2A2F56]/90 bg-white/90 dark:bg-[#141731]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           {/* Logo */}
           <BrandLogo className="h-8 sm:h-9" />
 
           {/* Desktop Navigation */}
-          <nav className="hidden items-center gap-7 text-xs font-bold text-[#4D5072] md:flex">
-            <Link href="/features" className="transition-colors hover:text-[#663CF6]">
+          <nav className="hidden items-center gap-7 text-xs font-bold text-[#4D5072] dark:text-[#B4B9DA] md:flex">
+            <Link href="/features" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Features
             </Link>
-            <Link href="/pricing" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/pricing" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Pricing
             </Link>
-            <Link href="/for-schools" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/for-schools" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               For Schools
             </Link>
             <ResourcesDropdown active={true} />
           </nav>
 
           {/* Desktop Action Buttons */}
-          <div className="hidden items-center gap-3 md:flex">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            <div className="hidden items-center gap-3 md:flex">
             <Link
               href="/login"
-              className="rounded-xl border border-[#D6DBF0] bg-white px-4 py-2 text-xs font-bold text-[#08093B] shadow-sm transition-all hover:border-[#663CF6]/60 hover:text-[#663CF6]"
+              className="rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] px-4 py-2 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] shadow-sm transition-all hover:border-[#663CF6]/60 dark:hover:border-[#9D7CFE]/80 hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
             >
               Sign In
             </Link>
@@ -345,48 +348,49 @@ export function GuidesPage() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D6DBF0] bg-white text-[#08093B] md:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#08093B] dark:text-[#F3F5FF] md:hidden"
             aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
+          </div>
         </div>
 
         {/* Mobile Dropdown Drawer */}
         {mobileMenuOpen && (
-          <div className="border-b border-[#E6EAF5] bg-white px-4 py-4 md:hidden animate-in slide-in-from-top-2 duration-200">
-            <nav className="flex flex-col gap-3 text-sm font-bold text-[#4D5072]">
+          <div className="border-b border-[#E6EAF5] dark:border-[#2A2F56] bg-white dark:bg-[#141731] px-4 py-4 md:hidden animate-in slide-in-from-top-2 duration-200">
+            <nav className="flex flex-col gap-3 text-sm font-bold text-[#4D5072] dark:text-[#B4B9DA]">
               <Link
                 href="/features"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1.5 transition-colors hover:text-[#663CF6]"
+                className="py-1.5 transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Features
               </Link>
               <Link
                 href="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1.5 transition-colors hover:text-[#663CF6]"
+                className="py-1.5 transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Pricing
               </Link>
               <Link
                 href="/for-schools"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1.5 transition-colors hover:text-[#663CF6]"
+                className="py-1.5 transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 For Schools
               </Link>
 
-              <div className="border-t border-[#F0F2FA] pt-2">
+              <div className="border-t border-[#F0F2FA] dark:border-[#23284A] pt-2">
                 <MobileResourcesMenu onItemClick={() => setMobileMenuOpen(false)} />
               </div>
 
-              <div className="mt-2 flex flex-col gap-2 border-t border-[#F0F2FA] pt-3">
+              <div className="mt-2 flex flex-col gap-2 border-t border-[#F0F2FA] dark:border-[#23284A] pt-3">
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full rounded-xl border border-[#D6DBF0] py-2.5 text-center text-xs font-bold text-[#08093B]"
+                  className="w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] py-2.5 text-center text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]"
                 >
                   Sign In
                 </Link>
@@ -408,23 +412,23 @@ export function GuidesPage() {
         {/* =========================================================================
             2. HERO SECTION: Title, Subtitle, Search & 3D Laptop Art
             ========================================================================= */}
-        <section className="relative overflow-hidden rounded-3xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#EDE7FF]/80 p-6 shadow-[0_12px_36px_rgba(24,18,77,0.07)] backdrop-blur-md sm:p-10 lg:p-12">
+        <section className="relative overflow-hidden rounded-3xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#EDE7FF]/80 dark:to-[#251D4A]/85 p-6 shadow-[0_12px_36px_rgba(24,18,77,0.07)] backdrop-blur-md sm:p-10 lg:p-12">
           <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-12">
             {/* Left Column: Badge, Title, Subtitle, Search */}
             <div className="lg:col-span-7">
               {/* Badge: [Book] Guides */}
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-[#D4C4FE]/80 bg-[#EDE7FF] px-3.5 py-1 text-xs font-bold text-[#663CF6]">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-[#D4C4FE]/80 dark:border-[#42357D]/90 bg-[#EDE7FF] dark:bg-[#251D4A] px-3.5 py-1 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                 <BookOpen className="h-3.5 w-3.5" />
                 <span>Guides</span>
               </div>
 
               {/* Main Heading */}
-              <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[#08093B] sm:text-4xl lg:text-[44px] lg:leading-[1.15]">
+              <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF] sm:text-4xl lg:text-[44px] lg:leading-[1.15]">
                 Step-by-Step Guides
               </h1>
 
               {/* Subtitle */}
-              <p className="mt-3 max-w-xl text-sm font-medium text-[#5A5E7A] sm:text-base leading-relaxed">
+              <p className="mt-3 max-w-xl text-sm font-medium text-[#5A5E7A] dark:text-[#B4B9DA] sm:text-base leading-relaxed">
                 Learn how to set up, use and get the most out of ScholoNix with our detailed guides.
               </p>
 
@@ -436,19 +440,19 @@ export function GuidesPage() {
                 className="relative mt-6 max-w-lg"
               >
                 <div className="relative flex items-center">
-                  <Search className="absolute left-4 h-4 w-4 text-[#8E92BC]" />
+                  <Search className="absolute left-4 h-4 w-4 text-[#8E92BC] dark:text-[#888EB5]" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search guides..."
-                    className="w-full rounded-full border border-[#D6DBF0] bg-white py-3.5 pr-14 pl-11 text-xs sm:text-sm text-[#08093B] placeholder-[#8E92BC] shadow-[0_4px_16px_rgba(24,18,77,0.05)] transition-all outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20"
+                    className="w-full rounded-full border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] py-3.5 pr-14 pl-11 text-xs sm:text-sm text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] shadow-[0_4px_16px_rgba(24,18,77,0.05)] transition-all outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE] focus:ring-2 focus:ring-[#7C3AED]/20"
                   />
                   {searchQuery ? (
                     <button
                       type="button"
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+                      className="absolute right-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-[#1E2248] text-slate-500 dark:text-[#A5ACD2] hover:bg-slate-200 dark:hover:bg-[#2C3159] transition-colors"
                       title="Clear search"
                     >
                       <X className="h-4 w-4" />
@@ -465,14 +469,14 @@ export function GuidesPage() {
                 </div>
 
                 {searchQuery && (
-                  <div className="mt-2 flex items-center justify-between px-2 text-xs text-[#5A5E7A]">
+                  <div className="mt-2 flex items-center justify-between px-2 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                     <span>
                       Found <strong>{filteredGuides.length}</strong> matching guide{filteredGuides.length !== 1 ? "s" : ""}
                     </span>
                     <button
                       type="button"
                       onClick={() => setSearchQuery("")}
-                      className="text-[#663CF6] font-semibold hover:underline"
+                      className="text-[#663CF6] dark:text-[#B59CFF] font-semibold hover:underline"
                     >
                       Clear search
                     </button>
@@ -503,7 +507,7 @@ export function GuidesPage() {
               className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
                 selectedCategory === "all" && !activeJourney
                   ? "bg-[#663CF6] text-white shadow-md shadow-[#663CF6]/25"
-                  : "border border-[#D6DBF0]/80 bg-white text-[#5A5E7A] hover:border-[#663CF6]/40 hover:text-[#08093B]"
+                  : "border border-[#D6DBF0]/80 dark:border-[#2C3159]/90 bg-white dark:bg-[#141731] text-[#5A5E7A] dark:text-[#B4B9DA] hover:border-[#663CF6]/40 dark:hover:border-[#9D7CFE]/60 hover:text-[#08093B] dark:hover:text-white"
               }`}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
@@ -524,7 +528,7 @@ export function GuidesPage() {
                   className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
                     isActive
                       ? "bg-[#663CF6] text-white shadow-md shadow-[#663CF6]/25"
-                      : "border border-[#D6DBF0]/80 bg-white text-[#5A5E7A] hover:border-[#663CF6]/40 hover:text-[#08093B]"
+                      : "border border-[#D6DBF0]/80 dark:border-[#2C3159]/90 bg-white dark:bg-[#141731] text-[#5A5E7A] dark:text-[#B4B9DA] hover:border-[#663CF6]/40 dark:hover:border-[#9D7CFE]/60 hover:text-[#08093B] dark:hover:text-white"
                   }`}
                 >
                   <GuideIcon type={cat.iconType} className="h-3.5 w-3.5" />
@@ -535,7 +539,7 @@ export function GuidesPage() {
           </div>
 
           {activeJourney && (
-            <div className="mt-3 flex items-center justify-between rounded-xl bg-[#EDE7FF] px-4 py-2 text-xs text-[#663CF6] font-bold">
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-[#EDE7FF] dark:bg-[#251D4A] px-4 py-2 text-xs text-[#663CF6] dark:text-[#B59CFF] font-bold">
               <span>Filtering by Journey: &ldquo;{activeJourney.title}&rdquo; ({filteredGuides.length} guides)</span>
               <button
                 type="button"
@@ -558,8 +562,8 @@ export function GuidesPage() {
               ========================================== */}
           <aside className="space-y-6 lg:col-span-4 lg:sticky lg:top-24">
             {/* Card 1: Guide Categories */}
-            <div className="rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4F0FE] p-5 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
-              <h2 className="text-sm font-extrabold text-[#08093B] tracking-tight">
+            <div className="rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4F0FE] dark:to-[#211C47] p-5 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+              <h2 className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF] tracking-tight">
                 Guide Categories
               </h2>
 
@@ -573,8 +577,8 @@ export function GuidesPage() {
                   }}
                   className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
                     selectedCategory === "all" && !activeJourney
-                      ? "bg-[#EDE7FF] text-[#663CF6]"
-                      : "text-[#5A5E7A] hover:bg-slate-50 hover:text-[#08093B]"
+                      ? "bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF]"
+                      : "text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-slate-50 dark:hover:bg-[#1D2145] hover:text-[#08093B] dark:hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -585,7 +589,7 @@ export function GuidesPage() {
                     className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                       selectedCategory === "all" && !activeJourney
                         ? "bg-[#663CF6] text-white"
-                        : "bg-[#F1F3F9] text-[#7C829E]"
+                        : "bg-[#F1F3F9] dark:bg-[#1B1F40] text-[#7C829E] dark:text-[#969CC2]"
                     }`}
                   >
                     28
@@ -605,8 +609,8 @@ export function GuidesPage() {
                       }}
                       className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
                         isActive
-                          ? "bg-[#EDE7FF] text-[#663CF6]"
-                          : "text-[#5A5E7A] hover:bg-slate-50 hover:text-[#08093B]"
+                          ? "bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF]"
+                          : "text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-slate-50 dark:hover:bg-[#1D2145] hover:text-[#08093B] dark:hover:text-white"
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -617,7 +621,7 @@ export function GuidesPage() {
                         className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                           isActive
                             ? "bg-[#663CF6] text-white"
-                            : "bg-[#F1F3F9] text-[#7C829E]"
+                            : "bg-[#F1F3F9] dark:bg-[#1B1F40] text-[#7C829E] dark:text-[#969CC2]"
                         }`}
                       >
                         {cat.count}
@@ -629,16 +633,16 @@ export function GuidesPage() {
             </div>
 
             {/* Card 2: Need More Help? */}
-            <div className="rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F2ECFE] p-6 text-center shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] shadow-sm">
+            <div className="rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F2ECFE] dark:to-[#221B48] p-6 text-center shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] shadow-sm">
                 <Headphones className="h-7 w-7" />
               </div>
 
-              <h3 className="mt-4 text-base font-extrabold text-[#08093B]">
+              <h3 className="mt-4 text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                 Need More Help?
               </h3>
 
-              <p className="mt-2 text-xs font-medium text-[#5A5E7A] leading-relaxed">
+              <p className="mt-2 text-xs font-medium text-[#5A5E7A] dark:text-[#B4B9DA] leading-relaxed">
                 Can&apos;t find the right guide? Our support team is here to help you.
               </p>
 
@@ -661,7 +665,7 @@ export function GuidesPage() {
             {searchQuery.trim() || selectedCategory !== "all" || activeJourney ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-1">
-                  <h3 className="text-base font-extrabold text-[#08093B]">
+                  <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                     Guides ({filteredGuides.length})
                   </h3>
                   <button
@@ -671,19 +675,19 @@ export function GuidesPage() {
                       setSearchQuery("");
                       setActiveJourney(null);
                     }}
-                    className="text-xs font-bold text-[#663CF6] hover:underline"
+                    className="text-xs font-bold text-[#663CF6] dark:text-[#B59CFF] hover:underline"
                   >
                     Reset all filters
                   </button>
                 </div>
 
                 {filteredGuides.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-[#CDC2F7] bg-white/80 backdrop-blur-sm p-12 text-center">
-                    <BookOpen className="mx-auto h-12 w-12 text-[#8E92BC]" />
-                    <h3 className="mt-4 text-base font-bold text-[#08093B]">
+                  <div className="rounded-2xl border border-dashed border-[#CDC2F7] dark:border-[#40347A] bg-white/80 dark:bg-[#141731]/80 backdrop-blur-sm p-12 text-center">
+                    <BookOpen className="mx-auto h-12 w-12 text-[#8E92BC] dark:text-[#888EB5]" />
+                    <h3 className="mt-4 text-base font-bold text-[#08093B] dark:text-[#F3F5FF]">
                       No matching guides found
                     </h3>
-                    <p className="mt-1 text-xs text-[#5A5E7A]">
+                    <p className="mt-1 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                       Try searching with a different keyword or browsing by category.
                     </p>
                   </div>
@@ -693,26 +697,26 @@ export function GuidesPage() {
                       <Link
                         key={guide.id}
                         href={`/guides/${guide.slug}`}
-                        className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F5F1FE] p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] hover:shadow-[0_14px_32px_rgba(102,60,246,0.14)]"
+                        className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F1FE] dark:to-[#211C47] p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_14px_32px_rgba(102,60,246,0.14)]"
                       >
                         <div>
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60 transition-transform group-hover:scale-110">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60 transition-transform group-hover:scale-110">
                             <GuideIcon type={guide.iconType} className="h-5 w-5" />
                           </div>
-                          <h4 className="mt-3.5 text-sm font-bold text-[#08093B] group-hover:text-[#663CF6] transition-colors leading-snug">
+                          <h4 className="mt-3.5 text-sm font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition-colors leading-snug">
                             {guide.title}
                           </h4>
-                          <p className="mt-1.5 text-xs text-[#5A5E7A] line-clamp-2 leading-relaxed">
+                          <p className="mt-1.5 text-xs text-[#5A5E7A] dark:text-[#B4B9DA] line-clamp-2 leading-relaxed">
                             {guide.description}
                           </p>
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between border-t border-[#F0F2FA] pt-3 text-[11px] text-[#7C829E]">
+                        <div className="mt-4 flex items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-3 text-[11px] text-[#7C829E] dark:text-[#969CC2]">
                           <div className="flex items-center gap-1.5 font-medium">
-                            <FileText className="h-3 w-3 text-[#663CF6]" />
+                            <FileText className="h-3 w-3 text-[#663CF6] dark:text-[#B59CFF]" />
                             <span>{guide.badgeType} • {guide.readingTime}</span>
                           </div>
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[#08093B] group-hover:bg-[#663CF6] group-hover:text-white transition-colors">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 dark:bg-[#1E2248] text-[#08093B] dark:text-[#F3F5FF] group-hover:bg-[#663CF6] group-hover:text-white transition-colors">
                             <ArrowRight className="h-3 w-3" />
                           </div>
                         </div>
@@ -725,22 +729,22 @@ export function GuidesPage() {
               <>
                 {/* 1. Featured Guide Card */}
                 <div>
-                  <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-[#EDE7FF] px-3 py-1 text-xs font-bold text-[#663CF6]">
+                  <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] px-3 py-1 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                     <Sparkles className="h-3.5 w-3.5" />
                     <span>Featured Guide</span>
                   </div>
 
                   <Link
                     href={`/guides/${FEATURED_GUIDE.slug}`}
-                    className="group flex flex-col overflow-hidden rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F2ECFE] shadow-[0_10px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] hover:shadow-[0_18px_40px_rgba(102,60,246,0.16)] sm:flex-row"
+                    className="group flex flex-col overflow-hidden rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F2ECFE] dark:to-[#221B48] shadow-[0_10px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_18px_40px_rgba(102,60,246,0.16)] sm:flex-row"
                   >
                     {/* Left: Dashboard Mockup Artwork */}
-                    <div className="relative flex items-center justify-center bg-gradient-to-br from-[#EDE9FE] via-[#EEF2FF] to-[#E0E7FF] p-6 sm:w-1/2">
+                    <div className="relative flex items-center justify-center bg-gradient-to-br from-[#EDE9FE] dark:from-[#231B47] via-[#EEF2FF] to-[#E0E7FF] dark:to-[#1F2554] p-6 sm:w-1/2">
                       <div className="relative w-full max-w-[260px] drop-shadow-md transition-transform duration-500 group-hover:scale-105">
                         {/* Realistic Mockup Laptop */}
-                        <div className="rounded-xl border-4 border-[#312E81] bg-white p-3 shadow-lg">
-                          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                            <span className="text-[9px] font-extrabold text-[#08093B]">
+                        <div className="rounded-xl border-4 border-[#312E81] bg-white dark:bg-[#141731] p-3 shadow-lg">
+                          <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#23284A] pb-1.5">
+                            <span className="text-[9px] font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                               ScholoNix
                             </span>
                             <div className="flex gap-1">
@@ -750,17 +754,17 @@ export function GuidesPage() {
                             </div>
                           </div>
                           <div className="mt-2 grid grid-cols-2 gap-1.5">
-                            <div className="rounded bg-slate-50 p-1.5">
-                              <span className="block text-[7px] text-slate-400">Students</span>
-                              <span className="text-[10px] font-extrabold text-[#08093B]">1,248</span>
+                            <div className="rounded bg-slate-50 dark:bg-[#171B38] p-1.5">
+                              <span className="block text-[7px] text-slate-400 dark:text-[#888EB5]">Students</span>
+                              <span className="text-[10px] font-extrabold text-[#08093B] dark:text-[#F3F5FF]">1,248</span>
                             </div>
-                            <div className="rounded bg-slate-50 p-1.5">
-                              <span className="block text-[7px] text-slate-400">Teachers</span>
-                              <span className="text-[10px] font-extrabold text-[#08093B]">82</span>
+                            <div className="rounded bg-slate-50 dark:bg-[#171B38] p-1.5">
+                              <span className="block text-[7px] text-slate-400 dark:text-[#888EB5]">Teachers</span>
+                              <span className="text-[10px] font-extrabold text-[#08093B] dark:text-[#F3F5FF]">82</span>
                             </div>
                           </div>
                           {/* Mini Bar Chart */}
-                          <div className="mt-2 flex h-8 items-end gap-1 rounded bg-[#F8FAFC] px-2 py-1">
+                          <div className="mt-2 flex h-8 items-end gap-1 rounded bg-[#F8FAFC] dark:bg-[#171B38] px-2 py-1">
                             <div className="h-3 w-2 rounded-t bg-[#818CF8]" />
                             <div className="h-5 w-2 rounded-t bg-[#6366F1]" />
                             <div className="h-4 w-2 rounded-t bg-[#4F46E5]" />
@@ -774,23 +778,23 @@ export function GuidesPage() {
                     {/* Right: Content */}
                     <div className="flex flex-1 flex-col justify-between p-6 sm:p-7">
                       <div>
-                        <span className="inline-block rounded-full bg-[#EDE7FF] px-2.5 py-0.5 text-[11px] font-bold text-[#663CF6]">
+                        <span className="inline-block rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] px-2.5 py-0.5 text-[11px] font-bold text-[#663CF6] dark:text-[#B59CFF]">
                           {FEATURED_GUIDE.category}
                         </span>
-                        <h3 className="mt-2 text-xl font-extrabold text-[#08093B] group-hover:text-[#663CF6] transition-colors sm:text-2xl">
+                        <h3 className="mt-2 text-xl font-extrabold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition-colors sm:text-2xl">
                           {FEATURED_GUIDE.title}
                         </h3>
-                        <p className="mt-2 text-xs sm:text-sm font-normal text-[#5A5E7A] leading-relaxed">
+                        <p className="mt-2 text-xs sm:text-sm font-normal text-[#5A5E7A] dark:text-[#B4B9DA] leading-relaxed">
                           {FEATURED_GUIDE.description}
                         </p>
                       </div>
 
-                      <div className="mt-5 flex items-center justify-between border-t border-[#F0F2FA] pt-4 text-xs font-semibold text-[#7C829E]">
+                      <div className="mt-5 flex items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-4 text-xs font-semibold text-[#7C829E] dark:text-[#969CC2]">
                         <div className="flex items-center gap-2">
-                          <BookOpen className="h-4 w-4 text-[#663CF6]" />
+                          <BookOpen className="h-4 w-4 text-[#663CF6] dark:text-[#B59CFF]" />
                           <span>{FEATURED_GUIDE.badgeType} • {FEATURED_GUIDE.readingTime}</span>
                         </div>
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-[#08093B] group-hover:bg-[#663CF6] group-hover:text-white transition-colors">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-[#1E2248] text-[#08093B] dark:text-[#F3F5FF] group-hover:bg-[#663CF6] group-hover:text-white transition-colors">
                           <ArrowRight className="h-4 w-4" />
                         </div>
                       </div>
@@ -800,7 +804,7 @@ export function GuidesPage() {
 
                 {/* 2. Popular Guides Grid (6 Cards) */}
                 <div className="space-y-4 pt-2">
-                  <h3 className="text-lg font-extrabold text-[#08093B]">
+                  <h3 className="text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                     Popular Guides
                   </h3>
 
@@ -809,26 +813,26 @@ export function GuidesPage() {
                       <Link
                         key={guide.id}
                         href={`/guides/${guide.slug}`}
-                        className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F5F1FE] p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] hover:shadow-[0_14px_32px_rgba(102,60,246,0.14)]"
+                        className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F1FE] dark:to-[#211C47] p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_14px_32px_rgba(102,60,246,0.14)]"
                       >
                         <div>
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60 transition-transform group-hover:scale-110">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60 transition-transform group-hover:scale-110">
                             <GuideIcon type={guide.iconType} className="h-5 w-5" />
                           </div>
-                          <h4 className="mt-3.5 text-sm font-bold text-[#08093B] group-hover:text-[#663CF6] transition-colors leading-snug">
+                          <h4 className="mt-3.5 text-sm font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition-colors leading-snug">
                             {guide.title}
                           </h4>
-                          <p className="mt-1.5 text-xs text-[#5A5E7A] line-clamp-2 leading-relaxed">
+                          <p className="mt-1.5 text-xs text-[#5A5E7A] dark:text-[#B4B9DA] line-clamp-2 leading-relaxed">
                             {guide.description}
                           </p>
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between border-t border-[#F0F2FA] pt-3 text-[11px] text-[#7C829E]">
+                        <div className="mt-4 flex items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-3 text-[11px] text-[#7C829E] dark:text-[#969CC2]">
                           <div className="flex items-center gap-1.5 font-medium">
-                            <FileText className="h-3 w-3 text-[#663CF6]" />
+                            <FileText className="h-3 w-3 text-[#663CF6] dark:text-[#B59CFF]" />
                             <span>{guide.badgeType} • {guide.readingTime}</span>
                           </div>
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[#08093B] group-hover:bg-[#663CF6] group-hover:text-white transition-colors">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 dark:bg-[#1E2248] text-[#08093B] dark:text-[#F3F5FF] group-hover:bg-[#663CF6] group-hover:text-white transition-colors">
                             <ArrowRight className="h-3 w-3" />
                           </div>
                         </div>
@@ -846,10 +850,10 @@ export function GuidesPage() {
             ========================================================================= */}
         <section className="mt-16 space-y-4">
           <div>
-            <h2 className="text-xl font-extrabold text-[#08093B]">
+            <h2 className="text-xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
               Guides by Journey
             </h2>
-            <p className="mt-1 text-xs text-[#5A5E7A]">
+            <p className="mt-1 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
               Follow curated guide collections based on what you want to achieve.
             </p>
           </div>
@@ -865,21 +869,21 @@ export function GuidesPage() {
                   window.scrollTo({ top: 380, behavior: "smooth" });
                   showToast(`Filtering by ${journey.title}`);
                 }}
-                className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4EFFE] p-5 text-left shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] hover:shadow-[0_14px_32px_rgba(102,60,246,0.14)]"
+                className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4EFFE] dark:to-[#211C47] p-5 text-left shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_14px_32px_rgba(102,60,246,0.14)]"
               >
                 <div>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60 transition-transform group-hover:scale-105">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60 transition-transform group-hover:scale-105">
                     <JourneyIcon type={journey.iconType} className="h-5 w-5" />
                   </div>
-                  <h3 className="mt-4 text-sm font-extrabold text-[#08093B] group-hover:text-[#663CF6] transition-colors leading-snug">
+                  <h3 className="mt-4 text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition-colors leading-snug">
                     {journey.title}
                   </h3>
-                  <p className="mt-1.5 text-xs text-[#5A5E7A] leading-relaxed">
+                  <p className="mt-1.5 text-xs text-[#5A5E7A] dark:text-[#B4B9DA] leading-relaxed">
                     {journey.description}
                   </p>
                 </div>
 
-                <div className="mt-5 flex items-center gap-1.5 text-xs font-bold text-[#663CF6] group-hover:translate-x-0.5 transition-transform">
+                <div className="mt-5 flex items-center gap-1.5 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF] group-hover:translate-x-0.5 transition-transform">
                   <span>View Guide Collection</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </div>
@@ -913,9 +917,9 @@ export function GuidesPage() {
               <button
                 type="button"
                 onClick={() => setDemoModalOpen(true)}
-                className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-[#08093B] shadow-md transition-all hover:bg-slate-50"
+                className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-xl bg-white dark:bg-[#141731] px-5 py-2.5 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] shadow-md transition-all hover:bg-slate-50 dark:hover:bg-[#1D2145]"
               >
-                <Calendar className="h-3.5 w-3.5 text-[#663CF6]" />
+                <Calendar className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#B59CFF]" />
                 <span>Book a Demo</span>
               </button>
               <Link
@@ -935,24 +939,24 @@ export function GuidesPage() {
           ========================================================================= */}
       {contactModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white via-[#FAF8FF] to-[#F5F2FE] p-6 shadow-2xl">
+          <div className="relative w-full max-w-lg rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white dark:from-[#141731] via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F2FE] dark:to-[#201C45] p-6 shadow-2xl">
             <button
               type="button"
               onClick={() => setContactModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"
+              className="absolute top-4 right-4 text-slate-400 dark:text-[#888EB5] hover:text-slate-700 dark:hover:text-[#E2E6FF]"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE7FF] text-[#663CF6]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF]">
                 <Headphones className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-[#08093B]">
+                <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                   Contact Guide Specialists
                 </h3>
-                <p className="text-xs text-[#5A5E7A]">
+                <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                   We provide personalized setup assistance for your institution.
                 </p>
               </div>
@@ -970,35 +974,35 @@ export function GuidesPage() {
               className="mt-5 space-y-3.5"
             >
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">Your Name *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Your Name *</label>
                 <input
                   type="text"
                   required
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   placeholder="e.g. Principal Anita Sharma"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">Email Address *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Email Address *</label>
                 <input
                   type="email"
                   required
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
                   placeholder="e.g. principal@greenvalley.edu"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">Topic</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Topic</label>
                 <select
                   value={contactCategory}
                   onChange={(e) => setContactCategory(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] bg-white px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 >
                   <option>Guides & Tutorials</option>
                   <option>School Setup Assistance</option>
@@ -1009,14 +1013,14 @@ export function GuidesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">Your Question / Need *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Your Question / Need *</label>
                 <textarea
                   required
                   rows={4}
                   value={contactMsg}
                   onChange={(e) => setContactMsg(e.target.value)}
                   placeholder="Describe which module or step you need guidance with..."
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
@@ -1024,7 +1028,7 @@ export function GuidesPage() {
                 <button
                   type="button"
                   onClick={() => setContactModalOpen(false)}
-                  className="rounded-xl border border-[#D6DBF0] px-4 py-2 text-xs font-bold text-[#5A5E7A] hover:bg-slate-50"
+                  className="rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-4 py-2 text-xs font-bold text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-slate-50 dark:hover:bg-[#1D2145]"
                 >
                   Cancel
                 </button>
@@ -1046,24 +1050,24 @@ export function GuidesPage() {
           ========================================================================= */}
       {demoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white via-[#FAF8FF] to-[#F5F2FE] p-6 shadow-2xl">
+          <div className="relative w-full max-w-lg rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white dark:from-[#141731] via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F2FE] dark:to-[#201C45] p-6 shadow-2xl">
             <button
               type="button"
               onClick={() => setDemoModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"
+              className="absolute top-4 right-4 text-slate-400 dark:text-[#888EB5] hover:text-slate-700 dark:hover:text-[#E2E6FF]"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE7FF] text-[#663CF6]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF]">
                 <Calendar className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-[#08093B]">
+                <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                   Schedule a Live Demo
                 </h3>
-                <p className="text-xs text-[#5A5E7A]">
+                <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                   Experience a 20-minute tailored walkthrough of ScholoNix.
                 </p>
               </div>
@@ -1081,38 +1085,38 @@ export function GuidesPage() {
               className="mt-5 space-y-3.5"
             >
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">Your Name *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Your Name *</label>
                 <input
                   type="text"
                   required
                   value={demoName}
                   onChange={(e) => setDemoName(e.target.value)}
                   placeholder="e.g. Principal Rajesh Mehta"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">School Name *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">School Name *</label>
                 <input
                   type="text"
                   required
                   value={demoSchool}
                   onChange={(e) => setDemoSchool(e.target.value)}
                   placeholder="e.g. Delhi Public School"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">Email Address *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Email Address *</label>
                 <input
                   type="email"
                   required
                   value={demoEmail}
                   onChange={(e) => setDemoEmail(e.target.value)}
                   placeholder="e.g. principal@dps.edu"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
@@ -1120,7 +1124,7 @@ export function GuidesPage() {
                 <button
                   type="button"
                   onClick={() => setDemoModalOpen(false)}
-                  className="rounded-xl border border-[#D6DBF0] px-4 py-2 text-xs font-bold text-[#5A5E7A] hover:bg-slate-50"
+                  className="rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-4 py-2 text-xs font-bold text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-slate-50 dark:hover:bg-[#1D2145]"
                 >
                   Cancel
                 </button>
@@ -1140,21 +1144,21 @@ export function GuidesPage() {
       {/* =========================================================================
           9. FOOTER
           ========================================================================= */}
-      <footer className="mt-20 border-t border-[#E6EAF5] bg-white pt-12 pb-8">
+      <footer className="mt-20 border-t border-[#E6EAF5] dark:border-[#2A2F56] bg-white dark:bg-[#141731] pt-12 pb-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-10">
             {/* Brand Column */}
             <div className="space-y-4 sm:col-span-2 md:col-span-4">
               <BrandLogo className="h-8 sm:h-9" />
-              <p className="max-w-sm text-xs text-[#5A5E7A] leading-relaxed">
+              <p className="max-w-sm text-xs text-[#5A5E7A] dark:text-[#B4B9DA] leading-relaxed">
                 A comprehensive, cloud-based school management platform to simplify and streamline your school operations.
               </p>
-              <div className="flex items-center gap-2.5 pt-1 text-[#663CF6]">
+              <div className="flex items-center gap-2.5 pt-1 text-[#663CF6] dark:text-[#B59CFF]">
                 <a
                   href="https://linkedin.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] hover:bg-[#EDE7FF]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] hover:bg-[#EDE7FF] dark:hover:bg-[#2E245E]"
                   aria-label="LinkedIn"
                 >
                   <Linkedin className="h-4 w-4" />
@@ -1163,7 +1167,7 @@ export function GuidesPage() {
                   href="https://youtube.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] hover:bg-[#EDE7FF]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] hover:bg-[#EDE7FF] dark:hover:bg-[#2E245E]"
                   aria-label="YouTube"
                 >
                   <Youtube className="h-4 w-4" />
@@ -1172,7 +1176,7 @@ export function GuidesPage() {
                   href="https://facebook.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] hover:bg-[#EDE7FF]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] hover:bg-[#EDE7FF] dark:hover:bg-[#2E245E]"
                   aria-label="Facebook"
                 >
                   <Facebook className="h-4 w-4" />
@@ -1181,7 +1185,7 @@ export function GuidesPage() {
                   href="https://instagram.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] hover:bg-[#EDE7FF]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] hover:bg-[#EDE7FF] dark:hover:bg-[#2E245E]"
                   aria-label="Instagram"
                 >
                   <Instagram className="h-4 w-4" />
@@ -1191,27 +1195,27 @@ export function GuidesPage() {
 
             {/* Product Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Product
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/features" className="hover:text-[#663CF6]">
+                  <Link href="/features" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Features
                   </Link>
                 </li>
                 <li>
-                  <Link href="/pricing" className="hover:text-[#663CF6]">
+                  <Link href="/pricing" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Pricing
                   </Link>
                 </li>
                 <li>
-                  <Link href="/for-schools" className="hover:text-[#663CF6]">
+                  <Link href="/for-schools" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     For Schools
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#integrations" className="hover:text-[#663CF6]">
+                  <Link href="/#integrations" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Integrations
                   </Link>
                 </li>
@@ -1220,27 +1224,27 @@ export function GuidesPage() {
 
             {/* Resources Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Resources
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/blog" className="hover:text-[#663CF6]">
+                  <Link href="/blog" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link href="/help" className="hover:text-[#663CF6]">
+                  <Link href="/help" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Help Center
                   </Link>
                 </li>
                 <li>
-                  <Link href="/faqs" className="hover:text-[#663CF6]">
+                  <Link href="/faqs" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     FAQs
                   </Link>
                 </li>
                 <li>
-                  <Link href="/guides" className="text-[#663CF6] font-bold">
+                  <Link href="/guides" className="text-[#663CF6] dark:text-[#B59CFF] font-bold">
                     Guides
                   </Link>
                 </li>
@@ -1249,32 +1253,32 @@ export function GuidesPage() {
 
             {/* Company Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Company
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/#about" className="hover:text-[#663CF6]">
+                  <Link href="/#about" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="hover:text-[#663CF6]">
+                  <Link href="/contact" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Contact Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/feedback" className="hover:text-[#663CF6]">
+                  <Link href="/feedback" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Give Feedback
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#privacy" className="hover:text-[#663CF6]">
+                  <Link href="/#privacy" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#terms" className="hover:text-[#663CF6]">
+                  <Link href="/#terms" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Terms of Service
                   </Link>
                 </li>
@@ -1283,10 +1287,10 @@ export function GuidesPage() {
 
             {/* Stay Updated Newsletter */}
             <div className="space-y-3 sm:col-span-2 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Stay Updated
               </h4>
-              <p className="text-xs text-[#5A5E7A]">
+              <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                 Subscribe to get product updates, tips and school management insights.
               </p>
               <form
@@ -1299,7 +1303,7 @@ export function GuidesPage() {
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className="w-full rounded-xl border border-[#D6DBF0] bg-white py-2 pr-10 pl-3 text-xs text-[#08093B] placeholder-[#8E92BC] outline-none focus:border-[#7C3AED]"
+                  className="w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] py-2 pr-10 pl-3 text-xs text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
                 <button
                   type="submit"
@@ -1313,10 +1317,10 @@ export function GuidesPage() {
           </div>
 
           {/* Bottom Copyright */}
-          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] pt-6 text-xs text-[#5A5E7A] sm:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-6 text-xs text-[#5A5E7A] dark:text-[#B4B9DA] sm:flex-row">
             <p>&copy; 2026 ScholoNix. All rights reserved.</p>
             <p className="mt-2 flex items-center gap-1 sm:mt-0">
-              <span className="text-rose-500">&hearts;</span> Made for Schools
+              <span className="text-rose-500 dark:text-rose-400">&hearts;</span> Made for Schools
             </p>
           </div>
         </div>

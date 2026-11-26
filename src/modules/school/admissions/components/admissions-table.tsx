@@ -164,14 +164,14 @@ export function AdmissionsTable({
   }, [pagination.page, pagination.totalPages]);
 
   return (
-    <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs space-y-4">
+    <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs space-y-4 dark:border-[#272B4D] dark:bg-[#141731]">
       {/* Header Row */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6]">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
             <Users className="h-4 w-4" aria-hidden="true" />
           </span>
-          <h2 id="admissions-table-heading" className="text-base font-extrabold text-[#08093B]">
+          <h2 id="admissions-table-heading" className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
             {title} ({pagination.total.toLocaleString("en-IN")})
           </h2>
         </div>
@@ -179,7 +179,7 @@ export function AdmissionsTable({
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 sm:flex-initial sm:w-64">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#76799C]"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#76799C] dark:text-[#9DA6CC]"
               aria-hidden="true"
             />
             <input
@@ -188,12 +188,12 @@ export function AdmissionsTable({
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search student name, application ID..."
               aria-label="Search applications"
-              className="w-full rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] pl-8 pr-3 py-1.5 text-xs text-[#08093B] placeholder:text-[#76799C] focus:border-[#663CF6] focus:bg-white focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] pl-8 pr-3 py-1.5 text-xs text-[#08093B] placeholder:text-[#76799C] focus:border-[#663CF6] focus:bg-white focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD] dark:focus:border-[#8B5CF6] dark:focus:bg-[#141731]"
             />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs">
-            <Filter className="h-3.5 w-3.5 text-[#663CF6]" aria-hidden="true" />
+          <div className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs dark:border-[#343B6B] dark:bg-[#10142C]">
+            <Filter className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
             <label htmlFor="verification-filter-select" className="sr-only">
               Document Verification Filter
             </label>
@@ -203,7 +203,7 @@ export function AdmissionsTable({
               onChange={(e) =>
                 onVerificationFilterChange(e.target.value as DocumentVerificationStatusType | "all")
               }
-              className="bg-transparent text-xs font-semibold text-[#08093B] focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs font-semibold text-[#08093B] focus:outline-none cursor-pointer dark:text-[#F3F5FF] dark:[&>option]:bg-[#141731]"
             >
               <option value="all">Verification: All</option>
               <option value="VERIFIED">Verified</option>
@@ -216,8 +216,8 @@ export function AdmissionsTable({
 
       {/* Bulk Action Strip */}
       {selectedIds.size > 0 && (canWrite || canVerify) && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-[#DDD6FE] bg-[#FAF8FE] px-3.5 py-2 text-xs">
-          <span className="font-bold text-[#08093B]">{selectedIds.size} selected</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-[#DDD6FE] bg-[#FAF8FE] px-3.5 py-2 text-xs dark:border-[#3D3170] dark:bg-[#1B183E]">
+          <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">{selectedIds.size} selected</span>
           <div className="flex flex-wrap items-center gap-2">
             {canVerify && (
               <button
@@ -240,7 +240,7 @@ export function AdmissionsTable({
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}
-              className="rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1 font-semibold text-[#4D5072] hover:bg-slate-50 cursor-pointer"
+              className="rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1 font-semibold text-[#4D5072] hover:bg-slate-50 cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#C5CCF0] dark:hover:bg-[#1E2245]"
             >
               Clear
             </button>
@@ -253,11 +253,11 @@ export function AdmissionsTable({
         tabIndex={0}
         role="region"
         aria-labelledby="admissions-table-heading"
-        className="overflow-x-auto school-menu-scrollbar rounded-[14px] border border-[#DFE3F5]"
+        className="overflow-x-auto school-menu-scrollbar rounded-[14px] border border-[#DFE3F5] dark:border-[#272B4D]"
       >
         <table className="w-full min-w-[780px] text-left text-xs border-collapse">
           <caption className="sr-only">School admission applications directory</caption>
-          <thead className="bg-[#F6F5FD] text-[11px] font-bold uppercase tracking-wider text-[#4D5072] border-b border-[#DFE3F5]">
+          <thead className="bg-[#F6F5FD] text-[11px] font-bold uppercase tracking-wider text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
             <tr>
               <th scope="col" className="w-10 px-3 py-3 text-center">
                 <input
@@ -336,14 +336,14 @@ export function AdmissionsTable({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-[#F1F5F9] bg-white">
+          <tbody className="divide-y divide-[#F1F5F9] bg-white dark:divide-[#232746] dark:bg-[#141731]">
             {sortedRows.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-12 text-center">
-                  <p className="text-sm font-bold text-[#08093B]">
+                  <p className="text-sm font-bold text-[#08093B] dark:text-[#F3F5FF]">
                     No admission applications found
                   </p>
-                  <p className="mt-1 text-xs text-[#76799C]">
+                  <p className="mt-1 text-xs text-[#76799C] dark:text-[#9DA6CC]">
                     {searchQuery || verificationFilter !== "all"
                       ? "Try adjusting your search query or filters."
                       : "Create your first admission application to begin tracking applicants."}
@@ -366,7 +366,7 @@ export function AdmissionsTable({
                 const verMeta = DOCUMENT_VERIFICATION_META[app.verificationStatus];
                 const isBusy = busyRowId === app.id;
                 return (
-                  <tr key={app.id} className="hover:bg-[#FAF8FE] transition">
+                  <tr key={app.id} className="hover:bg-[#FAF8FE] transition dark:hover:bg-[#1B2042]">
                     <td className="px-3 py-3 text-center">
                       <input
                         type="checkbox"
@@ -380,19 +380,19 @@ export function AdmissionsTable({
                       <button
                         type="button"
                         onClick={() => onInspectApplication(app)}
-                        className="text-[#663CF6] hover:underline cursor-pointer"
+                        className="text-[#663CF6] hover:underline cursor-pointer dark:text-[#A78BFA]"
                       >
                         {app.applicationCode}
                       </button>
                     </td>
                     <td className="px-3 py-3">
-                      <div className="font-bold text-[#08093B]">{app.studentName}</div>
-                      <div className="text-[11px] text-[#76799C] truncate max-w-[200px]">
+                      <div className="font-bold text-[#08093B] dark:text-[#F3F5FF]">{app.studentName}</div>
+                      <div className="text-[11px] text-[#76799C] truncate max-w-[200px] dark:text-[#9DA6CC]">
                         Guardian: {app.guardianName}
                       </div>
                     </td>
-                    <td className="px-3 py-3 font-semibold text-[#4D5072]">{app.gradeApplied}</td>
-                    <td className="px-3 py-3 text-[#4D5072]">
+                    <td className="px-3 py-3 font-semibold text-[#4D5072] dark:text-[#C5CCF0]">{app.gradeApplied}</td>
+                    <td className="px-3 py-3 text-[#4D5072] dark:text-[#9DA6CC]">
                       <time dateTime={app.appliedAt}>
                         {new Intl.DateTimeFormat("en-IN", {
                           day: "2-digit",
@@ -430,7 +430,7 @@ export function AdmissionsTable({
                           onClick={() => onInspectApplication(app)}
                           aria-label={`Inspect ${app.studentName}`}
                           title="Inspect & Verify"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6] dark:hover:text-[#D9CEFF]"
                         >
                           <Eye className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
@@ -444,21 +444,21 @@ export function AdmissionsTable({
                             }
                             aria-label={`More actions for ${app.studentName}`}
                             aria-expanded={openMenuId === app.id}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer disabled:opacity-50"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer disabled:opacity-50 dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6] dark:hover:text-[#D9CEFF]"
                           >
                             <MoreVertical className="h-3.5 w-3.5" aria-hidden="true" />
                           </button>
                         )}
 
                         {openMenuId === app.id && (
-                          <div className="absolute right-0 top-9 z-30 w-44 rounded-[12px] border border-[#D6DBF0] bg-white p-1.5 text-left shadow-xl">
+                          <div className="absolute right-0 top-9 z-30 w-44 rounded-[12px] border border-[#D6DBF0] bg-white p-1.5 text-left shadow-xl dark:border-[#2E345B] dark:bg-[#141731] dark:shadow-black/60">
                             {canVerify && app.verificationStatus !== "VERIFIED" && (
                               <button
                                 type="button"
                                 onClick={() =>
                                   handleQuickAction(app.id, { verificationStatus: "VERIFIED" })
                                 }
-                                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer dark:text-emerald-300 dark:hover:bg-emerald-950/50"
                               >
                                 Mark Docs Verified
                               </button>
@@ -467,7 +467,7 @@ export function AdmissionsTable({
                               <button
                                 type="button"
                                 onClick={() => handleQuickAction(app.id, { status: "SHORTLISTED" })}
-                                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-[#5B21B6] hover:bg-[#FAF8FE] cursor-pointer"
+                                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-[#5B21B6] hover:bg-[#FAF8FE] cursor-pointer dark:text-[#CBB8FF] dark:hover:bg-[#231D4B]"
                               >
                                 Shortlist Applicant
                               </button>
@@ -476,7 +476,7 @@ export function AdmissionsTable({
                               <button
                                 type="button"
                                 onClick={() => handleQuickAction(app.id, { status: "ADMITTED" })}
-                                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer dark:text-emerald-300 dark:hover:bg-emerald-950/50"
                               >
                                 Mark Admitted
                               </button>
@@ -487,7 +487,7 @@ export function AdmissionsTable({
                                 onClick={() =>
                                   handleQuickAction(app.id, { status: "DOCUMENTS_PENDING" })
                                 }
-                                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 cursor-pointer"
+                                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 cursor-pointer dark:text-sky-300 dark:hover:bg-sky-950/50"
                               >
                                 Mark Docs Pending
                               </button>
@@ -496,7 +496,7 @@ export function AdmissionsTable({
                               <button
                                 type="button"
                                 onClick={() => handleQuickAction(app.id, { status: "REJECTED" })}
-                                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 cursor-pointer"
+                                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 cursor-pointer dark:text-rose-300 dark:hover:bg-rose-950/50"
                               >
                                 Reject Application
                               </button>
@@ -514,7 +514,7 @@ export function AdmissionsTable({
       </div>
 
       {/* Pagination Footer */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 text-xs text-[#4D5072]">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 text-xs text-[#4D5072] dark:text-[#9DA6CC]">
         <p>
           Showing <strong>{startIndex}</strong> – <strong>{endIndex}</strong> of{" "}
           <strong>{pagination.total.toLocaleString("en-IN")}</strong> applications
@@ -527,7 +527,7 @@ export function AdmissionsTable({
               disabled={pagination.page <= 1}
               onClick={() => onPageChange(pagination.page - 1)}
               aria-label="Previous page"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6] disabled:opacity-40 cursor-pointer"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6] disabled:opacity-40 cursor-pointer dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6]"
             >
               <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -536,7 +536,7 @@ export function AdmissionsTable({
               const showEllipsis = prev !== undefined && pageNum - prev > 1;
               return (
                 <React.Fragment key={pageNum}>
-                  {showEllipsis && <span className="px-1 text-[#76799C]">…</span>}
+                  {showEllipsis && <span className="px-1 text-[#76799C] dark:text-[#9DA6CC]">…</span>}
                   <button
                     type="button"
                     onClick={() => onPageChange(pageNum)}
@@ -544,7 +544,7 @@ export function AdmissionsTable({
                     className={`inline-flex h-8 min-w-8 px-2 items-center justify-center rounded-lg border text-xs font-bold transition cursor-pointer ${
                       pagination.page === pageNum
                         ? "border-[#663CF6] bg-[#663CF6] text-white"
-                        : "border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6]"
+                        : "border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6] dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6]"
                     }`}
                   >
                     {pageNum}
@@ -557,21 +557,21 @@ export function AdmissionsTable({
               disabled={pagination.page >= pagination.totalPages}
               onClick={() => onPageChange(pagination.page + 1)}
               aria-label="Next page"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6] disabled:opacity-40 cursor-pointer"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6] disabled:opacity-40 cursor-pointer dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6]"
             >
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
 
           <div className="flex items-center gap-1.5 pl-2">
-            <label htmlFor="rows-per-page-select" className="text-[#76799C]">
+            <label htmlFor="rows-per-page-select" className="text-[#76799C] dark:text-[#9DA6CC]">
               Rows per page:
             </label>
             <select
               id="rows-per-page-select"
               value={pagination.pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="rounded-lg border border-[#D6DBF0] bg-white px-2 py-1 text-xs font-bold text-[#08093B] focus:border-[#663CF6] focus:outline-none cursor-pointer"
+              className="rounded-lg border border-[#D6DBF0] bg-white px-2 py-1 text-xs font-bold text-[#08093B] focus:border-[#663CF6] focus:outline-none cursor-pointer dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>

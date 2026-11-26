@@ -38,6 +38,7 @@ import { AtmosphericBackground } from "@/components/ui/atmospheric-background";
 import { ResourcesDropdown, MobileResourcesMenu } from "./resources-dropdown";
 import type { DetailedHelpArticle } from "../data/help-data";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 interface HelpArticlePageProps {
   article: DetailedHelpArticle;
@@ -51,7 +52,7 @@ function SetupStepperIllustration() {
   return (
     <div className="relative mx-auto flex w-full max-w-2xl items-center justify-center p-4">
       {/* Background radial glow */}
-      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/40 to-[#93C5FD]/30 blur-2xl filter" />
+      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/40 dark:from-[#663CF6]/25 to-[#93C5FD]/30 dark:to-[#0284C7]/20 blur-2xl filter" />
 
       <svg
         viewBox="0 0 620 360"
@@ -298,14 +299,14 @@ export function HelpArticlePage({
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45]">
+    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45] dark:text-[#F3F5FF]">
       {/* Luminous Atmospheric Aurora & Wave Background with rich contrast */}
       <AtmosphericBackground />
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-[#7C3AED]/40 bg-white/98 px-4 py-3 text-sm font-semibold text-[#08093B] shadow-xl backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-3">
-          <Sparkles className="h-4 w-4 text-[#7C3AED]" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-[#7C3AED]/40 bg-white/98 dark:bg-[#141731]/98 px-4 py-3 text-sm font-semibold text-[#08093B] dark:text-[#F3F5FF] shadow-xl backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-3">
+          <Sparkles className="h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF]" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -313,20 +314,20 @@ export function HelpArticlePage({
       {/* =========================================================================
           1. HEADER / NAVBAR
           ========================================================================= */}
-      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] dark:border-[#2C3159] bg-white/95 dark:bg-[#141731]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           {/* Logo */}
           <BrandLogo className="h-8 sm:h-9" />
 
           {/* Desktop Navigation Menu */}
-          <nav className="hidden items-center gap-8 text-sm font-semibold text-[#4D5072] md:flex">
-            <Link href="/features" className="transition-colors hover:text-[#663CF6]">
+          <nav className="hidden items-center gap-8 text-sm font-semibold text-[#4D5072] dark:text-[#B4B9DA] md:flex">
+            <Link href="/features" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Features
             </Link>
-            <Link href="/pricing" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/pricing" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Pricing
             </Link>
-            <Link href="/#for-schools" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/#for-schools" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               For Schools
             </Link>
             {/* Active Resources Dropdown */}
@@ -335,9 +336,10 @@ export function HelpArticlePage({
 
           {/* Right Action CTAs & Mobile Hamburger */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <Link
               href="/login"
-              className="hidden sm:inline-flex items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] bg-white px-3.5 py-1.5 text-xs font-bold text-[#4F27E8] shadow-xs transition hover:border-[#4F27E8] hover:bg-[#F7F4FF]"
+              className="hidden sm:inline-flex items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] dark:border-[#8B5CF6] bg-white dark:bg-[#141731] px-3.5 py-1.5 text-xs font-bold text-[#4F27E8] dark:text-[#C4B5FD] shadow-xs transition hover:border-[#4F27E8] dark:hover:border-[#9D7CFE] hover:bg-[#F7F4FF] dark:hover:bg-[#241E4A]"
             >
               Sign In
             </Link>
@@ -352,7 +354,7 @@ export function HelpArticlePage({
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#D6DBF0] bg-white text-[#08093B] shadow-sm transition hover:bg-[#F2EEFD] hover:text-[#663CF6] md:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#08093B] dark:text-[#F3F5FF] shadow-sm transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] md:hidden"
               aria-label="Toggle Navigation Menu"
               aria-expanded={mobileMenuOpen}
             >
@@ -363,37 +365,37 @@ export function HelpArticlePage({
 
         {/* Mobile Dropdown Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="border-b border-[#D6DBF0] bg-white/98 px-4 pt-3 pb-6 shadow-xl backdrop-blur-lg md:hidden">
-            <nav className="flex flex-col space-y-3.5 text-sm font-semibold text-[#1B1D45]">
+          <div className="border-b border-[#D6DBF0] dark:border-[#2C3159] bg-white/98 dark:bg-[#141731]/98 px-4 pt-3 pb-6 shadow-xl backdrop-blur-lg md:hidden">
+            <nav className="flex flex-col space-y-3.5 text-sm font-semibold text-[#1B1D45] dark:text-[#F3F5FF]">
               <Link
                 href="/features"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Features
               </Link>
               <Link
                 href="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Pricing
               </Link>
               <Link
                 href="/#for-schools"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 For Schools
               </Link>
               <MobileResourcesMenu onItemClick={() => setMobileMenuOpen(false)} />
             </nav>
 
-            <div className="mt-4 flex flex-col gap-2.5 border-t border-[#DFE3F5] pt-4">
+            <div className="mt-4 flex flex-col gap-2.5 border-t border-[#DFE3F5] dark:border-[#2C3159] pt-4">
               <Link
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex w-full items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] bg-white py-2.5 text-xs font-bold text-[#4F27E8] shadow-xs"
+                className="flex w-full items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] dark:border-[#8B5CF6] bg-white dark:bg-[#141731] py-2.5 text-xs font-bold text-[#4F27E8] dark:text-[#C4B5FD] shadow-xs"
               >
                 Sign In
               </Link>
@@ -415,27 +417,27 @@ export function HelpArticlePage({
             ========================================================================= */}
         <nav
           aria-label="Breadcrumb"
-          className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#6B7280] pb-6"
+          className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#6B7280] dark:text-[#A5ACD2] pb-6"
         >
           <Link
             href="/"
-            className="flex items-center gap-1 text-[#4D5072] transition hover:text-[#663CF6]"
+            className="flex items-center gap-1 text-[#4D5072] dark:text-[#B4B9DA] transition hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
           >
             <Home className="h-3.5 w-3.5" />
           </Link>
-          <ChevronRight className="h-3 w-3 text-[#A0A4C0]" />
-          <Link href="/help" className="transition hover:text-[#663CF6]">
+          <ChevronRight className="h-3 w-3 text-[#A0A4C0] dark:text-[#888EB5]" />
+          <Link href="/help" className="transition hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
             Help Center
           </Link>
-          <ChevronRight className="h-3 w-3 text-[#A0A4C0]" />
+          <ChevronRight className="h-3 w-3 text-[#A0A4C0] dark:text-[#888EB5]" />
           <Link
             href={`/help?category=${article.categoryId}`}
-            className="transition hover:text-[#663CF6]"
+            className="transition hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
           >
             {article.category}
           </Link>
-          <ChevronRight className="h-3 w-3 text-[#A0A4C0]" />
-          <span className="text-[#08093B] font-bold truncate max-w-xs sm:max-w-md">
+          <ChevronRight className="h-3 w-3 text-[#A0A4C0] dark:text-[#888EB5]" />
+          <span className="text-[#08093B] dark:text-[#F3F5FF] font-bold truncate max-w-xs sm:max-w-md">
             {article.title}
           </span>
         </nav>
@@ -450,31 +452,31 @@ export function HelpArticlePage({
           <article ref={articleRef} className="space-y-8 lg:col-span-8">
             {/* Category Tag */}
             <div>
-              <span className="inline-block rounded-full bg-[#EDE7FF] px-3.5 py-1 text-xs font-extrabold text-[#663CF6] shadow-xs">
+              <span className="inline-block rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] px-3.5 py-1 text-xs font-extrabold text-[#663CF6] dark:text-[#B59CFF] shadow-xs">
                 {article.category}
               </span>
             </div>
 
             {/* Title & Subtitle */}
             <div className="space-y-3">
-              <h1 className="text-3xl font-extrabold tracking-tight text-[#08093B] sm:text-4xl lg:text-5xl lg:leading-[1.18]">
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF] sm:text-4xl lg:text-5xl lg:leading-[1.18]">
                 {article.title}
               </h1>
-              <p className="text-sm font-medium leading-relaxed text-[#4D5072] sm:text-base">
+              <p className="text-sm font-medium leading-relaxed text-[#4D5072] dark:text-[#B4B9DA] sm:text-base">
                 {article.subtitle}
               </p>
             </div>
 
             {/* Metadata & Save/Share Buttons */}
-            <div className="flex flex-wrap items-center justify-between gap-4 border-y border-[#EAEFF8] py-4">
-              <div className="flex items-center gap-4 text-xs font-semibold text-[#5A5E7A]">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-y border-[#EAEFF8] dark:border-[#252A4E] py-4">
+              <div className="flex items-center gap-4 text-xs font-semibold text-[#5A5E7A] dark:text-[#B4B9DA]">
                 <div className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 text-[#7C3AED]" />
+                  <Calendar className="h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF]" />
                   <span>Last updated: {article.lastUpdated}</span>
                 </div>
                 <span>&bull;</span>
                 <div className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4 text-[#7C3AED]" />
+                  <Clock className="h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF]" />
                   <span>Reading time: {article.readTime}</span>
                 </div>
               </div>
@@ -485,12 +487,12 @@ export function HelpArticlePage({
                   onClick={handleToggleSave}
                   className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all ${
                     isSaved
-                      ? "border-[#7C3AED] bg-[#EDE7FF] text-[#663CF6]"
-                      : "border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6]"
+                      ? "border-[#7C3AED] dark:border-[#8B5CF6] bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF]"
+                      : "border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#4D5072] dark:text-[#B4B9DA] hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   }`}
                 >
                   <Bookmark
-                    className={`h-4 w-4 ${isSaved ? "fill-[#663CF6] text-[#663CF6]" : ""}`}
+                    className={`h-4 w-4 ${isSaved ? "fill-[#663CF6] text-[#663CF6] dark:text-[#B59CFF]" : ""}`}
                   />
                   <span>{isSaved ? "Saved" : "Save"}</span>
                 </button>
@@ -498,7 +500,7 @@ export function HelpArticlePage({
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="flex items-center gap-1.5 rounded-xl border border-[#D6DBF0] bg-white px-3.5 py-2 text-xs font-bold text-[#4D5072] transition-all hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex items-center gap-1.5 rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] px-3.5 py-2 text-xs font-bold text-[#4D5072] dark:text-[#B4B9DA] transition-all hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                 >
                   <Share2 className="h-4 w-4" />
                   <span>Share</span>
@@ -507,12 +509,12 @@ export function HelpArticlePage({
             </div>
 
             {/* Hero Cover Artwork (Laptop Stepper + Plant + Mortarboard) */}
-            <div className="relative overflow-hidden rounded-[24px] border border-[#D6DBF0]/80 bg-gradient-to-br from-[#E0F2FE] via-[#EDE7FF] to-[#F5F3FF] p-6 sm:p-10 shadow-[0_16px_40px_rgba(24,18,77,0.06)]">
+            <div className="relative overflow-hidden rounded-[24px] border border-[#D6DBF0]/80 dark:border-[#2C3159]/90 bg-gradient-to-br from-[#E0F2FE] dark:from-[#122440] via-[#EDE7FF] dark:via-[#221A44] to-[#F5F3FF] dark:to-[#201C45] p-6 sm:p-10 shadow-[0_16px_40px_rgba(24,18,77,0.06)]">
               <SetupStepperIllustration />
             </div>
 
             {/* Mobile Table of Contents (Inline, Collapsible, Static) */}
-            <div className="rounded-2xl border border-[#CDC2F7] bg-gradient-to-br from-white/95 via-[#FAF8FF] to-[#F5F1FE] p-4 shadow-sm lg:hidden">
+            <div className="rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F1FE] dark:to-[#211C47] p-4 shadow-sm lg:hidden">
               <button
                 type="button"
                 onClick={() => setMobileTocOpen((prev) => !prev)}
@@ -520,22 +522,22 @@ export function HelpArticlePage({
                 aria-expanded={mobileTocOpen}
               >
                 <div className="flex items-center gap-2">
-                  <ListOrdered className="h-4 w-4 text-[#7C3AED]" />
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+                  <ListOrdered className="h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF]" />
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                     In This Article
                   </span>
-                  <span className="rounded-full bg-[#EDE7FF] px-2 py-0.5 text-[10px] font-bold text-[#663CF6]">
+                  <span className="rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] px-2 py-0.5 text-[10px] font-bold text-[#663CF6] dark:text-[#B59CFF]">
                     4 sections
                   </span>
                 </div>
                 <ChevronDown
-                  className={`h-4 w-4 text-[#7C3AED] transition-transform duration-200 ${
+                  className={`h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF] transition-transform duration-200 ${
                     mobileTocOpen ? "rotate-180" : ""
                   }`}
                 />
               </button>
               {mobileTocOpen && (
-                <nav className="mt-3 space-y-1.5 border-t border-[#EDE7FF] pt-3">
+                <nav className="mt-3 space-y-1.5 border-t border-[#EDE7FF] dark:border-[#342B61] pt-3">
                   {[
                     { id: "overview", label: "Overview" },
                     { id: "before-you-start", label: "Before You Start" },
@@ -550,13 +552,13 @@ export function HelpArticlePage({
                         onClick={() => setActiveSection(item.id)}
                         className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
                           isActive
-                            ? "bg-[#EDE7FF] font-bold text-[#663CF6]"
-                            : "text-[#4D5072] hover:bg-[#F8FAFC] hover:text-[#663CF6]"
+                            ? "bg-[#EDE7FF] dark:bg-[#251D4A] font-bold text-[#663CF6] dark:text-[#B59CFF]"
+                            : "text-[#4D5072] dark:text-[#B4B9DA] hover:bg-[#F8FAFC] dark:hover:bg-[#1E2248] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                         }`}
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${
-                            isActive ? "bg-[#663CF6]" : "bg-[#CBD5E1]"
+                            isActive ? "bg-[#663CF6]" : "bg-[#CBD5E1] dark:bg-[#3A406D]"
                           }`}
                         />
                         <span>{item.label}</span>
@@ -569,8 +571,8 @@ export function HelpArticlePage({
 
             {/* Overview Section */}
             <section id="overview" className="space-y-3 pt-2">
-              <h2 className="text-2xl font-extrabold text-[#08093B]">Overview</h2>
-              <p className="text-sm font-medium leading-relaxed text-[#4D5072] sm:text-base">
+              <h2 className="text-2xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Overview</h2>
+              <p className="text-sm font-medium leading-relaxed text-[#4D5072] dark:text-[#B4B9DA] sm:text-base">
                 {article.overviewText}
               </p>
             </section>
@@ -578,17 +580,17 @@ export function HelpArticlePage({
             {/* Before You Start Callout Box */}
             <section
               id="before-you-start"
-              className="rounded-2xl border border-[#CDC2F7] bg-gradient-to-br from-white/95 via-[#FAF8FF] to-[#EDE7FF]/70 p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm"
+              className="rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#EDE7FF]/70 dark:to-[#251D4A]/75 p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm"
             >
               <div className="flex items-start gap-3.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60">
                   <Info className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-[#08093B]">
+                  <h3 className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                     Before You Start
                   </h3>
-                  <p className="mt-1 text-xs sm:text-sm font-medium leading-relaxed text-[#5A5E7A]">
+                  <p className="mt-1 text-xs sm:text-sm font-medium leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
                     {article.beforeYouStart}
                   </p>
                 </div>
@@ -597,7 +599,7 @@ export function HelpArticlePage({
 
             {/* Step-by-Step Setup Guide */}
             <section id="step-by-step-guide" className="space-y-5 pt-2">
-              <h2 className="text-2xl font-extrabold text-[#08093B]">
+              <h2 className="text-2xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                 Step-by-Step Setup Guide
               </h2>
 
@@ -605,16 +607,16 @@ export function HelpArticlePage({
                 {article.setupSteps.map((step) => (
                   <div
                     key={step.number}
-                    className="flex items-start gap-4 rounded-xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F5F1FE] p-4 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all hover:border-[#663CF6] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
+                    className="flex items-start gap-4 rounded-xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F1FE] dark:to-[#211C47] p-4 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] text-sm font-extrabold text-[#663CF6] ring-1 ring-[#D4C4FE]/60">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-sm font-extrabold text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60">
                       {step.number}
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-[#08093B] leading-tight">
+                      <h4 className="text-sm font-bold text-[#08093B] dark:text-[#F3F5FF] leading-tight">
                         {step.title}
                       </h4>
-                      <p className="mt-1 text-xs sm:text-sm font-medium leading-relaxed text-[#5A5E7A]">
+                      <p className="mt-1 text-xs sm:text-sm font-medium leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
                         {step.description}
                       </p>
                     </div>
@@ -623,15 +625,15 @@ export function HelpArticlePage({
               </div>
 
               {/* You're All Set! Banner */}
-              <div className="flex items-start gap-3.5 rounded-2xl border border-emerald-200 bg-[#ECFDF5] p-5 shadow-xs">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+              <div className="flex items-start gap-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-800/70 bg-[#ECFDF5] dark:bg-[#0E261F] p-5 shadow-xs">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-emerald-950">
+                  <h3 className="text-sm font-extrabold text-emerald-950 dark:text-emerald-100">
                     You&apos;re All Set!
                   </h3>
-                  <p className="mt-1 text-xs sm:text-sm font-medium leading-relaxed text-emerald-800">
+                  <p className="mt-1 text-xs sm:text-sm font-medium leading-relaxed text-emerald-800 dark:text-emerald-300">
                     {article.allSetMessage}
                   </p>
                 </div>
@@ -641,8 +643,8 @@ export function HelpArticlePage({
             {/* What's Next? (4 Action Cards Grid) */}
             <section id="whats-next" className="space-y-4 pt-2">
               <div>
-                <h2 className="text-2xl font-extrabold text-[#08093B]">What&apos;s Next?</h2>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-[#5A5E7A]">
+                <h2 className="text-2xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">What&apos;s Next?</h2>
+                <p className="mt-1 text-xs sm:text-sm font-medium text-[#5A5E7A] dark:text-[#B4B9DA]">
                   Once your account is set up, here are a few things you can do next:
                 </p>
               </div>
@@ -662,16 +664,16 @@ export function HelpArticlePage({
                     <Link
                       key={idx}
                       href={item.href}
-                      className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4EFFE] p-4 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
+                      className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4EFFE] dark:to-[#211C47] p-4 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
                     >
                       <div className="space-y-2">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60 transition-transform group-hover:scale-105">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60 transition-transform group-hover:scale-105">
                           <Icon className="h-5 w-5" />
                         </div>
-                        <h4 className="text-xs sm:text-sm font-bold text-[#08093B] group-hover:text-[#663CF6] transition-colors">
+                        <h4 className="text-xs sm:text-sm font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition-colors">
                           {item.title}
                         </h4>
-                        <p className="text-[11px] font-medium text-[#7C829E] leading-relaxed">
+                        <p className="text-[11px] font-medium text-[#7C829E] dark:text-[#969CC2] leading-relaxed">
                           {item.description}
                         </p>
                       </div>
@@ -682,8 +684,8 @@ export function HelpArticlePage({
             </section>
 
             {/* Was this article helpful? */}
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4EFFE] p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm">
-              <span className="text-xs sm:text-sm font-bold text-[#08093B]">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4EFFE] dark:to-[#211C47] p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm">
+              <span className="text-xs sm:text-sm font-bold text-[#08093B] dark:text-[#F3F5FF]">
                 Was this article helpful?
               </span>
 
@@ -696,8 +698,8 @@ export function HelpArticlePage({
                   }}
                   className={`flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-bold transition-all ${
                     helpfulFeedback === "yes"
-                      ? "border-[#7C3AED] bg-[#7C3AED] text-white shadow-xs"
-                      : "border-[#D6DBF0] bg-white text-[#4D5072] hover:bg-[#F8FAFC]"
+                      ? "border-[#7C3AED] dark:border-[#8B5CF6] bg-[#7C3AED] text-white shadow-xs"
+                      : "border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#4D5072] dark:text-[#B4B9DA] hover:bg-[#F8FAFC] dark:hover:bg-[#1E2248]"
                   }`}
                 >
                   <ThumbsUp className="h-3.5 w-3.5" />
@@ -712,8 +714,8 @@ export function HelpArticlePage({
                   }}
                   className={`flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-bold transition-all ${
                     helpfulFeedback === "no"
-                      ? "border-rose-300 bg-rose-50 text-rose-700 shadow-xs"
-                      : "border-[#D6DBF0] bg-white text-[#4D5072] hover:bg-[#F8FAFC]"
+                      ? "border-rose-300 dark:border-rose-700/70 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 shadow-xs"
+                      : "border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#4D5072] dark:text-[#B4B9DA] hover:bg-[#F8FAFC] dark:hover:bg-[#1E2248]"
                   }`}
                 >
                   <ThumbsDown className="h-3.5 w-3.5" />
@@ -727,13 +729,13 @@ export function HelpArticlePage({
               {prevArticle ? (
                 <Link
                   href={`/help/${prevArticle.slug}`}
-                  className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F5F1FE] p-4 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition hover:border-[#663CF6] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
+                  className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F1FE] dark:to-[#211C47] p-4 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
                 >
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#663CF6]">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                     <ArrowLeft className="h-3.5 w-3.5 transition group-hover:-translate-x-1" />
                     <span>Previous Article</span>
                   </div>
-                  <span className="mt-2 text-xs sm:text-sm font-bold text-[#08093B] group-hover:text-[#663CF6] transition line-clamp-2">
+                  <span className="mt-2 text-xs sm:text-sm font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition line-clamp-2">
                     {prevArticle.title}
                   </span>
                 </Link>
@@ -744,13 +746,13 @@ export function HelpArticlePage({
               {nextArticle ? (
                 <Link
                   href={`/help/${nextArticle.slug}`}
-                  className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F5F1FE] p-4 text-right shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition hover:border-[#663CF6] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
+                  className="group flex flex-col justify-between rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F1FE] dark:to-[#211C47] p-4 text-right shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
                 >
-                  <div className="flex items-center justify-end gap-1.5 text-xs font-bold text-[#663CF6]">
+                  <div className="flex items-center justify-end gap-1.5 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                     <span>Next Article</span>
                     <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
                   </div>
-                  <span className="mt-2 text-xs sm:text-sm font-bold text-[#08093B] group-hover:text-[#663CF6] transition line-clamp-2">
+                  <span className="mt-2 text-xs sm:text-sm font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition line-clamp-2">
                     {nextArticle.title}
                   </span>
                 </Link>
@@ -765,9 +767,9 @@ export function HelpArticlePage({
               ======================================================================= */}
           <aside ref={sidebarRef} className="space-y-6 lg:col-span-4 lg:self-start lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {/* Widget 1: Search Help Center */}
-            <div className="rounded-[22px] border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4F0FE] p-5 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
-              <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#08093B]">
-                <Search className="h-4 w-4 text-[#7C3AED]" />
+            <div className="rounded-[22px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4F0FE] dark:to-[#211C47] p-5 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+              <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                <Search className="h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF]" />
                 <span>Search Help Center</span>
               </h3>
 
@@ -778,14 +780,14 @@ export function HelpArticlePage({
                     window.location.href = `/help?q=${encodeURIComponent(sidebarSearch.trim())}`;
                   }
                 }}
-                className="mt-3 relative flex items-center rounded-xl border border-[#D6DBF0] p-1 shadow-xs transition-all focus-within:border-[#7C3AED]"
+                className="mt-3 relative flex items-center rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] p-1 shadow-xs transition-all focus-within:border-[#7C3AED] dark:focus-within:border-[#9D7CFE]"
               >
                 <input
                   type="text"
                   value={sidebarSearch}
                   onChange={(e) => setSidebarSearch(e.target.value)}
                   placeholder="Search for help articles..."
-                  className="w-full bg-transparent px-2.5 text-xs font-medium text-[#08093B] placeholder-[#8E92BC] outline-none"
+                  className="w-full bg-transparent px-2.5 text-xs font-medium text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] outline-none"
                 />
                 <button
                   type="submit"
@@ -798,9 +800,9 @@ export function HelpArticlePage({
             </div>
 
             {/* Widget 2: In This Article (Table of Contents) */}
-            <div className="rounded-[22px] border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4F0FE] p-6 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
-              <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#08093B]">
-                <ListOrdered className="h-4 w-4 text-[#7C3AED]" />
+            <div className="rounded-[22px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4F0FE] dark:to-[#211C47] p-6 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+              <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                <ListOrdered className="h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF]" />
                 <span>In This Article</span>
               </h3>
 
@@ -819,13 +821,13 @@ export function HelpArticlePage({
                       onClick={() => setActiveSection(item.id)}
                       className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all ${
                         isActive
-                          ? "bg-[#EDE7FF] font-bold text-[#663CF6]"
-                          : "text-[#4D5072] hover:bg-[#F8FAFC] hover:text-[#663CF6]"
+                          ? "bg-[#EDE7FF] dark:bg-[#251D4A] font-bold text-[#663CF6] dark:text-[#B59CFF]"
+                          : "text-[#4D5072] dark:text-[#B4B9DA] hover:bg-[#F8FAFC] dark:hover:bg-[#1E2248] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                       }`}
                     >
                       <span
                         className={`h-1.5 w-1.5 rounded-full transition-all ${
-                          isActive ? "bg-[#663CF6] scale-125" : "bg-[#CBD5E1]"
+                          isActive ? "bg-[#663CF6] scale-125" : "bg-[#CBD5E1] dark:bg-[#3A406D]"
                         }`}
                       />
                       <span>{item.label}</span>
@@ -836,9 +838,9 @@ export function HelpArticlePage({
             </div>
 
             {/* Widget 3: Related Articles */}
-            <div className="rounded-[22px] border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4F0FE] p-6 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
-              <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#08093B]">
-                <FileText className="h-4 w-4 text-[#7C3AED]" />
+            <div className="rounded-[22px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4F0FE] dark:to-[#211C47] p-6 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+              <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                <FileText className="h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF]" />
                 <span>Related Articles</span>
               </h3>
 
@@ -847,29 +849,29 @@ export function HelpArticlePage({
                   <Link
                     key={rel.id}
                     href={`/help/${rel.slug}`}
-                    className="group flex items-center justify-between rounded-xl p-2 transition hover:bg-[#F6F5FD]"
+                    className="group flex items-center justify-between rounded-xl p-2 transition hover:bg-[#F6F5FD] dark:hover:bg-[#221D45]"
                   >
                     <div className="flex items-center gap-2.5">
-                      <FileText className="h-4 w-4 text-[#7C3AED] shrink-0" />
-                      <span className="text-xs font-bold text-[#08093B] group-hover:text-[#663CF6] transition-colors line-clamp-1">
+                      <FileText className="h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF] shrink-0" />
+                      <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition-colors line-clamp-1">
                         {rel.title}
                       </span>
                     </div>
-                    <ArrowRight className="h-3.5 w-3.5 text-[#8E92BC] shrink-0 transition-transform group-hover:translate-x-1 group-hover:text-[#663CF6]" />
+                    <ArrowRight className="h-3.5 w-3.5 text-[#8E92BC] dark:text-[#888EB5] shrink-0 transition-transform group-hover:translate-x-1 group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD]" />
                   </Link>
                 ))}
               </div>
             </div>
 
             {/* Widget 4: Still Need Help? */}
-            <div className="rounded-[22px] border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F2ECFE] p-6 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+            <div className="rounded-[22px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F2ECFE] dark:to-[#221B48] p-6 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EDE7FF] text-[#663CF6]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF]">
                   <Headphones className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-extrabold text-[#08093B]">Still Need Help?</h4>
-                  <p className="text-[11px] font-medium text-[#7C829E]">
+                  <h4 className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Still Need Help?</h4>
+                  <p className="text-[11px] font-medium text-[#7C829E] dark:text-[#969CC2]">
                     Can&apos;t find the answer you&apos;re looking for? Our support team is here to help.
                   </p>
                 </div>
@@ -886,9 +888,9 @@ export function HelpArticlePage({
             </div>
 
             {/* Widget 5: Video Tutorial */}
-            <div className="rounded-[22px] border border-[#CDC2F7] bg-gradient-to-br from-white/95 via-[#FAF8FF] to-[#EDE7FF]/80 p-6 text-center shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
-              <h4 className="text-sm font-extrabold text-[#08093B]">Video Tutorial</h4>
-              <p className="mt-1 text-xs text-[#5A5E7A]">
+            <div className="rounded-[22px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#EDE7FF]/80 dark:to-[#251D4A]/85 p-6 text-center shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+              <h4 className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Video Tutorial</h4>
+              <p className="mt-1 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                 Watch a step-by-step video on setting up your school account.
               </p>
 
@@ -908,7 +910,7 @@ export function HelpArticlePage({
                 <button
                   type="button"
                   onClick={() => setVideoModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] hover:underline"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF] hover:underline"
                 >
                   <span>Watch Video</span>
                   <ArrowRight className="h-3.5 w-3.5" />
@@ -939,7 +941,7 @@ export function HelpArticlePage({
 
             <Link
               href="/help"
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-3 text-xs font-bold text-[#663CF6] shadow-md transition-all hover:bg-[#F7F4FF] hover:scale-105 active:scale-95"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white dark:bg-[#141731] px-5 py-3 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF] shadow-md transition-all hover:bg-[#F7F4FF] dark:hover:bg-[#241E4A] hover:scale-105 active:scale-95"
             >
               <span>View All Articles</span>
               <ArrowRight className="h-4 w-4" />
@@ -955,17 +957,17 @@ export function HelpArticlePage({
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
         >
-          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[24px] border border-[#CDC2F7] bg-gradient-to-b from-white via-[#FAF8FF] to-[#F5F2FE] p-6 shadow-2xl">
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[24px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white dark:from-[#141731] via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F2FE] dark:to-[#201C45] p-6 shadow-2xl">
             <button
               type="button"
               onClick={() => setVideoModalOpen(false)}
-              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] transition hover:bg-[#F1F3FB] hover:text-[#08093B]"
+              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] dark:text-[#888EB5] transition hover:bg-[#F1F3FB] dark:hover:bg-[#232748] hover:text-[#08093B] dark:hover:text-white"
               aria-label="Close dialog"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <h2 className="text-xl font-extrabold text-[#08093B]">
+            <h2 className="text-xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
               Video: How to Set Up Your School Account
             </h2>
 
@@ -986,21 +988,21 @@ export function HelpArticlePage({
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
-          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[24px] border border-[#CDC2F7] bg-gradient-to-b from-white via-[#FAF8FF] to-[#F5F2FE] p-6 sm:p-8 shadow-2xl">
+          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[24px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white dark:from-[#141731] via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F2FE] dark:to-[#201C45] p-6 sm:p-8 shadow-2xl">
             <button
               type="button"
               onClick={() => setContactModalOpen(false)}
-              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] transition hover:bg-[#F1F3FB] hover:text-[#08093B]"
+              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] dark:text-[#888EB5] transition hover:bg-[#F1F3FB] dark:hover:bg-[#232748] hover:text-[#08093B] dark:hover:text-white"
               aria-label="Close dialog"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="flex items-center gap-2">
-              <Headphones className="h-5 w-5 text-[#663CF6]" />
-              <h2 className="text-xl font-extrabold text-[#08093B]">Contact Support</h2>
+              <Headphones className="h-5 w-5 text-[#663CF6] dark:text-[#B59CFF]" />
+              <h2 className="text-xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Contact Support</h2>
             </div>
-            <p className="mt-1 text-xs text-[#5A5E7A]">
+            <p className="mt-1 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
               Our technical engineering team is ready to assist your institution.
             </p>
 
@@ -1013,22 +1015,22 @@ export function HelpArticlePage({
               className="mt-5 space-y-3.5"
             >
               <div>
-                <label className="text-xs font-bold text-[#08093B]">Official Email</label>
+                <label className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Official Email</label>
                 <input
                   type="email"
                   required
                   placeholder="admin@yourschool.edu"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] p-2.5 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] p-2.5 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#08093B]">Question or Issue</label>
+                <label className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Question or Issue</label>
                 <textarea
                   rows={3}
                   required
                   placeholder="Describe what you need help with..."
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] p-2.5 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] p-2.5 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
@@ -1046,13 +1048,13 @@ export function HelpArticlePage({
       {/* =========================================================================
           8. FOOTER (Matching Site Standards)
           ========================================================================= */}
-      <footer className="mt-20 border-t border-[#D6DBF0] bg-white pt-12 pb-8">
+      <footer className="mt-20 border-t border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] pt-12 pb-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-12">
             {/* Logo & Description */}
             <div className="space-y-4 md:col-span-4">
               <BrandLogo className="h-8 sm:h-9" />
-              <p className="max-w-xs text-xs font-medium leading-relaxed text-[#4D5072]">
+              <p className="max-w-xs text-xs font-medium leading-relaxed text-[#4D5072] dark:text-[#B4B9DA]">
                 A comprehensive, cloud-based school management platform to simplify and streamline your school operations.
               </p>
               <div className="flex items-center gap-2.5 pt-1">
@@ -1060,7 +1062,7 @@ export function HelpArticlePage({
                   href="https://linkedin.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="LinkedIn"
                 >
                   <Linkedin className="h-3.5 w-3.5" />
@@ -1069,7 +1071,7 @@ export function HelpArticlePage({
                   href="https://youtube.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="YouTube"
                 >
                   <Youtube className="h-3.5 w-3.5" />
@@ -1078,7 +1080,7 @@ export function HelpArticlePage({
                   href="https://facebook.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="Facebook"
                 >
                   <Facebook className="h-3.5 w-3.5" />
@@ -1087,7 +1089,7 @@ export function HelpArticlePage({
                   href="https://instagram.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="Instagram"
                 >
                   <Instagram className="h-3.5 w-3.5" />
@@ -1097,27 +1099,27 @@ export function HelpArticlePage({
 
             {/* Product Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Product
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/features" className="hover:text-[#663CF6]">
+                  <Link href="/features" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Features
                   </Link>
                 </li>
                 <li>
-                  <Link href="/pricing" className="hover:text-[#663CF6]">
+                  <Link href="/pricing" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Pricing
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#for-schools" className="hover:text-[#663CF6]">
+                  <Link href="/#for-schools" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     For Schools
                   </Link>
                 </li>
                 <li>
-                  <Link href="/features#integrations" className="hover:text-[#663CF6]">
+                  <Link href="/features#integrations" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Integrations
                   </Link>
                 </li>
@@ -1126,27 +1128,27 @@ export function HelpArticlePage({
 
             {/* Resources Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Resources
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/blog" className="hover:text-[#663CF6]">
+                  <Link href="/blog" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link href="/help" className="text-[#663CF6] font-bold">
+                  <Link href="/help" className="text-[#663CF6] dark:text-[#B59CFF] font-bold">
                     Help Center
                   </Link>
                 </li>
                 <li>
-                  <Link href="/faqs" className="hover:text-[#663CF6]">
+                  <Link href="/faqs" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     FAQs
                   </Link>
                 </li>
                 <li>
-                  <Link href="/guides" className="hover:text-[#663CF6]">
+                  <Link href="/guides" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Guides
                   </Link>
                 </li>
@@ -1155,27 +1157,27 @@ export function HelpArticlePage({
 
             {/* Company Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Company
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/#about" className="hover:text-[#663CF6]">
+                  <Link href="/#about" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#contact" className="hover:text-[#663CF6]">
+                  <Link href="/#contact" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Contact Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#privacy" className="hover:text-[#663CF6]">
+                  <Link href="/#privacy" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#terms" className="hover:text-[#663CF6]">
+                  <Link href="/#terms" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Terms of Service
                   </Link>
                 </li>
@@ -1184,10 +1186,10 @@ export function HelpArticlePage({
 
             {/* Stay Updated Newsletter */}
             <div className="space-y-3 sm:col-span-2 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Stay Updated
               </h4>
-              <p className="text-xs text-[#5A5E7A]">
+              <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                 Subscribe to get product updates, tips and school management insights.
               </p>
               <form
@@ -1200,7 +1202,7 @@ export function HelpArticlePage({
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className="w-full rounded-xl border border-[#D6DBF0] bg-white py-2 pr-10 pl-3 text-xs text-[#08093B] placeholder-[#8E92BC] outline-none focus:border-[#7C3AED]"
+                  className="w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] py-2 pr-10 pl-3 text-xs text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
                 <button
                   type="submit"
@@ -1214,10 +1216,10 @@ export function HelpArticlePage({
           </div>
 
           {/* Bottom Copyright */}
-          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] pt-6 text-xs text-[#5A5E7A] sm:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-6 text-xs text-[#5A5E7A] dark:text-[#B4B9DA] sm:flex-row">
             <p>&copy; 2026 ScholoNix. All rights reserved.</p>
             <p className="mt-2 flex items-center gap-1 sm:mt-0">
-              <span className="text-rose-500">&hearts;</span> Made for Schools
+              <span className="text-rose-500 dark:text-rose-400">&hearts;</span> Made for Schools
             </p>
           </div>
         </div>

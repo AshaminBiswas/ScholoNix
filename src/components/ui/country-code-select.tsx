@@ -126,7 +126,7 @@ export function CountryCodeSelect({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={cn(
-          "flex items-center gap-1.5 py-1 text-xs font-bold text-[#08093B] hover:text-[#4F27E8] transition-colors focus:outline-none select-none",
+          "flex items-center gap-1.5 py-1 text-xs font-bold text-[#08093B] hover:text-[#4F27E8] dark:text-[#F3F5FF] dark:hover:text-[#A78BFA] transition-colors focus:outline-none select-none",
           disabled && "opacity-50 cursor-not-allowed",
           className
         )}
@@ -134,11 +134,11 @@ export function CountryCodeSelect({
         <span className="text-base leading-none">{selectedCountry.flag}</span>
         <ChevronDown
           className={cn(
-            "h-3 w-3 text-[#76799C] transition-transform duration-200",
-            isOpen && "rotate-180 text-[#663CF6]"
+            "h-3 w-3 text-[#76799C] dark:text-[#9DA6CC] transition-transform duration-200",
+            isOpen && "rotate-180 text-[#663CF6] dark:text-[#A78BFA]"
           )}
         />
-        <span className="font-bold text-[#08093B]">{selectedCountry.dialCode}</span>
+        <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">{selectedCountry.dialCode}</span>
       </button>
 
       {/* Floating Popover Dropdown */}
@@ -146,18 +146,18 @@ export function CountryCodeSelect({
         <div
           role="listbox"
           aria-label="Select Country Code"
-          className="absolute left-0 top-full mt-2 z-50 w-64 rounded-2xl border border-[#D6DBF0] bg-white p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+          className="absolute left-0 top-full mt-2 z-50 w-64 rounded-2xl border border-[#D6DBF0] bg-white p-2 shadow-2xl dark:border-[#2E345B] dark:bg-[#141731] animate-in fade-in zoom-in-95 duration-150"
         >
           {/* Search Box */}
           <div className="relative mb-2 px-1">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#76799C]" />
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#76799C] dark:text-[#9DA6CC]" />
             <input
               ref={searchInputRef}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search country or code..."
-              className="w-full rounded-xl border border-[#E2E6F5] bg-[#F7F8FC] py-1.5 pl-8 pr-3 text-xs font-medium text-[#08093B] placeholder-[#9094B0] focus:border-[#663CF6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#EDE7FF]"
+              className="w-full rounded-xl border border-[#E2E6F5] bg-[#F7F8FC] py-1.5 pl-8 pr-3 text-xs font-medium text-[#08093B] placeholder-[#9094B0] focus:border-[#663CF6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#EDE7FF] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder-[#7A83AD] dark:focus:border-[#8B5CF6] dark:focus:bg-[#141731] dark:focus:ring-[#8B5CF6]/30"
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
                   setIsOpen(false);
@@ -182,8 +182,8 @@ export function CountryCodeSelect({
                     className={cn(
                       "flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs transition-colors",
                       isSelected
-                        ? "bg-[#EDE7FF] font-bold text-[#4F27E8]"
-                        : "text-[#1B1D45] hover:bg-[#F5F7FD]"
+                        ? "bg-[#EDE7FF] font-bold text-[#4F27E8] dark:bg-[#281E5A] dark:text-[#CBB8FF]"
+                        : "text-[#1B1D45] hover:bg-[#F5F7FD] dark:text-[#DCE1F9] dark:hover:bg-[#1D2244]"
                     )}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -196,20 +196,20 @@ export function CountryCodeSelect({
                       <span
                         className={cn(
                           "font-mono font-semibold text-[11px]",
-                          isSelected ? "text-[#4F27E8]" : "text-[#76799C]"
+                          isSelected ? "text-[#4F27E8] dark:text-[#CBB8FF]" : "text-[#76799C] dark:text-[#9DA6CC]"
                         )}
                       >
                         {country.dialCode}
                       </span>
                       {isSelected && (
-                        <Check className="h-3.5 w-3.5 text-[#4F27E8]" />
+                        <Check className="h-3.5 w-3.5 text-[#4F27E8] dark:text-[#CBB8FF]" />
                       )}
                     </div>
                   </button>
                 );
               })
             ) : (
-              <div className="py-4 text-center text-xs text-[#76799C]">
+              <div className="py-4 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]">
                 No country found
               </div>
             )}

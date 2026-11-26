@@ -35,6 +35,7 @@ import { ResourcesDropdown, MobileResourcesMenu } from "./resources-dropdown";
 import { SchoolIllustration } from "@/modules/schools/components/school-illustration";
 import { ALL_BLOG_POSTS, type BlogPostData } from "../data/blog-data";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 // Category configuration
 export interface CategoryTab {
@@ -60,8 +61,8 @@ export const POPULAR_ARTICLES = [
     date: "Aug 18, 2025",
     readTime: "6 min read",
     icon: Cloud,
-    iconBg: "bg-[#E0F2FE]",
-    iconColor: "text-[#0284C7]",
+    iconBg: "bg-[#E0F2FE] dark:bg-[#132645]",
+    iconColor: "text-[#0284C7] dark:text-[#56C2FF]",
   },
   {
     id: "pop-2",
@@ -70,8 +71,8 @@ export const POPULAR_ARTICLES = [
     date: "Aug 12, 2025",
     readTime: "7 min read",
     icon: CheckSquare,
-    iconBg: "bg-[#EDE7FF]",
-    iconColor: "text-[#663CF6]",
+    iconBg: "bg-[#EDE7FF] dark:bg-[#251D4A]",
+    iconColor: "text-[#663CF6] dark:text-[#B59CFF]",
   },
   {
     id: "pop-3",
@@ -80,8 +81,8 @@ export const POPULAR_ARTICLES = [
     date: "Aug 8, 2025",
     readTime: "5 min read",
     icon: Laptop,
-    iconBg: "bg-[#DCFCE7]",
-    iconColor: "text-[#15803D]",
+    iconBg: "bg-[#DCFCE7] dark:bg-[#0F2C24]",
+    iconColor: "text-[#15803D] dark:text-[#4ADE80]",
   },
 ];
 
@@ -97,7 +98,7 @@ export const TOPICS = [
 function ArticleVisual({ type, className = "" }: { type: BlogPostData["visualType"]; className?: string }) {
   if (type === "school") {
     return (
-      <div className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#E0F2FE] via-[#EDE7FF] to-[#F5F3FF] p-4 ${className}`}>
+      <div className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#E0F2FE] dark:from-[#122440] via-[#EDE7FF] dark:via-[#221A44] to-[#F5F3FF] dark:to-[#201C45] p-4 ${className}`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.8),transparent)]" />
         <div className="scale-75 transform transition-transform duration-500 group-hover:scale-80">
           <SchoolIllustration />
@@ -108,7 +109,7 @@ function ArticleVisual({ type, className = "" }: { type: BlogPostData["visualTyp
 
   if (type === "classroom") {
     return (
-      <div className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#E0F7FA] via-[#EDE7FF] to-[#F3E8FF] p-6 ${className}`}>
+      <div className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#E0F7FA] dark:from-[#112936] via-[#EDE7FF] dark:via-[#221A44] to-[#F3E8FF] dark:to-[#231B47] p-6 ${className}`}>
         <svg viewBox="0 0 240 160" className="h-full w-full max-w-[200px] transition-transform duration-500 group-hover:scale-105" fill="none">
           {/* Blackboard */}
           <rect x="25" y="20" width="130" height="85" rx="8" fill="#1E293B" stroke="#0F172A" strokeWidth="3" />
@@ -130,7 +131,7 @@ function ArticleVisual({ type, className = "" }: { type: BlogPostData["visualTyp
 
   if (type === "books") {
     return (
-      <div className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#FEF3C7] via-[#EDE7FF] to-[#F1F5F9] p-6 ${className}`}>
+      <div className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#FEF3C7] dark:from-[#2B2010] via-[#EDE7FF] dark:via-[#221A44] to-[#F1F5F9] dark:to-[#1B1F40] p-6 ${className}`}>
         <svg viewBox="0 0 240 160" className="h-full w-full max-w-[200px] transition-transform duration-500 group-hover:scale-105" fill="none">
           {/* Stack of books */}
           <rect x="50" y="95" width="140" height="26" rx="5" fill="#3B82F6" stroke="#1D4ED8" strokeWidth="2" />
@@ -147,7 +148,7 @@ function ArticleVisual({ type, className = "" }: { type: BlogPostData["visualTyp
 
   if (type === "family") {
     return (
-      <div className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#EDE7FF] via-[#FCE7F3] to-[#FEF3C7] p-6 ${className}`}>
+      <div className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#EDE7FF] dark:from-[#231B47] via-[#FCE7F3] dark:via-[#2E1730] to-[#FEF3C7] dark:to-[#2E2210] p-6 ${className}`}>
         <svg viewBox="0 0 240 160" className="h-full w-full max-w-[200px] transition-transform duration-500 group-hover:scale-105" fill="none">
           {/* Speech bubble */}
           <path d="M40 30 C40 20, 160 20, 160 30 L160 70 C160 80, 100 80, 90 95 L80 80 L40 80 Z" fill="#663CF6" fillOpacity="0.12" stroke="#663CF6" strokeWidth="2" />
@@ -167,7 +168,7 @@ function ArticleVisual({ type, className = "" }: { type: BlogPostData["visualTyp
 
   // Analytics
   return (
-    <div className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#E0F2FE] via-[#EDE7FF] to-[#DCFCE7] p-6 ${className}`}>
+    <div className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#E0F2FE] dark:from-[#122440] via-[#EDE7FF] dark:via-[#221A44] to-[#DCFCE7] dark:to-[#102E25] p-6 ${className}`}>
       <svg viewBox="0 0 240 160" className="h-full w-full max-w-[200px] transition-transform duration-500 group-hover:scale-105" fill="none">
         {/* Laptop frame */}
         <rect x="40" y="30" width="160" height="95" rx="8" fill="#1E1B4B" stroke="#312E81" strokeWidth="2" />
@@ -194,17 +195,17 @@ function BlogHeroIllustration() {
   return (
     <div className="relative mx-auto flex w-full max-w-lg items-center justify-center p-4">
       {/* Soft background glow */}
-      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/40 to-[#93C5FD]/30 blur-2xl filter" />
+      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/40 dark:from-[#663CF6]/25 to-[#93C5FD]/30 dark:to-[#0284C7]/20 blur-2xl filter" />
 
       {/* Floating Sparkle Micro-interactions */}
-      <div className="absolute -top-2 left-6 z-20 flex animate-bounce items-center gap-1.5 rounded-full border border-[#D4C4FE]/60 bg-white/95 px-3 py-1 shadow-md shadow-[#663CF6]/10 backdrop-blur-md">
-        <Sparkles className="h-3.5 w-3.5 text-[#7C3AED]" />
-        <span className="text-xs font-bold text-[#08093B]">50+ Expert Guides</span>
+      <div className="absolute -top-2 left-6 z-20 flex animate-bounce items-center gap-1.5 rounded-full border border-[#D4C4FE]/60 dark:border-[#42357D]/70 bg-white/95 dark:bg-[#141731]/95 px-3 py-1 shadow-md shadow-[#663CF6]/10 backdrop-blur-md">
+        <Sparkles className="h-3.5 w-3.5 text-[#7C3AED] dark:text-[#B99BFF]" />
+        <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">50+ Expert Guides</span>
       </div>
 
-      <div className="absolute -bottom-2 right-4 z-20 flex items-center gap-1.5 rounded-full border border-[#BAE6FD] bg-white/95 px-3 py-1 shadow-md shadow-[#0284C7]/10 backdrop-blur-md">
-        <CheckCircle2 className="h-3.5 w-3.5 text-[#0284C7]" />
-        <span className="text-xs font-bold text-[#08093B]">Verified Insights</span>
+      <div className="absolute -bottom-2 right-4 z-20 flex items-center gap-1.5 rounded-full border border-[#BAE6FD] dark:border-[#1E4670] bg-white/95 dark:bg-[#141731]/95 px-3 py-1 shadow-md shadow-[#0284C7]/10 backdrop-blur-md">
+        <CheckCircle2 className="h-3.5 w-3.5 text-[#0284C7] dark:text-[#56C2FF]" />
+        <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Verified Insights</span>
       </div>
 
       {/* Main Vector Artwork: Laptop + Stacked Books + Graduation Cap */}
@@ -370,14 +371,14 @@ export function BlogPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45]">
+    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45] dark:text-[#F3F5FF]">
       {/* Luminous Atmospheric Aurora & Wave Background with rich contrast */}
       <AtmosphericBackground />
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-[#7C3AED]/40 bg-white/98 px-4 py-3 text-sm font-semibold text-[#08093B] shadow-xl backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-3">
-          <Sparkles className="h-4 w-4 text-[#7C3AED]" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-[#7C3AED]/40 bg-white/98 dark:bg-[#141731]/98 px-4 py-3 text-sm font-semibold text-[#08093B] dark:text-[#F3F5FF] shadow-xl backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-3">
+          <Sparkles className="h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF]" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -385,20 +386,20 @@ export function BlogPage() {
       {/* =========================================================================
           1. HEADER / NAVBAR
           ========================================================================= */}
-      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] dark:border-[#2C3159] bg-white/95 dark:bg-[#141731]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           {/* Logo */}
           <BrandLogo className="h-8 sm:h-9" />
 
           {/* Desktop Navigation Menu */}
-          <nav className="hidden items-center gap-8 text-sm font-semibold text-[#4D5072] md:flex">
-            <Link href="/features" className="transition-colors hover:text-[#663CF6]">
+          <nav className="hidden items-center gap-8 text-sm font-semibold text-[#4D5072] dark:text-[#B4B9DA] md:flex">
+            <Link href="/features" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Features
             </Link>
-            <Link href="/pricing" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/pricing" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Pricing
             </Link>
-            <Link href="/for-schools" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/for-schools" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               For Schools
             </Link>
             {/* Active Resources Dropdown */}
@@ -407,9 +408,10 @@ export function BlogPage() {
 
           {/* Right Action CTAs & Mobile Hamburger */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <Link
               href="/login"
-              className="hidden sm:inline-flex items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] bg-white px-3.5 py-1.5 text-xs font-bold text-[#4F27E8] shadow-xs transition hover:border-[#4F27E8] hover:bg-[#F7F4FF]"
+              className="hidden sm:inline-flex items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] dark:border-[#8B5CF6] bg-white dark:bg-[#141731] px-3.5 py-1.5 text-xs font-bold text-[#4F27E8] dark:text-[#C4B5FD] shadow-xs transition hover:border-[#4F27E8] dark:hover:border-[#9D7CFE] hover:bg-[#F7F4FF] dark:hover:bg-[#241E4A]"
             >
               Sign In
             </Link>
@@ -424,7 +426,7 @@ export function BlogPage() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#D6DBF0] bg-white text-[#08093B] shadow-sm transition hover:bg-[#F2EEFD] hover:text-[#663CF6] md:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#08093B] dark:text-[#F3F5FF] shadow-sm transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] md:hidden"
               aria-label="Toggle Navigation Menu"
               aria-expanded={mobileMenuOpen}
             >
@@ -435,37 +437,37 @@ export function BlogPage() {
 
         {/* Mobile Dropdown Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="border-b border-[#D6DBF0] bg-white/98 px-4 pt-3 pb-6 shadow-xl backdrop-blur-lg md:hidden">
-            <nav className="flex flex-col space-y-3.5 text-sm font-semibold text-[#1B1D45]">
+          <div className="border-b border-[#D6DBF0] dark:border-[#2C3159] bg-white/98 dark:bg-[#141731]/98 px-4 pt-3 pb-6 shadow-xl backdrop-blur-lg md:hidden">
+            <nav className="flex flex-col space-y-3.5 text-sm font-semibold text-[#1B1D45] dark:text-[#F3F5FF]">
               <Link
                 href="/features"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Features
               </Link>
               <Link
                 href="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Pricing
               </Link>
               <Link
                 href="/for-schools"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 For Schools
               </Link>
               <MobileResourcesMenu onItemClick={() => setMobileMenuOpen(false)} />
             </nav>
 
-            <div className="mt-4 flex flex-col gap-2.5 border-t border-[#DFE3F5] pt-4">
+            <div className="mt-4 flex flex-col gap-2.5 border-t border-[#DFE3F5] dark:border-[#2C3159] pt-4">
               <Link
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex w-full items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] bg-white py-2.5 text-xs font-bold text-[#4F27E8] shadow-xs"
+                className="flex w-full items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] dark:border-[#8B5CF6] bg-white dark:bg-[#141731] py-2.5 text-xs font-bold text-[#4F27E8] dark:text-[#C4B5FD] shadow-xs"
               >
                 Sign In
               </Link>
@@ -485,34 +487,34 @@ export function BlogPage() {
         {/* =========================================================================
             2. HERO SECTION (Title, Subtitle, Search, 3D Hero Artwork)
             ========================================================================= */}
-        <section className="relative overflow-hidden rounded-[28px] border border-[#CDC2F7] bg-gradient-to-br from-white/95 via-[#F8F6FE]/90 to-[#EDE7FF]/80 p-6 sm:p-10 lg:p-12 shadow-[0_16px_40px_rgba(24,18,77,0.08)] backdrop-blur-md">
+        <section className="relative overflow-hidden rounded-[28px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#F8F6FE]/90 dark:via-[#191C3B]/90 to-[#EDE7FF]/80 dark:to-[#251D4A]/85 p-6 sm:p-10 lg:p-12 shadow-[0_16px_40px_rgba(24,18,77,0.08)] backdrop-blur-md">
           <div className="grid items-center gap-8 lg:grid-cols-12 lg:gap-12">
             {/* Left Content */}
             <div className="space-y-5 lg:col-span-7">
               {/* Blog Badge */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#D4C4FE]/80 bg-[#EDE7FF] px-3.5 py-1 text-xs font-extrabold text-[#663CF6] shadow-xs">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#D4C4FE]/80 dark:border-[#42357D]/90 bg-[#EDE7FF] dark:bg-[#251D4A] px-3.5 py-1 text-xs font-extrabold text-[#663CF6] dark:text-[#B59CFF] shadow-xs">
                 <BookOpen className="h-3.5 w-3.5" />
                 <span>Blog</span>
               </div>
 
               {/* Headline */}
-              <h1 className="text-3xl font-extrabold tracking-tight text-[#08093B] sm:text-4xl lg:text-5xl lg:leading-[1.15]">
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF] sm:text-4xl lg:text-5xl lg:leading-[1.15]">
                 School Management <br />
-                <span className="bg-gradient-to-r from-[#08093B] via-[#4F27E8] to-[#7C3AED] bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[#08093B] dark:from-[#F3F5FF] via-[#4F27E8] dark:via-[#C4B5FD] to-[#7C3AED] dark:to-[#A78BFA] bg-clip-text text-transparent">
                   Insights & Resources
                 </span>
               </h1>
 
               {/* Subtitle */}
-              <p className="max-w-xl text-sm font-medium leading-relaxed text-[#4D5072] sm:text-base">
+              <p className="max-w-xl text-sm font-medium leading-relaxed text-[#4D5072] dark:text-[#B4B9DA] sm:text-base">
                 Explore expert articles, tips and best practices on school management,
                 digital transformation and education technology.
               </p>
 
               {/* Search Bar with Micro-interactions */}
               <div className="relative max-w-md pt-2">
-                <div className="relative flex items-center rounded-2xl border border-[#D6DBF0] bg-white p-1.5 shadow-[0_8px_25px_rgba(24,18,77,0.06)] transition-all focus-within:border-[#7C3AED] focus-within:ring-3 focus-within:ring-[#7C3AED]/15">
-                  <div className="pl-3 pr-2 text-[#8E92BC]">
+                <div className="relative flex items-center rounded-2xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] p-1.5 shadow-[0_8px_25px_rgba(24,18,77,0.06)] transition-all focus-within:border-[#7C3AED] dark:focus-within:border-[#9D7CFE] focus-within:ring-3 focus-within:ring-[#7C3AED]/15">
+                  <div className="pl-3 pr-2 text-[#8E92BC] dark:text-[#888EB5]">
                     <Search className="h-5 w-5" />
                   </div>
                   <input
@@ -520,14 +522,14 @@ export function BlogPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search blog articles..."
-                    className="w-full bg-transparent text-sm font-semibold text-[#08093B] placeholder-[#8E92BC] outline-none"
+                    className="w-full bg-transparent text-sm font-semibold text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] outline-none"
                     aria-label="Search blog articles"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={() => setSearchQuery("")}
-                      className="mr-1 p-1 text-[#8E92BC] hover:text-[#08093B]"
+                      className="mr-1 p-1 text-[#8E92BC] dark:text-[#888EB5] hover:text-[#08093B] dark:hover:text-white"
                       title="Clear search"
                     >
                       <X className="h-4 w-4" />
@@ -547,7 +549,7 @@ export function BlogPage() {
                   </button>
                 </div>
                 {searchQuery && (
-                  <p className="mt-2 text-xs font-semibold text-[#663CF6]">
+                  <p className="mt-2 text-xs font-semibold text-[#663CF6] dark:text-[#B59CFF]">
                     Showing {filteredPosts.length} article(s) matching &quot;{searchQuery}&quot;
                   </p>
                 )}
@@ -580,12 +582,12 @@ export function BlogPage() {
                   className={`group flex items-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-bold transition-all duration-200 outline-none ${
                     isActive
                       ? "scale-[1.02] bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] text-white shadow-md shadow-[#7C3AED]/25"
-                      : "border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6]/60 hover:bg-[#F8F6FE] hover:text-[#663CF6]"
+                      : "border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#4D5072] dark:text-[#B4B9DA] hover:border-[#663CF6]/60 dark:hover:border-[#9D7CFE]/80 hover:bg-[#F8F6FE] dark:hover:bg-[#221D45] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   }`}
                 >
                   <Icon
                     className={`h-4 w-4 transition-transform duration-200 group-hover:scale-110 ${
-                      isActive ? "text-white" : "text-[#7C3AED]"
+                      isActive ? "text-white" : "text-[#7C3AED] dark:text-[#B99BFF]"
                     }`}
                   />
                   <span>{cat.name}</span>
@@ -607,13 +609,13 @@ export function BlogPage() {
             {featuredPost && (
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#D4C4FE]/80 bg-[#EDE7FF] px-3 py-1 text-xs font-bold text-[#663CF6]">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[#D4C4FE]/80 dark:border-[#42357D]/90 bg-[#EDE7FF] dark:bg-[#251D4A] px-3 py-1 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                     <Sparkles className="h-3 w-3" />
                     <span>Featured Article</span>
                   </span>
                 </div>
 
-                <div className="group relative overflow-hidden rounded-[24px] border border-[#CDC2F7] bg-gradient-to-br from-white/95 via-[#FAF8FF]/90 to-[#EDE7FF]/70 shadow-[0_12px_36px_rgba(24,18,77,0.08)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] hover:shadow-[0_20px_45px_rgba(102,60,246,0.16)]">
+                <div className="group relative overflow-hidden rounded-[24px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF8FF]/90 to-[#EDE7FF]/70 dark:to-[#251D4A]/75 shadow-[0_12px_36px_rgba(24,18,77,0.08)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_20px_45px_rgba(102,60,246,0.16)]">
                   <div className="grid md:grid-cols-12">
                     {/* Visual / Image */}
                     <div className="relative md:col-span-5">
@@ -626,32 +628,32 @@ export function BlogPage() {
                     {/* Text Details */}
                     <div className="flex flex-col justify-between p-6 md:col-span-7 sm:p-8">
                       <div className="space-y-3">
-                        <span className="inline-block rounded-full bg-[#EDE7FF] px-3 py-0.5 text-xs font-extrabold text-[#663CF6]">
+                        <span className="inline-block rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] px-3 py-0.5 text-xs font-extrabold text-[#663CF6] dark:text-[#B59CFF]">
                           {featuredPost.categoryName}
                         </span>
 
-                        <h2 className="text-xl font-extrabold text-[#08093B] transition-colors group-hover:text-[#663CF6] sm:text-2xl leading-snug">
+                        <h2 className="text-xl font-extrabold text-[#08093B] dark:text-[#F3F5FF] transition-colors group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] sm:text-2xl leading-snug">
                           <Link href={`/blog/${featuredPost.slug}`}>
                             {featuredPost.title}
                           </Link>
                         </h2>
 
-                        <p className="text-xs sm:text-sm font-medium leading-relaxed text-[#5A5E7A]">
+                        <p className="text-xs sm:text-sm font-medium leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
                           {featuredPost.excerpt}
                         </p>
                       </div>
 
                       {/* Author & Read Time Footer */}
-                      <div className="mt-6 flex items-center justify-between border-t border-[#F0F2FA] pt-4">
+                      <div className="mt-6 flex items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-4">
                         <div className="flex items-center gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#7C3AED] to-[#38BDF8] text-xs font-bold text-white shadow-xs">
                             {featuredPost.author.initials}
                           </div>
                           <div>
-                            <div className="text-xs font-bold text-[#08093B]">
+                            <div className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
                               {featuredPost.author.name}
                             </div>
-                            <div className="text-[11px] font-medium text-[#7C829E]">
+                            <div className="text-[11px] font-medium text-[#7C829E] dark:text-[#969CC2]">
                               {featuredPost.author.date} &bull; {featuredPost.author.readTime}
                             </div>
                           </div>
@@ -662,21 +664,21 @@ export function BlogPage() {
                           <button
                             type="button"
                             onClick={() => toggleSavePost(featuredPost.id)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D6DBF0] text-[#7C829E] transition-colors hover:border-[#663CF6] hover:text-[#663CF6]"
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D6DBF0] dark:border-[#2C3159] text-[#7C829E] dark:text-[#969CC2] transition-colors hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                             title="Save article"
                             aria-label="Save article"
                           >
                             <Bookmark
                               className={`h-4 w-4 ${
                                 savedPosts.includes(featuredPost.id)
-                                  ? "fill-[#663CF6] text-[#663CF6]"
+                                  ? "fill-[#663CF6] text-[#663CF6] dark:text-[#B59CFF]"
                                   : ""
                               }`}
                             />
                           </button>
                           <Link
                             href={`/blog/${featuredPost.slug}`}
-                            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D6DBF0] bg-[#F8FAFC] text-[#08093B] shadow-xs transition-all group-hover:border-[#663CF6] group-hover:bg-[#663CF6] group-hover:text-white"
+                            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D6DBF0] dark:border-[#2C3159] bg-[#F8FAFC] dark:bg-[#171B38] text-[#08093B] dark:text-[#F3F5FF] shadow-xs transition-all group-hover:border-[#663CF6] group-hover:bg-[#663CF6] group-hover:text-white"
                             aria-label={`Read ${featuredPost.title}`}
                           >
                             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -691,13 +693,13 @@ export function BlogPage() {
 
             {/* Latest Articles List */}
             <section className="space-y-4">
-              <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B]">
+              <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
                 Latest Articles
               </h2>
 
               {latestPosts.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[#D6DBF0] bg-white p-12 text-center">
-                  <p className="text-sm font-semibold text-[#5A5E7A]">
+                <div className="rounded-2xl border border-dashed border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] p-12 text-center">
+                  <p className="text-sm font-semibold text-[#5A5E7A] dark:text-[#B4B9DA]">
                     No articles found matching your criteria.
                   </p>
                   <button
@@ -706,7 +708,7 @@ export function BlogPage() {
                       setSelectedCategory("all");
                       setSearchQuery("");
                     }}
-                    className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#663CF6] hover:underline"
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF] hover:underline"
                   >
                     Reset filters
                   </button>
@@ -716,7 +718,7 @@ export function BlogPage() {
                   {latestPosts.map((post) => (
                     <article
                       key={post.id}
-                      className="group relative overflow-hidden rounded-[20px] border border-[#CDC2F7] bg-gradient-to-br from-white/95 via-[#FAF8FF]/90 to-[#F2EDFD]/60 p-4 sm:p-5 shadow-[0_8px_24px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] hover:shadow-[0_16px_36px_rgba(102,60,246,0.14)]"
+                      className="group relative overflow-hidden rounded-[20px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF8FF]/90 to-[#F2EDFD]/60 dark:to-[#221B48]/70 p-4 sm:p-5 shadow-[0_8px_24px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_16px_36px_rgba(102,60,246,0.14)]"
                     >
                       <div className="grid gap-4 sm:grid-cols-12 sm:gap-6">
                         {/* Thumbnail Graphic */}
@@ -730,29 +732,29 @@ export function BlogPage() {
                         {/* Article Details */}
                         <div className="flex flex-col justify-between sm:col-span-8">
                           <div className="space-y-2">
-                            <span className="inline-block rounded-full bg-[#EDE7FF] px-2.5 py-0.5 text-[11px] font-extrabold text-[#663CF6]">
+                            <span className="inline-block rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] px-2.5 py-0.5 text-[11px] font-extrabold text-[#663CF6] dark:text-[#B59CFF]">
                               {post.categoryName}
                             </span>
 
-                            <h3 className="text-base sm:text-lg font-bold text-[#08093B] transition-colors group-hover:text-[#663CF6] leading-snug">
+                            <h3 className="text-base sm:text-lg font-bold text-[#08093B] dark:text-[#F3F5FF] transition-colors group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] leading-snug">
                               <Link href={`/blog/${post.slug}`}>
                                 {post.title}
                               </Link>
                             </h3>
 
-                            <p className="text-xs font-medium text-[#5A5E7A] line-clamp-2 leading-relaxed">
+                            <p className="text-xs font-medium text-[#5A5E7A] dark:text-[#B4B9DA] line-clamp-2 leading-relaxed">
                               {post.excerpt}
                             </p>
                           </div>
 
                           {/* Footer: Author & Action */}
-                          <div className="mt-4 flex items-center justify-between border-t border-[#F0F2FA] pt-3">
+                          <div className="mt-4 flex items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-3">
                             <div className="flex items-center gap-2.5">
                               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#663CF6] to-[#A855F7] text-[10px] font-bold text-white shadow-xs">
                                 {post.author.initials}
                               </div>
-                              <div className="text-xs text-[#5A5E7A]">
-                                <span className="font-bold text-[#08093B]">
+                              <div className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
+                                <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
                                   {post.author.name}
                                 </span>{" "}
                                 &bull; {post.author.date} &bull; {post.author.readTime}
@@ -763,21 +765,21 @@ export function BlogPage() {
                               <button
                                 type="button"
                                 onClick={() => toggleSavePost(post.id)}
-                                className="flex h-7 w-7 items-center justify-center rounded-full text-[#7C829E] transition hover:text-[#663CF6]"
+                                className="flex h-7 w-7 items-center justify-center rounded-full text-[#7C829E] dark:text-[#969CC2] transition hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                                 title="Save article"
                                 aria-label="Save article"
                               >
                                 <Bookmark
                                   className={`h-3.5 w-3.5 ${
                                     savedPosts.includes(post.id)
-                                      ? "fill-[#663CF6] text-[#663CF6]"
+                                      ? "fill-[#663CF6] text-[#663CF6] dark:text-[#B59CFF]"
                                       : ""
                                   }`}
                                 />
                               </button>
                               <Link
                                 href={`/blog/${post.slug}`}
-                                className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D6DBF0] bg-[#F8FAFC] text-[#08093B] shadow-xs transition-all group-hover:border-[#663CF6] group-hover:bg-[#663CF6] group-hover:text-white"
+                                className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D6DBF0] dark:border-[#2C3159] bg-[#F8FAFC] dark:bg-[#171B38] text-[#08093B] dark:text-[#F3F5FF] shadow-xs transition-all group-hover:border-[#663CF6] group-hover:bg-[#663CF6] group-hover:text-white"
                                 aria-label={`Read ${post.title}`}
                               >
                                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -798,7 +800,7 @@ export function BlogPage() {
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D6DBF0] bg-white text-[#4D5072] transition-colors hover:border-[#663CF6] hover:text-[#663CF6] disabled:opacity-40"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#4D5072] dark:text-[#B4B9DA] transition-colors hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] disabled:opacity-40"
                 aria-label="Previous Page"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -812,7 +814,7 @@ export function BlogPage() {
                   className={`flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold transition-all ${
                     currentPage === page
                       ? "bg-[#7C3AED] text-white shadow-md shadow-[#7C3AED]/25"
-                      : "border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6]"
+                      : "border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#4D5072] dark:text-[#B4B9DA] hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   }`}
                 >
                   {page}
@@ -823,7 +825,7 @@ export function BlogPage() {
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(5, p + 1))}
                 disabled={currentPage === 5}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D6DBF0] bg-white text-[#4D5072] transition-colors hover:border-[#663CF6] hover:text-[#663CF6] disabled:opacity-40"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#4D5072] dark:text-[#B4B9DA] transition-colors hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] disabled:opacity-40"
                 aria-label="Next Page"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -836,28 +838,28 @@ export function BlogPage() {
               ======================================================================= */}
           <aside className="space-y-6 lg:col-span-4">
             {/* Widget 1: Subscribe to Our Blog */}
-            <div className="rounded-[22px] border border-[#CDC2F7] bg-gradient-to-br from-white/95 via-[#FAF8FF] to-[#EDE7FF]/80 p-6 shadow-[0_12px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+            <div className="rounded-[22px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#EDE7FF]/80 dark:to-[#251D4A]/85 p-6 shadow-[0_12px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60">
                   <Mail className="h-4 w-4" />
                 </div>
-                <h3 className="text-base font-extrabold text-[#08093B]">
+                <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                   Subscribe to Our Blog
                 </h3>
               </div>
 
-              <p className="mt-2.5 text-xs font-medium leading-relaxed text-[#5A5E7A]">
+              <p className="mt-2.5 text-xs font-medium leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
                 Get the latest articles, tips and resources delivered straight to your inbox.
               </p>
 
               <form onSubmit={handleSubscribe} className="mt-4">
-                <div className="relative flex items-center rounded-xl border border-[#D6DBF0] bg-white p-1 shadow-xs transition-all focus-within:border-[#7C3AED] focus-within:ring-2 focus-within:ring-[#7C3AED]/15">
+                <div className="relative flex items-center rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] p-1 shadow-xs transition-all focus-within:border-[#7C3AED] dark:focus-within:border-[#9D7CFE] focus-within:ring-2 focus-within:ring-[#7C3AED]/15">
                   <input
                     type="email"
                     value={subscriberEmail}
                     onChange={(e) => setSubscriberEmail(e.target.value)}
                     placeholder="Enter your email"
-                    className="w-full bg-transparent px-3 text-xs font-medium text-[#08093B] placeholder-[#8E92BC] outline-none"
+                    className="w-full bg-transparent px-3 text-xs font-medium text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] outline-none"
                     disabled={isSubscribed}
                   />
                   <button
@@ -867,7 +869,7 @@ export function BlogPage() {
                     aria-label="Subscribe"
                   >
                     {isSubscribing ? (
-                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white dark:border-[#2C3159] border-t-transparent" />
                     ) : isSubscribed ? (
                       <CheckCircle2 className="h-4 w-4 text-white" />
                     ) : (
@@ -876,7 +878,7 @@ export function BlogPage() {
                   </button>
                 </div>
                 {isSubscribed && (
-                  <p className="mt-2 text-xs font-bold text-emerald-600">
+                  <p className="mt-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                     &check; You are subscribed to updates!
                   </p>
                 )}
@@ -884,10 +886,10 @@ export function BlogPage() {
             </div>
 
             {/* Widget 2: Popular Articles */}
-            <div className="rounded-[22px] border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F5F1FE]/80 p-6 shadow-[0_12px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+            <div className="rounded-[22px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F1FE]/80 dark:to-[#211C47]/80 p-6 shadow-[0_12px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm">
               <div className="flex items-center gap-2">
-                <Flame className="h-4 w-4 text-[#F97316]" />
-                <h3 className="text-base font-extrabold text-[#08093B]">
+                <Flame className="h-4 w-4 text-[#F97316] dark:text-[#FB923C]" />
+                <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                   Popular Articles
                 </h3>
               </div>
@@ -899,7 +901,7 @@ export function BlogPage() {
                     <Link
                       key={item.id}
                       href={`/blog/${item.slug}`}
-                      className="group flex items-start gap-3 rounded-xl p-2 transition hover:bg-[#F6F5FD]"
+                      className="group flex items-start gap-3 rounded-xl p-2 transition hover:bg-[#F6F5FD] dark:hover:bg-[#221D45]"
                     >
                       <div
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${item.iconBg} ${item.iconColor} transition-transform group-hover:scale-105`}
@@ -907,10 +909,10 @@ export function BlogPage() {
                         <Icon className="h-5 w-5" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold text-[#08093B] group-hover:text-[#663CF6] transition-colors line-clamp-2 leading-snug">
+                        <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition-colors line-clamp-2 leading-snug">
                           {item.title}
                         </span>
-                        <span className="mt-1 text-[11px] font-medium text-[#7C829E]">
+                        <span className="mt-1 text-[11px] font-medium text-[#7C829E] dark:text-[#969CC2]">
                           {item.date} &bull; {item.readTime}
                         </span>
                       </div>
@@ -921,10 +923,10 @@ export function BlogPage() {
             </div>
 
             {/* Widget 3: Topics with count badges */}
-            <div className="rounded-[22px] border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F5F1FE]/80 p-6 shadow-[0_12px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+            <div className="rounded-[22px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F1FE]/80 dark:to-[#211C47]/80 p-6 shadow-[0_12px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm">
               <div className="flex items-center gap-2">
-                <Tag className="h-4 w-4 text-[#7C3AED]" />
-                <h3 className="text-base font-extrabold text-[#08093B]">Topics</h3>
+                <Tag className="h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF]" />
+                <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Topics</h3>
               </div>
 
               <div className="mt-4 space-y-2">
@@ -940,8 +942,8 @@ export function BlogPage() {
                       }}
                       className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold transition-all ${
                         isTopicActive
-                          ? "bg-[#EDE7FF] font-bold text-[#663CF6]"
-                          : "text-[#4D5072] hover:bg-[#F8FAFC] hover:text-[#663CF6]"
+                          ? "bg-[#EDE7FF] dark:bg-[#251D4A] font-bold text-[#663CF6] dark:text-[#B59CFF]"
+                          : "text-[#4D5072] dark:text-[#B4B9DA] hover:bg-[#F8FAFC] dark:hover:bg-[#1E2248] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                       }`}
                     >
                       <span>{topic.name}</span>
@@ -949,7 +951,7 @@ export function BlogPage() {
                         className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                           isTopicActive
                             ? "bg-[#663CF6] text-white"
-                            : "bg-[#F1F3FB] text-[#6B7280]"
+                            : "bg-[#F1F3FB] dark:bg-[#1B1F40] text-[#6B7280] dark:text-[#A5ACD2]"
                         }`}
                       >
                         {topic.count}
@@ -961,16 +963,16 @@ export function BlogPage() {
             </div>
 
             {/* Widget 4: Transform Your School Operations CTA Card */}
-            <div className="relative overflow-hidden rounded-[24px] border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#EDE7FF]/80 p-6 text-center shadow-[0_16px_40px_rgba(24,18,77,0.08)] backdrop-blur-sm">
+            <div className="relative overflow-hidden rounded-[24px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#EDE7FF]/80 dark:to-[#251D4A]/85 p-6 text-center shadow-[0_16px_40px_rgba(24,18,77,0.08)] backdrop-blur-sm">
               <div className="mx-auto max-w-[160px] pb-2">
                 <SchoolIllustration />
               </div>
 
-              <h3 className="text-lg font-extrabold text-[#08093B]">
+              <h3 className="text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                 Transform Your School Operations
               </h3>
 
-              <p className="mt-1.5 text-xs font-medium text-[#5A5E7A] leading-relaxed">
+              <p className="mt-1.5 text-xs font-medium text-[#5A5E7A] dark:text-[#B4B9DA] leading-relaxed">
                 Join 1,000+ schools already using ScholoNix.
               </p>
 
@@ -991,13 +993,13 @@ export function BlogPage() {
       {/* =========================================================================
           5. FOOTER (Matching Site Standards)
           ========================================================================= */}
-      <footer className="mt-20 border-t border-[#D6DBF0] bg-white pt-12 pb-8">
+      <footer className="mt-20 border-t border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] pt-12 pb-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-12">
             {/* Logo & Description */}
             <div className="space-y-4 md:col-span-4">
               <BrandLogo className="h-8 sm:h-9" />
-              <p className="max-w-xs text-xs font-medium leading-relaxed text-[#4D5072]">
+              <p className="max-w-xs text-xs font-medium leading-relaxed text-[#4D5072] dark:text-[#B4B9DA]">
                 A comprehensive, cloud-based school management platform to simplify and streamline your school operations.
               </p>
               {/* Social Links */}
@@ -1006,7 +1008,7 @@ export function BlogPage() {
                   href="https://linkedin.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="LinkedIn"
                 >
                   <Linkedin className="h-3.5 w-3.5" />
@@ -1015,7 +1017,7 @@ export function BlogPage() {
                   href="https://youtube.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="YouTube"
                 >
                   <Youtube className="h-3.5 w-3.5" />
@@ -1024,7 +1026,7 @@ export function BlogPage() {
                   href="https://facebook.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="Facebook"
                 >
                   <Facebook className="h-3.5 w-3.5" />
@@ -1033,7 +1035,7 @@ export function BlogPage() {
                   href="https://instagram.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="Instagram"
                 >
                   <Instagram className="h-3.5 w-3.5" />
@@ -1043,27 +1045,27 @@ export function BlogPage() {
 
             {/* Product Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Product
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/features" className="hover:text-[#663CF6]">
+                  <Link href="/features" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Features
                   </Link>
                 </li>
                 <li>
-                  <Link href="/pricing" className="hover:text-[#663CF6]">
+                  <Link href="/pricing" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Pricing
                   </Link>
                 </li>
                 <li>
-                  <Link href="/for-schools" className="hover:text-[#663CF6]">
+                  <Link href="/for-schools" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     For Schools
                   </Link>
                 </li>
                 <li>
-                  <Link href="/features#integrations" className="hover:text-[#663CF6]">
+                  <Link href="/features#integrations" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Integrations
                   </Link>
                 </li>
@@ -1072,27 +1074,27 @@ export function BlogPage() {
 
             {/* Resources Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Resources
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/blog" className="text-[#663CF6] font-bold">
+                  <Link href="/blog" className="text-[#663CF6] dark:text-[#B59CFF] font-bold">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link href="/help" className="hover:text-[#663CF6]">
+                  <Link href="/help" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Help Center
                   </Link>
                 </li>
                 <li>
-                  <Link href="/faqs" className="hover:text-[#663CF6]">
+                  <Link href="/faqs" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     FAQs
                   </Link>
                 </li>
                 <li>
-                  <Link href="/guides" className="hover:text-[#663CF6]">
+                  <Link href="/guides" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Guides
                   </Link>
                 </li>
@@ -1101,32 +1103,32 @@ export function BlogPage() {
 
             {/* Company Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Company
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/#about" className="hover:text-[#663CF6]">
+                  <Link href="/#about" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="hover:text-[#663CF6]">
+                  <Link href="/contact" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Contact Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/feedback" className="hover:text-[#663CF6]">
+                  <Link href="/feedback" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Give Feedback
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#privacy" className="hover:text-[#663CF6]">
+                  <Link href="/#privacy" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#terms" className="hover:text-[#663CF6]">
+                  <Link href="/#terms" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Terms of Service
                   </Link>
                 </li>
@@ -1135,10 +1137,10 @@ export function BlogPage() {
 
             {/* Stay Updated Newsletter */}
             <div className="space-y-3 sm:col-span-2 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Stay Updated
               </h4>
-              <p className="text-xs text-[#5A5E7A]">
+              <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                 Subscribe to get product updates, tips and school management insights.
               </p>
               <form onSubmit={handleSubscribe} className="relative flex items-center">
@@ -1147,7 +1149,7 @@ export function BlogPage() {
                   value={subscriberEmail}
                   onChange={(e) => setSubscriberEmail(e.target.value)}
                   placeholder="Enter your email"
-                  className="w-full rounded-xl border border-[#D6DBF0] bg-white py-2 pr-10 pl-3 text-xs text-[#08093B] placeholder-[#8E92BC] outline-none focus:border-[#7C3AED]"
+                  className="w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] py-2 pr-10 pl-3 text-xs text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
                 <button
                   type="submit"
@@ -1161,10 +1163,10 @@ export function BlogPage() {
           </div>
 
           {/* Bottom Copyright */}
-          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] pt-6 text-xs text-[#5A5E7A] sm:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-6 text-xs text-[#5A5E7A] dark:text-[#B4B9DA] sm:flex-row">
             <p>&copy; 2026 ScholoNix. All rights reserved.</p>
             <p className="mt-2 flex items-center gap-1 sm:mt-0">
-              <span className="text-rose-500">&hearts;</span> Made for Schools
+              <span className="text-rose-500 dark:text-rose-400">&hearts;</span> Made for Schools
             </p>
           </div>
         </div>

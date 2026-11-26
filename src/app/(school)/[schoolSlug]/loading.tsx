@@ -6,14 +6,14 @@ export default function SchoolWorkspaceLoading() {
       role="status"
       aria-busy="true"
       aria-label="Loading school workspace"
-      className="min-h-screen bg-[#F4F6FC] flex flex-col font-sans"
+      className="min-h-screen bg-[#F4F6FC] flex flex-col font-sans dark:bg-[#090B1A]"
     >
       <span className="sr-only">Loading school workspace...</span>
-      <header className="sticky top-0 z-40 h-14 border-b border-[#D6DBF0] bg-white px-4 sm:px-6 flex items-center">
+      <header className="sticky top-0 z-40 h-14 border-b border-[#D6DBF0] bg-white px-4 sm:px-6 flex items-center dark:border-[#272B4D] dark:bg-[#0E1026]">
         <div className="flex w-full items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Skeleton className="h-9 w-9 rounded-lg" />
-            <Skeleton className="h-7 w-44 rounded-full bg-[#EDE7FF]" />
+            <Skeleton className="h-7 w-44 rounded-full bg-[#EDE7FF] dark:bg-[#251D4A]" />
           </div>
           <Skeleton className="h-8 w-80 hidden md:block rounded-[10px]" />
           <div className="flex items-center gap-2.5">
@@ -25,8 +25,8 @@ export default function SchoolWorkspaceLoading() {
       </header>
 
       <div className="flex flex-1">
-        <aside className="hidden lg:block w-64 border-r border-[#D6DBF0] bg-white p-4 space-y-2">
-          <Skeleton className="h-10 w-full rounded-[12px] bg-[#EDE7FF]" />
+        <aside className="hidden lg:block w-64 border-r border-[#D6DBF0] bg-white p-4 space-y-2 dark:border-[#272B4D] dark:bg-[#0E1026]">
+          <Skeleton className="h-10 w-full rounded-[12px] bg-[#EDE7FF] dark:bg-[#251D4A]" />
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-9 w-full rounded-[10px]" />
           ))}
@@ -41,9 +41,9 @@ export default function SchoolWorkspaceLoading() {
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 space-y-3"
+                className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 space-y-3 dark:border-[#272B4D] dark:bg-[#141731]"
               >
-                <Skeleton className="h-10 w-10 rounded-[12px] bg-[#EDE7FF]" />
+                <Skeleton className="h-10 w-10 rounded-[12px] bg-[#EDE7FF] dark:bg-[#251D4A]" />
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="h-7 w-20" />
               </div>

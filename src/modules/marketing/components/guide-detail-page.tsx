@@ -33,6 +33,7 @@ import { AtmosphericBackground } from "@/components/ui/atmospheric-background";
 import { ResourcesDropdown, MobileResourcesMenu } from "./resources-dropdown";
 import type { GuideItem } from "../data/guides-data";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 interface GuideDetailPageProps {
   guide: GuideItem;
@@ -46,7 +47,7 @@ function GuideHeroIllustration() {
   return (
     <div className="relative mx-auto flex w-full max-w-2xl items-center justify-center p-4">
       {/* Background radial glow */}
-      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/40 to-[#93C5FD]/30 blur-2xl filter" />
+      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/40 dark:from-[#663CF6]/25 to-[#93C5FD]/30 dark:to-[#0284C7]/20 blur-2xl filter" />
 
       <svg
         viewBox="0 0 620 360"
@@ -178,48 +179,48 @@ function GuideHeroIllustration() {
 const STEP_THEMES = [
   {
     // Step 1: Violet / Indigo
-    bg: "bg-gradient-to-br from-white/95 via-[#F5F2FF] to-[#EDE7FF]/80",
-    border: "border-[#DDD6FE] hover:border-[#7C3AED]",
+    bg: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#F5F2FF] dark:via-[#1D1940] to-[#EDE7FF]/80 dark:to-[#251D4A]/85",
+    border: "border-[#DDD6FE] dark:border-[#3B306E] hover:border-[#7C3AED] dark:hover:border-[#9D7CFE]",
     stripe: "from-[#7C3AED] via-[#663CF6] to-[#8B5CF6]",
     badgeBg: "bg-gradient-to-br from-[#7C3AED] to-[#663CF6]",
     glow: "shadow-[0_8px_24px_rgba(124,58,237,0.08)] hover:shadow-[0_12px_28px_rgba(124,58,237,0.16)]",
   },
   {
     // Step 2: Sky / Cyan
-    bg: "bg-gradient-to-br from-white/95 via-[#F0F9FF] to-[#E0F2FE]/80",
-    border: "border-[#BAE6FD] hover:border-[#0284C7]",
+    bg: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#F0F9FF] dark:via-[#12223D] to-[#E0F2FE]/80 dark:to-[#14294A]/85",
+    border: "border-[#BAE6FD] dark:border-[#1E4670] hover:border-[#0284C7] dark:hover:border-[#38BDF8]",
     stripe: "from-[#0284C7] via-[#0EA5E9] to-[#38BDF8]",
     badgeBg: "bg-gradient-to-br from-[#0284C7] to-[#0EA5E9]",
     glow: "shadow-[0_8px_24px_rgba(2,132,199,0.08)] hover:shadow-[0_12px_28px_rgba(2,132,199,0.16)]",
   },
   {
     // Step 3: Emerald / Teal
-    bg: "bg-gradient-to-br from-white/95 via-[#F0FDF4] to-[#DCFCE7]/80",
-    border: "border-[#BBF7D0] hover:border-[#16A34A]",
+    bg: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#F0FDF4] dark:via-[#0F2620] to-[#DCFCE7]/80 dark:to-[#102E25]/85",
+    border: "border-[#BBF7D0] dark:border-[#1B5742] hover:border-[#16A34A] dark:hover:border-[#4ADE80]",
     stripe: "from-[#16A34A] via-[#10B981] to-[#34D399]",
     badgeBg: "bg-gradient-to-br from-[#16A34A] to-[#10B981]",
     glow: "shadow-[0_8px_24px_rgba(22,163,74,0.08)] hover:shadow-[0_12px_28px_rgba(22,163,74,0.16)]",
   },
   {
     // Step 4: Amber / Warm Gold
-    bg: "bg-gradient-to-br from-white/95 via-[#FFFBEB] to-[#FEF3C7]/80",
-    border: "border-[#FDE68A] hover:border-[#D97706]",
+    bg: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FFFBEB] dark:via-[#261E10] to-[#FEF3C7]/80 dark:to-[#2E2210]/85",
+    border: "border-[#FDE68A] dark:border-[#6E4F1A] hover:border-[#D97706] dark:hover:border-[#FBBF24]",
     stripe: "from-[#D97706] via-[#F59E0B] to-[#FBBF24]",
     badgeBg: "bg-gradient-to-br from-[#D97706] to-[#F59E0B]",
     glow: "shadow-[0_8px_24px_rgba(217,119,6,0.08)] hover:shadow-[0_12px_28px_rgba(217,119,6,0.16)]",
   },
   {
     // Step 5: Rose / Coral
-    bg: "bg-gradient-to-br from-white/95 via-[#FFF1F2] to-[#FFE4E6]/80",
-    border: "border-[#FECDD3] hover:border-[#E11D48]",
+    bg: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FFF1F2] dark:via-[#291422] to-[#FFE4E6]/80 dark:to-[#331725]/85",
+    border: "border-[#FECDD3] dark:border-[#6E273B] hover:border-[#E11D48] dark:hover:border-[#FB7185]",
     stripe: "from-[#E11D48] via-[#F43F5E] to-[#FB7185]",
     badgeBg: "bg-gradient-to-br from-[#E11D48] to-[#F43F5E]",
     glow: "shadow-[0_8px_24px_rgba(225,29,72,0.08)] hover:shadow-[0_12px_28px_rgba(225,29,72,0.16)]",
   },
   {
     // Step 6: Purple / Fuchsia
-    bg: "bg-gradient-to-br from-white/95 via-[#FAF5FF] to-[#F3E8FF]/80",
-    border: "border-[#E9D5FF] hover:border-[#9333EA]",
+    bg: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF5FF] dark:via-[#1C183D] to-[#F3E8FF]/80 dark:to-[#231B47]/80",
+    border: "border-[#E9D5FF] dark:border-[#4A326E] hover:border-[#9333EA] dark:hover:border-[#C084FC]",
     stripe: "from-[#9333EA] via-[#A855F7] to-[#C084FC]",
     badgeBg: "bg-gradient-to-br from-[#9333EA] to-[#A855F7]",
     glow: "shadow-[0_8px_24px_rgba(147,51,234,0.08)] hover:shadow-[0_12px_28px_rgba(147,51,234,0.16)]",
@@ -394,20 +395,20 @@ export function GuideDetailPage({
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45]">
+    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45] dark:text-[#F3F5FF]">
       {/* Background Ambience */}
       <AtmosphericBackground />
 
       {/* Floating Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl bg-[#08093B] px-4 py-3 text-sm font-medium text-white shadow-2xl transition-all duration-300">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl bg-[#08093B] dark:bg-[#1E2248] px-4 py-3 text-sm font-medium text-white shadow-2xl transition-all duration-300">
           <Sparkles className="h-4 w-4 text-[#C4B5FD]" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Navigation Header */}
-      <header className="sticky top-0 z-40 border-b border-[#E6E0F8] bg-white/80 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-[#E6E0F8] dark:border-[#372E66] bg-white/80 dark:bg-[#141731]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           {/* Logo */}
           <BrandLogo className="h-8 sm:h-9" />
@@ -416,19 +417,19 @@ export function GuideDetailPage({
           <nav className="hidden items-center gap-6 md:flex">
             <Link
               href="/features"
-              className="text-sm font-medium text-[#5A5E7A] transition-colors hover:text-[#08093B]"
+              className="text-sm font-medium text-[#5A5E7A] dark:text-[#B4B9DA] transition-colors hover:text-[#08093B] dark:hover:text-white"
             >
               Features
             </Link>
             <Link
               href="/pricing"
-              className="text-sm font-medium text-[#5A5E7A] transition-colors hover:text-[#08093B]"
+              className="text-sm font-medium text-[#5A5E7A] dark:text-[#B4B9DA] transition-colors hover:text-[#08093B] dark:hover:text-white"
             >
               Pricing
             </Link>
             <Link
               href="/for-schools"
-              className="text-sm font-medium text-[#5A5E7A] transition-colors hover:text-[#08093B]"
+              className="text-sm font-medium text-[#5A5E7A] dark:text-[#B4B9DA] transition-colors hover:text-[#08093B] dark:hover:text-white"
             >
               For Schools
             </Link>
@@ -438,10 +439,12 @@ export function GuideDetailPage({
           </nav>
 
           {/* Header Action Buttons */}
-          <div className="hidden items-center gap-3 md:flex">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            <div className="hidden items-center gap-3 md:flex">
             <Link
               href="/login"
-              className="rounded-xl border border-[#D6DBF0] bg-white px-4 py-2 text-sm font-medium text-[#08093B] transition-colors hover:border-[#663CF6] hover:bg-[#F8F6FF]"
+              className="rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] px-4 py-2 text-sm font-medium text-[#08093B] dark:text-[#F3F5FF] transition-colors hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:bg-[#F8F6FF] dark:hover:bg-[#221D45]"
             >
               Sign In
             </Link>
@@ -456,35 +459,36 @@ export function GuideDetailPage({
           {/* Mobile Hamburger Toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#D6DBF0] bg-white text-[#08093B] md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#08093B] dark:text-[#F3F5FF] md:hidden"
             aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
+          </div>
         </div>
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="border-b border-[#E6E0F8] bg-white px-4 pt-2 pb-6 md:hidden">
+          <div className="border-b border-[#E6E0F8] dark:border-[#372E66] bg-white dark:bg-[#141731] px-4 pt-2 pb-6 md:hidden">
             <nav className="flex flex-col gap-3">
               <Link
                 href="/features"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-[#5A5E7A] hover:bg-[#F8F6FF] hover:text-[#08093B]"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-[#F8F6FF] dark:hover:bg-[#221D45] hover:text-[#08093B] dark:hover:text-white"
               >
                 Features
               </Link>
               <Link
                 href="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-[#5A5E7A] hover:bg-[#F8F6FF] hover:text-[#08093B]"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-[#F8F6FF] dark:hover:bg-[#221D45] hover:text-[#08093B] dark:hover:text-white"
               >
                 Pricing
               </Link>
               <Link
                 href="/for-schools"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-[#5A5E7A] hover:bg-[#F8F6FF] hover:text-[#08093B]"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-[#F8F6FF] dark:hover:bg-[#221D45] hover:text-[#08093B] dark:hover:text-white"
               >
                 For Schools
               </Link>
@@ -492,11 +496,11 @@ export function GuideDetailPage({
               {/* Mobile Resources Menu */}
               <MobileResourcesMenu onItemClick={() => setMobileMenuOpen(false)} />
 
-              <div className="mt-2 flex flex-col gap-2 pt-2 border-t border-[#F0EDFF]">
+              <div className="mt-2 flex flex-col gap-2 pt-2 border-t border-[#F0EDFF] dark:border-[#342B61]">
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full rounded-xl border border-[#D6DBF0] py-2.5 text-center text-sm font-medium text-[#08093B]"
+                  className="w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] py-2.5 text-center text-sm font-medium text-[#08093B] dark:text-[#F3F5FF]"
                 >
                   Sign In
                 </Link>
@@ -516,24 +520,24 @@ export function GuideDetailPage({
       {/* Main Content Area */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Breadcrumb Navigation - hidden on small devices as requested */}
-        <nav className="mb-6 hidden sm:flex items-center gap-2 text-xs text-[#5A5E7A]">
-          <Link href="/" className="flex items-center gap-1 hover:text-[#663CF6]">
+        <nav className="mb-6 hidden sm:flex items-center gap-2 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
+          <Link href="/" className="flex items-center gap-1 hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
             <Home className="h-3.5 w-3.5" />
             <span>Home</span>
           </Link>
-          <ChevronRight className="h-3 w-3 text-[#B0B4D0]" />
-          <Link href="/guides" className="hover:text-[#663CF6]">
+          <ChevronRight className="h-3 w-3 text-[#B0B4D0] dark:text-[#888EB5]" />
+          <Link href="/guides" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
             Guides
           </Link>
-          <ChevronRight className="h-3 w-3 text-[#B0B4D0]" />
+          <ChevronRight className="h-3 w-3 text-[#B0B4D0] dark:text-[#888EB5]" />
           <Link
             href={`/guides?category=${guide.categoryId}`}
-            className="hover:text-[#663CF6]"
+            className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
           >
             {guide.category}
           </Link>
-          <ChevronRight className="h-3 w-3 text-[#B0B4D0]" />
-          <span className="font-semibold text-[#08093B] truncate max-w-[200px] sm:max-w-none">
+          <ChevronRight className="h-3 w-3 text-[#B0B4D0] dark:text-[#888EB5]" />
+          <span className="font-semibold text-[#08093B] dark:text-[#F3F5FF] truncate max-w-[200px] sm:max-w-none">
             {guide.title}
           </span>
         </nav>
@@ -544,32 +548,32 @@ export function GuideDetailPage({
           <article ref={articleRef} className="lg:col-span-8">
             {/* Top Meta Header */}
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EDE7FF] px-3 py-1 text-xs font-bold text-[#663CF6]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] px-3 py-1 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                 <BookOpen className="h-3.5 w-3.5" />
                 {guide.category}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-[#5A5E7A] shadow-sm">
-                <Clock className="h-3.5 w-3.5 text-[#8E92BC]" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-[#141731] px-3 py-1 text-xs font-medium text-[#5A5E7A] dark:text-[#B4B9DA] shadow-sm">
+                <Clock className="h-3.5 w-3.5 text-[#8E92BC] dark:text-[#888EB5]" />
                 {guide.readingTime}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-[#5A5E7A] shadow-sm">
-                <ListOrdered className="h-3.5 w-3.5 text-[#8E92BC]" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-[#141731] px-3 py-1 text-xs font-medium text-[#5A5E7A] dark:text-[#B4B9DA] shadow-sm">
+                <ListOrdered className="h-3.5 w-3.5 text-[#8E92BC] dark:text-[#888EB5]" />
                 {steps.length} Steps
               </span>
             </div>
 
             {/* Title & Subtitle */}
-            <h1 className="text-2xl font-black tracking-tight text-[#08093B] sm:text-3xl md:text-4xl">
+            <h1 className="text-2xl font-black tracking-tight text-[#08093B] dark:text-[#F3F5FF] sm:text-3xl md:text-4xl">
               {guide.title}
             </h1>
-            <p className="mt-3 text-base text-[#5A5E7A] sm:text-lg">
+            <p className="mt-3 text-base text-[#5A5E7A] dark:text-[#B4B9DA] sm:text-lg">
               {guide.description}
             </p>
 
             {/* Interactive Action Bar (Save & Share) */}
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-y border-[#E6E0F8] py-4">
-              <div className="flex items-center gap-2 text-xs text-[#5A5E7A]">
-                <Calendar className="h-4 w-4 text-[#8E92BC]" />
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-y border-[#E6E0F8] dark:border-[#372E66] py-4">
+              <div className="flex items-center gap-2 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
+                <Calendar className="h-4 w-4 text-[#8E92BC] dark:text-[#888EB5]" />
                 <span>Last updated: Academic Session 2026</span>
               </div>
               <div className="flex items-center gap-2">
@@ -577,8 +581,8 @@ export function GuideDetailPage({
                   onClick={toggleSave}
                   className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-all ${
                     isSaved
-                      ? "border-[#663CF6] bg-[#663CF6] text-white"
-                      : "border-[#D6DBF0] bg-white text-[#5A5E7A] hover:border-[#663CF6] hover:text-[#663CF6]"
+                      ? "border-[#663CF6] dark:border-[#8B5CF6] bg-[#663CF6] text-white"
+                      : "border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#5A5E7A] dark:text-[#B4B9DA] hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   }`}
                   aria-label="Save guide"
                 >
@@ -587,7 +591,7 @@ export function GuideDetailPage({
                 </button>
                 <button
                   onClick={handleShare}
-                  className="flex items-center gap-1.5 rounded-xl border border-[#D6DBF0] bg-white px-3 py-1.5 text-xs font-medium text-[#5A5E7A] transition-colors hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex items-center gap-1.5 rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] px-3 py-1.5 text-xs font-medium text-[#5A5E7A] dark:text-[#B4B9DA] transition-colors hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="Share guide"
                 >
                   <Share2 className="h-3.5 w-3.5" />
@@ -597,36 +601,36 @@ export function GuideDetailPage({
             </div>
 
             {/* Hero Artwork Box */}
-            <div className="my-8 overflow-hidden rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F5F2FE] shadow-[0_8px_24px_rgba(24,18,77,0.06)] backdrop-blur-sm">
+            <div className="my-8 overflow-hidden rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F2FE] dark:to-[#201C45] shadow-[0_8px_24px_rgba(24,18,77,0.06)] backdrop-blur-sm">
               <GuideHeroIllustration />
             </div>
 
             {/* Overview Section */}
-            <section className="mb-8 rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F3EEFF]/80 p-6 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
-              <h2 className="flex items-center gap-2 text-lg font-bold text-[#08093B]">
-                <Info className="h-5 w-5 text-[#663CF6]" />
+            <section className="mb-8 rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F3EEFF]/80 dark:to-[#221C4A]/80 p-6 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-[#08093B] dark:text-[#F3F5FF]">
+                <Info className="h-5 w-5 text-[#663CF6] dark:text-[#B59CFF]" />
                 Guide Overview
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-[#5A5E7A]">
+              <p className="mt-3 text-sm leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
                 {overviewText}
               </p>
 
               {/* Prerequisites Card */}
-              <div className="mt-6 rounded-xl border border-[#CDC2F7] bg-white/70 p-4 shadow-xs">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#663CF6]">
+              <div className="mt-6 rounded-xl border border-[#CDC2F7] dark:border-[#40347A] bg-white/70 dark:bg-[#1A1E3E]/80 p-4 shadow-xs">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#663CF6] dark:text-[#B59CFF]">
                   Prerequisites & Key Requirements
                 </h3>
-                <ul className="mt-2 space-y-1.5 text-xs text-[#5A5E7A]">
+                <ul className="mt-2 space-y-1.5 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                     <span>Active School Administrator account or authorized coordinator credentials</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                     <span>Updated browser (Google Chrome, Edge, Safari, or Firefox)</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                     <span>Institutional curriculum documents or master fee schedules ready</span>
                   </li>
                 </ul>
@@ -636,10 +640,10 @@ export function GuideDetailPage({
             {/* Step-by-Step Walkthrough */}
             <section className="mb-8">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-bold tracking-tight text-[#08093B]">
+                <h2 className="text-xl font-bold tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
                   Step-by-Step Walkthrough
                 </h2>
-                <span className="text-xs font-medium text-[#7C3AED]">
+                <span className="text-xs font-medium text-[#7C3AED] dark:text-[#B99BFF]">
                   {Object.values(completedSteps).filter(Boolean).length} of {steps.length} completed
                 </span>
               </div>
@@ -654,7 +658,7 @@ export function GuideDetailPage({
                       id={`step-${step.stepNumber}`}
                       className={`group relative w-full max-w-[92%] sm:max-w-none mx-auto sm:mx-0 overflow-hidden rounded-2xl border p-4 sm:p-6 transition-all duration-300 hover:-translate-y-0.5 backdrop-blur-sm ${
                         isDone
-                          ? "border-emerald-300 bg-gradient-to-br from-white/98 via-[#F0FDF4] to-[#DCFCE7]/70 shadow-[0_8px_24px_rgba(16,185,129,0.12)]"
+                          ? "border-emerald-300 dark:border-emerald-700/70 bg-gradient-to-br from-white/98 dark:from-[#141731]/98 via-[#F0FDF4] dark:via-[#0F2620] to-[#DCFCE7]/70 dark:to-[#102E25]/75 shadow-[0_8px_24px_rgba(16,185,129,0.12)]"
                           : `${theme.bg} ${theme.border} ${theme.glow}`
                       }`}
                     >
@@ -679,17 +683,17 @@ export function GuideDetailPage({
                           </div>
 
                           <div>
-                            <h3 className="text-sm sm:text-base font-bold text-[#08093B] sm:text-lg">
+                            <h3 className="text-sm sm:text-base font-bold text-[#08093B] dark:text-[#F3F5FF] sm:text-lg">
                               {step.title}
                             </h3>
-                            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed text-[#5A5E7A]">
+                            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
                               {step.description}
                             </p>
 
                             {/* Pro Tip Box if available */}
                             {step.tip && (
-                              <div className="mt-2.5 sm:mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/80 p-2.5 sm:p-3 text-[11px] sm:text-xs text-amber-900">
-                                <Lightbulb className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                              <div className="mt-2.5 sm:mt-3 flex items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-800/70 bg-amber-50/80 dark:bg-amber-950/40 p-2.5 sm:p-3 text-[11px] sm:text-xs text-amber-900 dark:text-amber-200">
+                                <Lightbulb className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                                 <div>
                                   <span className="font-bold">Pro Tip: </span>
                                   {step.tip}
@@ -704,8 +708,8 @@ export function GuideDetailPage({
                           onClick={() => toggleStepCompletion(step.stepNumber)}
                           className={`flex-shrink-0 rounded-xl p-1.5 sm:p-2 transition-all duration-200 hover:scale-110 active:scale-95 ${
                             isDone
-                              ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-sm"
-                              : "border border-[#D6DBF0] bg-white/80 text-[#8E92BC] hover:border-[#663CF6] hover:text-[#663CF6] shadow-2xs"
+                              ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 shadow-sm"
+                              : "border border-[#D6DBF0] dark:border-[#2C3159] bg-white/80 dark:bg-[#141731]/80 text-[#8E92BC] dark:text-[#888EB5] hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] shadow-2xs"
                           }`}
                           aria-label={`Mark Step ${step.stepNumber} as ${isDone ? "incomplete" : "complete"}`}
                           title={`Mark Step ${step.stepNumber} as ${isDone ? "incomplete" : "complete"}`}
@@ -720,8 +724,8 @@ export function GuideDetailPage({
             </section>
 
             {/* Helpful Feedback Box */}
-            <div className="mb-8 flex flex-col items-center justify-between gap-4 rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4EFFE] p-6 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm sm:flex-row">
-              <p className="text-sm font-medium text-[#08093B]">
+            <div className="mb-8 flex flex-col items-center justify-between gap-4 rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4EFFE] dark:to-[#211C47] p-6 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm sm:flex-row">
+              <p className="text-sm font-medium text-[#08093B] dark:text-[#F3F5FF]">
                 Was this step-by-step guide helpful?
               </p>
               <div className="flex items-center gap-3">
@@ -729,8 +733,8 @@ export function GuideDetailPage({
                   onClick={() => handleFeedback("yes")}
                   className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-semibold transition-all ${
                     helpfulFeedback === "yes"
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                      : "border-[#D6DBF0] bg-white text-[#5A5E7A] hover:border-emerald-400 hover:text-emerald-700"
+                      ? "border-emerald-500 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
+                      : "border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#5A5E7A] dark:text-[#B4B9DA] hover:border-emerald-400 dark:hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300"
                   }`}
                 >
                   <ThumbsUp className="h-4 w-4" />
@@ -740,8 +744,8 @@ export function GuideDetailPage({
                   onClick={() => handleFeedback("no")}
                   className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-semibold transition-all ${
                     helpfulFeedback === "no"
-                      ? "border-rose-400 bg-rose-50 text-rose-700"
-                      : "border-[#D6DBF0] bg-white text-[#5A5E7A] hover:border-rose-400 hover:text-rose-700"
+                      ? "border-rose-400 dark:border-rose-500/70 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300"
+                      : "border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#5A5E7A] dark:text-[#B4B9DA] hover:border-rose-400 dark:hover:border-rose-500 hover:text-rose-700 dark:hover:text-rose-200"
                   }`}
                 >
                   <ThumbsDown className="h-4 w-4" />
@@ -755,16 +759,16 @@ export function GuideDetailPage({
               {prevGuide ? (
                 <Link
                   href={`/guides/${prevGuide.slug}`}
-                  className="group flex flex-col rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F5F1FE] p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all hover:border-[#663CF6] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
+                  className="group flex flex-col rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F1FE] dark:to-[#211C47] p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
                 >
-                  <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
+                  <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#7C3AED] dark:text-[#B99BFF]">
                     <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
                     Previous Guide
                   </span>
-                  <span className="mt-2 text-sm font-bold text-[#08093B] group-hover:text-[#663CF6]">
+                  <span className="mt-2 text-sm font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD]">
                     {prevGuide.title}
                   </span>
-                  <span className="mt-1 line-clamp-1 text-xs text-[#5A5E7A]">
+                  <span className="mt-1 line-clamp-1 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                     {prevGuide.description}
                   </span>
                 </Link>
@@ -775,16 +779,16 @@ export function GuideDetailPage({
               {nextGuide ? (
                 <Link
                   href={`/guides/${nextGuide.slug}`}
-                  className="group flex flex-col text-right rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F5F1FE] p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all hover:border-[#663CF6] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
+                  className="group flex flex-col text-right rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F1FE] dark:to-[#211C47] p-5 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
                 >
-                  <span className="flex items-center justify-end gap-1.5 text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
+                  <span className="flex items-center justify-end gap-1.5 text-xs font-bold uppercase tracking-wider text-[#7C3AED] dark:text-[#B99BFF]">
                     Next Guide
                     <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                   </span>
-                  <span className="mt-2 text-sm font-bold text-[#08093B] group-hover:text-[#663CF6]">
+                  <span className="mt-2 text-sm font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD]">
                     {nextGuide.title}
                   </span>
-                  <span className="mt-1 line-clamp-1 text-xs text-[#5A5E7A]">
+                  <span className="mt-1 line-clamp-1 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                     {nextGuide.description}
                   </span>
                 </Link>
@@ -797,17 +801,17 @@ export function GuideDetailPage({
           {/* Sticky Sidebar (4 Cols on Desktop) */}
           <aside ref={sidebarRef} className="space-y-6 lg:col-span-4 lg:self-start lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {/* Table of Contents Card */}
-            <div className="rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4F0FE] p-6 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+            <div className="rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4F0FE] dark:to-[#211C47] p-6 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 In This Guide
               </h3>
               <ul className="mt-4 space-y-2 text-xs">
                 <li>
                   <a
                     href="#step-1"
-                    className="flex items-center gap-2 text-[#5A5E7A] hover:text-[#663CF6] transition-colors"
+                    className="flex items-center gap-2 text-[#5A5E7A] dark:text-[#B4B9DA] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] transition-colors"
                   >
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#EDE7FF] text-[10px] font-bold text-[#663CF6]">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-[10px] font-bold text-[#663CF6] dark:text-[#B59CFF]">
                       1
                     </span>
                     <span className="truncate">{steps[0]?.title}</span>
@@ -817,9 +821,9 @@ export function GuideDetailPage({
                   <li key={s.stepNumber}>
                     <a
                       href={`#step-${s.stepNumber}`}
-                      className="flex items-center gap-2 text-[#5A5E7A] hover:text-[#663CF6] transition-colors"
+                      className="flex items-center gap-2 text-[#5A5E7A] dark:text-[#B4B9DA] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] transition-colors"
                     >
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#EDE7FF] text-[10px] font-bold text-[#663CF6]">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-[10px] font-bold text-[#663CF6] dark:text-[#B59CFF]">
                         {s.stepNumber}
                       </span>
                       <span className="truncate">{s.title}</span>
@@ -830,8 +834,8 @@ export function GuideDetailPage({
 
               {/* Related Guides in this category */}
               {relatedGuides.length > 0 && (
-                <div className="mt-6 border-t border-[#F0F2FA] pt-6">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+                <div className="mt-6 border-t border-[#F0F2FA] dark:border-[#23284A] pt-6">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                     Related Guides
                   </h4>
                   <div className="mt-3 space-y-2.5">
@@ -839,12 +843,12 @@ export function GuideDetailPage({
                       <Link
                         key={rel.id}
                         href={`/guides/${rel.slug}`}
-                        className="group block rounded-xl border border-[#F0F2FA] p-3 transition-colors hover:border-[#663CF6] hover:bg-[#F8F6FF]"
+                        className="group block rounded-xl border border-[#F0F2FA] dark:border-[#23284A] p-3 transition-colors hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:bg-[#F8F6FF] dark:hover:bg-[#221D45]"
                       >
-                        <h5 className="text-xs font-bold text-[#08093B] group-hover:text-[#663CF6]">
+                        <h5 className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD]">
                           {rel.title}
                         </h5>
-                        <p className="mt-1 text-[11px] text-[#5A5E7A] line-clamp-1">
+                        <p className="mt-1 text-[11px] text-[#5A5E7A] dark:text-[#B4B9DA] line-clamp-1">
                           {rel.readingTime} • {rel.category}
                         </p>
                       </Link>
@@ -854,12 +858,12 @@ export function GuideDetailPage({
               )}
 
               {/* Still Need Help? Card */}
-              <div className="mt-6 rounded-xl border border-[#EDE7FF] bg-gradient-to-br from-[#FAF8FF] to-[#F3EEFF] p-4 text-center">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#663CF6] shadow-sm">
+              <div className="mt-6 rounded-xl border border-[#EDE7FF] dark:border-[#342B61] bg-gradient-to-br from-[#FAF8FF] dark:from-[#181B38] to-[#F3EEFF] dark:to-[#221C4A] p-4 text-center">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-[#141731] text-[#663CF6] dark:text-[#B59CFF] shadow-sm">
                   <Headphones className="h-5 w-5" />
                 </div>
-                <h4 className="mt-2 text-xs font-bold text-[#08093B]">Need Custom Guidance?</h4>
-                <p className="mt-1 text-[11px] text-[#5A5E7A]">
+                <h4 className="mt-2 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Need Custom Guidance?</h4>
+                <p className="mt-1 text-[11px] text-[#5A5E7A] dark:text-[#B4B9DA]">
                   Our support specialists are available 24/7 to walk you through setup.
                 </p>
                 <button
@@ -874,7 +878,7 @@ export function GuideDetailPage({
               <div className="mt-4">
                 <button
                   onClick={() => setDemoModalOpen(true)}
-                  className="w-full rounded-xl border border-[#D6DBF0] bg-white py-2 text-xs font-bold text-[#08093B] transition-colors hover:border-[#663CF6] hover:bg-[#F8F6FF]"
+                  className="w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] py-2 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] transition-colors hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:bg-[#F8F6FF] dark:hover:bg-[#221D45]"
                 >
                   Book a Personalized Demo
                 </button>
@@ -911,7 +915,7 @@ export function GuideDetailPage({
               </button>
               <Link
                 href="/register"
-                className="flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#663CF6] shadow-lg transition-all hover:bg-[#FAF8FF]"
+                className="flex items-center gap-2 rounded-xl bg-white dark:bg-[#141731] px-5 py-3 text-sm font-bold text-[#663CF6] dark:text-[#B59CFF] shadow-lg transition-all hover:bg-[#FAF8FF] dark:hover:bg-[#201C42]"
               >
                 Get Started Free
                 <ArrowRight className="h-4 w-4" />
@@ -924,61 +928,61 @@ export function GuideDetailPage({
       {/* Contact Support Modal */}
       {contactModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white via-[#FAF8FF] to-[#F5F2FE] p-6 shadow-2xl">
+          <div className="relative w-full max-w-md rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white dark:from-[#141731] via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F2FE] dark:to-[#201C45] p-6 shadow-2xl">
             <button
               onClick={() => setContactModalOpen(false)}
-              className="absolute top-4 right-4 text-[#8E92BC] hover:text-[#08093B]"
+              className="absolute top-4 right-4 text-[#8E92BC] dark:text-[#888EB5] hover:text-[#08093B] dark:hover:text-white"
               aria-label="Close modal"
             >
               <X className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2">
-              <Headphones className="h-6 w-6 text-[#663CF6]" />
-              <h3 className="text-lg font-bold text-[#08093B]">Contact School Support</h3>
+              <Headphones className="h-6 w-6 text-[#663CF6] dark:text-[#B59CFF]" />
+              <h3 className="text-lg font-bold text-[#08093B] dark:text-[#F3F5FF]">Contact School Support</h3>
             </div>
-            <p className="mt-1 text-xs text-[#5A5E7A]">
+            <p className="mt-1 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
               Have questions regarding {guide.title}? Send our product specialists a note.
             </p>
 
             {contactSubmitted ? (
               <div className="my-8 text-center">
-                <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500 animate-pulse" />
-                <h4 className="mt-3 text-base font-bold text-[#08093B]">Message Received!</h4>
-                <p className="text-xs text-[#5A5E7A]">We will follow up shortly via email.</p>
+                <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500 dark:text-emerald-400 animate-pulse" />
+                <h4 className="mt-3 text-base font-bold text-[#08093B] dark:text-[#F3F5FF]">Message Received!</h4>
+                <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">We will follow up shortly via email.</p>
               </div>
             ) : (
               <form onSubmit={handleContactSubmit} className="mt-4 space-y-3">
                 <div>
-                  <label className="text-xs font-semibold text-[#08093B]">Full Name</label>
+                  <label className="text-xs font-semibold text-[#08093B] dark:text-[#F3F5FF]">Full Name</label>
                   <input
                     type="text"
                     required
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
                     placeholder="e.g. Dr. Ramesh Sharma"
-                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-[#08093B]">School Email</label>
+                  <label className="text-xs font-semibold text-[#08093B] dark:text-[#F3F5FF]">School Email</label>
                   <input
                     type="email"
                     required
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
                     placeholder="principal@school.edu"
-                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-[#08093B]">Message or Question</label>
+                  <label className="text-xs font-semibold text-[#08093B] dark:text-[#F3F5FF]">Message or Question</label>
                   <textarea
                     required
                     rows={3}
                     value={contactMessage}
                     onChange={(e) => setContactMessage(e.target.value)}
                     placeholder="How can we assist with your setup?"
-                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                   />
                 </div>
                 <button
@@ -996,69 +1000,69 @@ export function GuideDetailPage({
       {/* Book a Demo Modal */}
       {demoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white via-[#FAF8FF] to-[#F5F2FE] p-6 shadow-2xl">
+          <div className="relative w-full max-w-md rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white dark:from-[#141731] via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F2FE] dark:to-[#201C45] p-6 shadow-2xl">
             <button
               onClick={() => setDemoModalOpen(false)}
-              className="absolute top-4 right-4 text-[#8E92BC] hover:text-[#08093B]"
+              className="absolute top-4 right-4 text-[#8E92BC] dark:text-[#888EB5] hover:text-[#08093B] dark:hover:text-white"
               aria-label="Close modal"
             >
               <X className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2">
-              <GraduationCap className="h-6 w-6 text-[#663CF6]" />
-              <h3 className="text-lg font-bold text-[#08093B]">Book a 1-on-1 Platform Demo</h3>
+              <GraduationCap className="h-6 w-6 text-[#663CF6] dark:text-[#B59CFF]" />
+              <h3 className="text-lg font-bold text-[#08093B] dark:text-[#F3F5FF]">Book a 1-on-1 Platform Demo</h3>
             </div>
-            <p className="mt-1 text-xs text-[#5A5E7A]">
+            <p className="mt-1 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
               See how ScholoNix adapts to your institution&apos;s specific workflows.
             </p>
 
             {demoSubmitted ? (
               <div className="my-8 text-center">
-                <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500 animate-pulse" />
-                <h4 className="mt-3 text-base font-bold text-[#08093B]">Demo Requested!</h4>
-                <p className="text-xs text-[#5A5E7A]">Our education consultant will schedule a call.</p>
+                <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500 dark:text-emerald-400 animate-pulse" />
+                <h4 className="mt-3 text-base font-bold text-[#08093B] dark:text-[#F3F5FF]">Demo Requested!</h4>
+                <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">Our education consultant will schedule a call.</p>
               </div>
             ) : (
               <form onSubmit={handleDemoSubmit} className="mt-4 space-y-3">
                 <div>
-                  <label className="text-xs font-semibold text-[#08093B]">Your Name</label>
+                  <label className="text-xs font-semibold text-[#08093B] dark:text-[#F3F5FF]">Your Name</label>
                   <input
                     type="text"
                     required
                     value={demoName}
                     onChange={(e) => setDemoName(e.target.value)}
                     placeholder="e.g. Mrs. Anjali Roy"
-                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-[#08093B]">Work Email</label>
+                  <label className="text-xs font-semibold text-[#08093B] dark:text-[#F3F5FF]">Work Email</label>
                   <input
                     type="email"
                     required
                     value={demoEmail}
                     onChange={(e) => setDemoEmail(e.target.value)}
                     placeholder="director@greenvalley.edu"
-                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-[#08093B]">School / Institution Name</label>
+                  <label className="text-xs font-semibold text-[#08093B] dark:text-[#F3F5FF]">School / Institution Name</label>
                   <input
                     type="text"
                     required
                     value={demoSchool}
                     onChange={(e) => setDemoSchool(e.target.value)}
                     placeholder="Green Valley International Academy"
-                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-[#08093B]">Your Role</label>
+                  <label className="text-xs font-semibold text-[#08093B] dark:text-[#F3F5FF]">Your Role</label>
                   <select
                     value={demoRole}
                     onChange={(e) => setDemoRole(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                    className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                   >
                     <option value="Principal">Principal / Head of School</option>
                     <option value="Director">School Director / Trustee</option>
@@ -1080,26 +1084,26 @@ export function GuideDetailPage({
       )}
 
       {/* Footer */}
-      <footer className="border-t border-[#E6E0F8] bg-white py-12">
+      <footer className="border-t border-[#E6E0F8] dark:border-[#372E66] bg-white dark:bg-[#141731] py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-6">
             {/* Brand column */}
             <div className="space-y-4 sm:col-span-2 md:col-span-2">
               <BrandLogo className="h-8 sm:h-9" />
-              <p className="text-xs leading-relaxed text-[#5A5E7A]">
+              <p className="text-xs leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
                 A comprehensive, cloud-based school management platform to simplify and streamline your school operations.
               </p>
-              <div className="flex items-center gap-3 text-[#5A5E7A]">
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#663CF6]" aria-label="LinkedIn">
+              <div className="flex items-center gap-3 text-[#5A5E7A] dark:text-[#B4B9DA]">
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]" aria-label="LinkedIn">
                   <Linkedin className="h-4 w-4" />
                 </a>
-                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#663CF6]" aria-label="YouTube">
+                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]" aria-label="YouTube">
                   <Youtube className="h-4 w-4" />
                 </a>
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#663CF6]" aria-label="Facebook">
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]" aria-label="Facebook">
                   <Facebook className="h-4 w-4" />
                 </a>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#663CF6]" aria-label="Instagram">
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]" aria-label="Instagram">
                   <Instagram className="h-4 w-4" />
                 </a>
               </div>
@@ -1107,41 +1111,41 @@ export function GuideDetailPage({
 
             {/* Product Links */}
             <div className="space-y-3">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">Product</h4>
-              <ul className="space-y-2 text-xs text-[#5A5E7A]">
-                <li><Link href="/features" className="hover:text-[#663CF6]">Features</Link></li>
-                <li><Link href="/pricing" className="hover:text-[#663CF6]">Pricing</Link></li>
-                <li><Link href="/for-schools" className="hover:text-[#663CF6]">For Schools</Link></li>
-                <li><Link href="/integrations" className="hover:text-[#663CF6]">Integrations</Link></li>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">Product</h4>
+              <ul className="space-y-2 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
+                <li><Link href="/features" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">Features</Link></li>
+                <li><Link href="/pricing" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">Pricing</Link></li>
+                <li><Link href="/for-schools" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">For Schools</Link></li>
+                <li><Link href="/integrations" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">Integrations</Link></li>
               </ul>
             </div>
 
             {/* Resources Links */}
             <div className="space-y-3">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">Resources</h4>
-              <ul className="space-y-2 text-xs text-[#5A5E7A]">
-                <li><Link href="/blog" className="hover:text-[#663CF6]">Blog</Link></li>
-                <li><Link href="/help" className="hover:text-[#663CF6]">Help Center</Link></li>
-                <li><Link href="/faqs" className="hover:text-[#663CF6]">FAQs</Link></li>
-                <li><Link href="/guides" className="hover:text-[#663CF6] font-semibold text-[#663CF6]">Guides</Link></li>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">Resources</h4>
+              <ul className="space-y-2 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
+                <li><Link href="/blog" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">Blog</Link></li>
+                <li><Link href="/help" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">Help Center</Link></li>
+                <li><Link href="/faqs" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">FAQs</Link></li>
+                <li><Link href="/guides" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD] font-semibold text-[#663CF6] dark:text-[#B59CFF]">Guides</Link></li>
               </ul>
             </div>
 
             {/* Company Links */}
             <div className="space-y-3">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">Company</h4>
-              <ul className="space-y-2 text-xs text-[#5A5E7A]">
-                <li><Link href="/about" className="hover:text-[#663CF6]">About Us</Link></li>
-                <li><Link href="/contact" className="hover:text-[#663CF6]">Contact Us</Link></li>
-                <li><Link href="/privacy" className="hover:text-[#663CF6]">Privacy Policy</Link></li>
-                <li><Link href="/terms" className="hover:text-[#663CF6]">Terms of Service</Link></li>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">Company</h4>
+              <ul className="space-y-2 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
+                <li><Link href="/about" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">About Us</Link></li>
+                <li><Link href="/contact" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">Contact Us</Link></li>
+                <li><Link href="/privacy" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">Terms of Service</Link></li>
               </ul>
             </div>
 
             {/* Stay Updated Newsletter */}
             <div className="space-y-3 sm:col-span-2 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">Stay Updated</h4>
-              <p className="text-xs text-[#5A5E7A]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">Stay Updated</h4>
+              <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                 Subscribe to get product updates, tips and school management insights.
               </p>
               <form
@@ -1154,7 +1158,7 @@ export function GuideDetailPage({
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className="w-full rounded-xl border border-[#D6DBF0] bg-white py-2 pr-10 pl-3 text-xs text-[#08093B] placeholder-[#8E92BC] outline-none focus:border-[#7C3AED]"
+                  className="w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] py-2 pr-10 pl-3 text-xs text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
                 <button
                   type="submit"
@@ -1167,10 +1171,10 @@ export function GuideDetailPage({
             </div>
           </div>
 
-          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] pt-6 text-xs text-[#5A5E7A] sm:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-6 text-xs text-[#5A5E7A] dark:text-[#B4B9DA] sm:flex-row">
             <p>&copy; 2026 ScholoNix. All rights reserved.</p>
             <p className="mt-2 flex items-center gap-1 sm:mt-0">
-              <span className="text-rose-500">&hearts;</span> Made for Schools
+              <span className="text-rose-500 dark:text-rose-400">&hearts;</span> Made for Schools
             </p>
           </div>
         </div>

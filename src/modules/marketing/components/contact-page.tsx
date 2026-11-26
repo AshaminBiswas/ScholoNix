@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { AtmosphericBackground } from "@/components/ui/atmospheric-background";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { ResourcesDropdown, MobileResourcesMenu } from "./resources-dropdown";
 
 interface ContactChannel {
@@ -52,55 +53,55 @@ const CONTACT_CHANNELS: ContactChannel[] = [
     icon: Phone,
     title: "Direct Sales & Demo",
     badge: "Fast Response",
-    badgeBg: "bg-[#EDE7FF]",
-    badgeText: "text-[#663CF6]",
+    badgeBg: "bg-[#EDE7FF] dark:bg-[#251D4A]",
+    badgeText: "text-[#663CF6] dark:text-[#B59CFF]",
     desc: "Speak directly with an education tech consultant to tailor a solution for your institution.",
     primaryValue: "+91 98765 43210",
     secondaryValue: "sales@scholonix.com",
     actionText: "Call Sales Now",
     actionHref: "tel:+919876543210",
-    gradientBg: "bg-gradient-to-br from-white/95 via-[#F6F2FF]/90 to-[#EDE7FF]/75",
-    borderColor: "border-[#DDD6FE]/80",
+    gradientBg: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#F6F2FF]/90 dark:via-[#1D1940]/90 to-[#EDE7FF]/75",
+    borderColor: "border-[#DDD6FE]/80 dark:border-[#3B306E]/90",
     hoverShadow: "hover:shadow-[0_16px_32px_rgba(102,60,246,0.14)]",
-    iconBg: "bg-[#EDE7FF]",
-    iconColor: "text-[#663CF6]",
-    iconRing: "ring-[#DDD6FE]",
+    iconBg: "bg-[#EDE7FF] dark:bg-[#251D4A]",
+    iconColor: "text-[#663CF6] dark:text-[#B59CFF]",
+    iconRing: "ring-[#DDD6FE] dark:ring-[#3B306E]",
   },
   {
     icon: Headphones,
     title: "Support & Helpdesk",
     badge: "24/7 Available",
-    badgeBg: "bg-[#E0F2FE]",
-    badgeText: "text-[#0284C7]",
+    badgeBg: "bg-[#E0F2FE] dark:bg-[#132645]",
+    badgeText: "text-[#0284C7] dark:text-[#56C2FF]",
     desc: "For existing schools, principals, and teachers needing assistance with daily operations.",
     primaryValue: "support@scholonix.com",
     secondaryValue: "+91 (800) 456-7890 (Toll Free)",
     actionText: "Email Support Team",
     actionHref: "mailto:support@scholonix.com",
-    gradientBg: "bg-gradient-to-br from-white/98 via-[#F0F5FE]/95 to-[#EDE7FF]/85",
-    borderColor: "border-[#BAE6FD]/80",
+    gradientBg: "bg-gradient-to-br from-white/98 dark:from-[#141731]/98 via-[#F0F5FE]/95 dark:via-[#15203E]/95 to-[#EDE7FF]/85 dark:to-[#251D4A]/85",
+    borderColor: "border-[#BAE6FD]/80 dark:border-[#1E4670]/90",
     hoverShadow: "hover:shadow-[0_16px_32px_rgba(2,132,199,0.14)]",
-    iconBg: "bg-[#E0F2FE]",
-    iconColor: "text-[#0284C7]",
-    iconRing: "ring-[#BAE6FD]",
+    iconBg: "bg-[#E0F2FE] dark:bg-[#132645]",
+    iconColor: "text-[#0284C7] dark:text-[#56C2FF]",
+    iconRing: "ring-[#BAE6FD] dark:ring-[#1E4670]",
   },
   {
     icon: Building2,
     title: "Headquarters & Visits",
     badge: "Campus Center",
-    badgeBg: "bg-[#FEF3C7]",
-    badgeText: "text-[#D97706]",
+    badgeBg: "bg-[#FEF3C7] dark:bg-[#2B2010]",
+    badgeText: "text-[#D97706] dark:text-[#FBBF24]",
     desc: "Visit our innovation center or book an in-person workshop for your school management board.",
     primaryValue: "Tech Park, Outer Ring Road",
     secondaryValue: "Bengaluru, Karnataka 560103, India",
     actionText: "View on Map",
     actionHref: "https://maps.google.com",
-    gradientBg: "bg-gradient-to-br from-white/95 via-[#FFFBEB]/90 to-[#FEF3C7]/75",
-    borderColor: "border-[#FDE68A]/80",
+    gradientBg: "bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FFFBEB]/90 dark:via-[#261E10]/90 to-[#FEF3C7]/75 dark:to-[#2E2210]/80",
+    borderColor: "border-[#FDE68A]/80 dark:border-[#6E4F1A]/90",
     hoverShadow: "hover:shadow-[0_16px_32px_rgba(217,119,6,0.14)]",
-    iconBg: "bg-[#FEF3C7]",
-    iconColor: "text-[#D97706]",
-    iconRing: "ring-[#FDE68A]",
+    iconBg: "bg-[#FEF3C7] dark:bg-[#2B2010]",
+    iconColor: "text-[#D97706] dark:text-[#FBBF24]",
+    iconRing: "ring-[#FDE68A] dark:ring-[#6E4F1A]",
   },
 ];
 
@@ -249,27 +250,27 @@ export function ContactPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45]">
+    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45] dark:text-[#F3F5FF]">
       {/* Background Ambience */}
       <AtmosphericBackground />
 
       {/* =========================================================================
           1. HEADER / NAVBAR
           ========================================================================= */}
-      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] dark:border-[#2C3159] bg-white/95 dark:bg-[#141731]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           {/* Logo */}
           <BrandLogo className="h-8 sm:h-9" />
 
           {/* Desktop Nav */}
-          <nav className="hidden items-center gap-7 text-sm font-semibold text-[#4D5072] md:flex">
-            <Link href="/features" className="transition-colors hover:text-[#663CF6]">
+          <nav className="hidden items-center gap-7 text-sm font-semibold text-[#4D5072] dark:text-[#B4B9DA] md:flex">
+            <Link href="/features" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Features
             </Link>
-            <Link href="/pricing" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/pricing" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Pricing
             </Link>
-            <Link href="/for-schools" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/for-schools" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               For Schools
             </Link>
             <ResourcesDropdown />
@@ -280,16 +281,17 @@ export function ContactPage() {
             >
               Contact
             </Link>
-            <Link href="/feedback" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/feedback" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Feedback
             </Link>
           </nav>
 
           {/* Action CTAs & Mobile Hamburger */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <Link
               href="/login"
-              className="hidden sm:inline-flex items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] bg-white px-3.5 py-1.5 text-xs font-bold text-[#4F27E8] shadow-xs transition hover:border-[#4F27E8] hover:bg-[#F7F4FF]"
+              className="hidden sm:inline-flex items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] dark:border-[#8B5CF6] bg-white dark:bg-[#141731] px-3.5 py-1.5 text-xs font-bold text-[#4F27E8] dark:text-[#C4B5FD] shadow-xs transition hover:border-[#4F27E8] dark:hover:border-[#9D7CFE] hover:bg-[#F7F4FF] dark:hover:bg-[#241E4A]"
             >
               Sign In
             </Link>
@@ -304,7 +306,7 @@ export function ContactPage() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#D6DBF0] bg-white text-[#08093B] shadow-sm transition hover:bg-[#F2EEFD] hover:text-[#663CF6] md:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#08093B] dark:text-[#F3F5FF] shadow-sm transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] md:hidden"
               aria-label="Toggle navigation menu"
               aria-expanded={mobileMenuOpen}
             >
@@ -315,46 +317,46 @@ export function ContactPage() {
 
         {/* Mobile Nav Drawer */}
         {mobileMenuOpen && (
-          <div className="border-b border-[#D6DBF0] bg-white/98 px-4 pt-3 pb-6 shadow-xl backdrop-blur-lg md:hidden">
-            <nav className="flex flex-col space-y-3 text-sm font-semibold text-[#1B1D45]">
+          <div className="border-b border-[#D6DBF0] dark:border-[#2C3159] bg-white/98 dark:bg-[#141731]/98 px-4 pt-3 pb-6 shadow-xl backdrop-blur-lg md:hidden">
+            <nav className="flex flex-col space-y-3 text-sm font-semibold text-[#1B1D45] dark:text-[#F3F5FF]">
               <Link
                 href="/features"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Features
               </Link>
               <Link
                 href="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Pricing
               </Link>
               <Link
                 href="/for-schools"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 For Schools
               </Link>
 
               {/* Mobile Resources Menu */}
-              <div className="rounded-[10px] bg-[#FAF8FE] p-2">
+              <div className="rounded-[10px] bg-[#FAF8FE] dark:bg-[#10132C] p-2">
                 <MobileResourcesMenu onItemClick={() => setMobileMenuOpen(false)} />
               </div>
 
               <Link
                 href="/contact"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] bg-[#EDE7FF] px-3 py-2 font-bold text-[#663CF6]"
+                className="rounded-[10px] bg-[#EDE7FF] dark:bg-[#251D4A] px-3 py-2 font-bold text-[#663CF6] dark:text-[#B59CFF]"
               >
                 Contact Us
               </Link>
               <Link
                 href="/feedback"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Share Feedback
               </Link>
@@ -363,7 +365,7 @@ export function ContactPage() {
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex h-11 w-full items-center justify-center rounded-[12px] border border-[#7C3AED] bg-white text-sm font-bold text-[#4F27E8]"
+                  className="flex h-11 w-full items-center justify-center rounded-[12px] border border-[#7C3AED] dark:border-[#8B5CF6] bg-white dark:bg-[#141731] text-sm font-bold text-[#4F27E8] dark:text-[#C4B5FD]"
                 >
                   Sign In
                 </Link>
@@ -386,23 +388,23 @@ export function ContactPage() {
       <section className="relative px-4 pt-12 pb-8 sm:px-6 sm:pt-16 sm:pb-12 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#DDD6FE] bg-gradient-to-r from-[#EDE7FF] via-[#F6F2FF] to-[#EDE7FF] px-3.5 py-1.5 shadow-xs transition-all duration-300 hover:scale-105">
-            <Sparkles className="h-4 w-4 text-[#663CF6]" />
-            <span className="text-xs font-bold text-[#4F27E8]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#DDD6FE] dark:border-[#3B306E] bg-gradient-to-r from-[#EDE7FF] dark:from-[#231B47] via-[#F6F2FF] dark:via-[#1D1940] to-[#EDE7FF] dark:to-[#251D4A] px-3.5 py-1.5 shadow-xs transition-all duration-300 hover:scale-105">
+            <Sparkles className="h-4 w-4 text-[#663CF6] dark:text-[#B59CFF]" />
+            <span className="text-xs font-bold text-[#4F27E8] dark:text-[#C4B5FD]">
               We&apos;re Here to Help Your School Thrive
             </span>
           </div>
 
           {/* Heading */}
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[#08093B] sm:text-4xl md:text-5xl lg:text-[2.75rem] leading-tight">
+          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF] sm:text-4xl md:text-5xl lg:text-[2.75rem] leading-tight">
             Get in Touch with Our{" "}
-            <span className="bg-gradient-to-r from-[#663CF6] via-[#7C3AED] to-[#4F27E8] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#663CF6] dark:from-[#A98BFF] via-[#7C3AED] dark:via-[#C4B5FD] to-[#4F27E8] dark:to-[#B99BFF] bg-clip-text text-transparent">
               School Solutions Team
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="mt-4 text-sm leading-relaxed text-[#4D5072] sm:text-base md:text-lg max-w-2xl mx-auto font-medium">
+          <p className="mt-4 text-sm leading-relaxed text-[#4D5072] dark:text-[#B4B9DA] sm:text-base md:text-lg max-w-2xl mx-auto font-medium">
             Have questions about custom workflows, pricing plans, or want to schedule a live
             tailored demo for your leadership team? Send us a message or call us anytime.
           </p>
@@ -437,18 +439,18 @@ export function ContactPage() {
                   </div>
 
                   {/* Body Content */}
-                  <h3 className="mt-4 text-lg font-bold text-[#08093B] group-hover:text-[#663CF6] transition-colors">
+                  <h3 className="mt-4 text-lg font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition-colors">
                     {channel.title}
                   </h3>
-                  <p className="mt-1.5 text-xs text-[#4D5072] leading-relaxed font-medium">
+                  <p className="mt-1.5 text-xs text-[#4D5072] dark:text-[#B4B9DA] leading-relaxed font-medium">
                     {channel.desc}
                   </p>
 
                   {/* Contact Values */}
-                  <div className="mt-4 border-t border-[#DFE3F5]/80 pt-3.5 space-y-1">
-                    <p className="text-sm font-bold text-[#08093B]">{channel.primaryValue}</p>
+                  <div className="mt-4 border-t border-[#DFE3F5]/80 dark:border-[#2C3159]/90 pt-3.5 space-y-1">
+                    <p className="text-sm font-bold text-[#08093B] dark:text-[#F3F5FF]">{channel.primaryValue}</p>
                     {channel.secondaryValue && (
-                      <p className="text-xs text-[#5A5E7A] font-medium">{channel.secondaryValue}</p>
+                      <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA] font-medium">{channel.secondaryValue}</p>
                     )}
                   </div>
 
@@ -456,7 +458,7 @@ export function ContactPage() {
                   <div className="mt-4 pt-1">
                     <a
                       href={channel.actionHref}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] transition-transform duration-200 group-hover:translate-x-1"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF] transition-transform duration-200 group-hover:translate-x-1"
                     >
                       <span>{channel.actionText}</span>
                       <ArrowRight className="h-3.5 w-3.5" />
@@ -477,28 +479,28 @@ export function ContactPage() {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
             {/* Left: Contact Form (7 cols) */}
             <div className="lg:col-span-7">
-              <div className="relative overflow-hidden rounded-[24px] border border-[#D6DBF0] bg-white p-6 sm:p-8 md:p-10 shadow-[0_12px_36px_rgba(24,18,77,0.06)] transition-all">
+              <div className="relative overflow-hidden rounded-[24px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] p-6 sm:p-8 md:p-10 shadow-[0_12px_36px_rgba(24,18,77,0.06)] transition-all">
                 {/* Subtle top brand glow accent */}
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#663CF6] via-[#8B5CF6] to-[#0284C7]" />
 
                 {submitSuccess ? (
                   <div className="py-12 text-center space-y-4">
-                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#DCFCE7] text-[#15803D] ring-8 ring-[#DCFCE7]/40 animate-bounce">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#DCFCE7] dark:bg-[#0F2C24] text-[#15803D] dark:text-[#4ADE80] ring-8 ring-[#DCFCE7]/40 dark:ring-[#164234]/50 animate-bounce">
                       <CheckCircle2 className="h-9 w-9" />
                     </div>
-                    <h3 className="text-2xl font-extrabold text-[#08093B]">Message Received!</h3>
-                    <p className="mx-auto max-w-md text-sm text-[#4D5072] leading-relaxed">
+                    <h3 className="text-2xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Message Received!</h3>
+                    <p className="mx-auto max-w-md text-sm text-[#4D5072] dark:text-[#B4B9DA] leading-relaxed">
                       Thank you for contacting us, <strong>{formData.name}</strong>. Your inquiry has
                       been dispatched to our institutional coordinator.
                     </p>
-                    <div className="inline-block rounded-[12px] border border-[#DDD6FE] bg-[#F6F2FF] px-4 py-2 text-xs font-mono font-bold text-[#663CF6]">
+                    <div className="inline-block rounded-[12px] border border-[#DDD6FE] dark:border-[#3B306E] bg-[#F6F2FF] dark:bg-[#221B44] px-4 py-2 text-xs font-mono font-bold text-[#663CF6] dark:text-[#B59CFF]">
                       Reference ID: {referenceId}
                     </div>
                     <div className="pt-4">
                       <button
                         type="button"
                         onClick={handleResetForm}
-                        className="inline-flex items-center gap-2 rounded-[12px] border border-[#CAD0EB] bg-white px-5 py-2.5 text-xs font-bold text-[#4F27E8] shadow-xs transition hover:bg-[#F2EEFD]"
+                        className="inline-flex items-center gap-2 rounded-[12px] border border-[#CAD0EB] dark:border-[#343A68] bg-white dark:bg-[#141731] px-5 py-2.5 text-xs font-bold text-[#4F27E8] dark:text-[#C4B5FD] shadow-xs transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52]"
                       >
                         Send Another Inquiry
                       </button>
@@ -507,18 +509,18 @@ export function ContactPage() {
                 ) : (
                   <div>
                     <div className="mb-6">
-                      <h2 className="text-xl sm:text-2xl font-extrabold text-[#08093B]">
+                      <h2 className="text-xl sm:text-2xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                         Send Us an Inquiry
                       </h2>
-                      <p className="mt-1 text-xs sm:text-sm text-[#4D5072] font-medium">
+                      <p className="mt-1 text-xs sm:text-sm text-[#4D5072] dark:text-[#B4B9DA] font-medium">
                         Fill in the details below. Our education advisers typically reply in less
                         than 2 business hours.
                       </p>
                     </div>
 
                     {serverError && (
-                      <div className="mb-5 flex items-start gap-2.5 rounded-[12px] border border-red-200 bg-red-50 p-3.5 text-xs text-red-700">
-                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-500" />
+                      <div className="mb-5 flex items-start gap-2.5 rounded-[12px] border border-red-200 dark:border-rose-800/70 bg-red-50 dark:bg-red-950/45 p-3.5 text-xs text-red-700 dark:text-rose-300">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-500 dark:text-rose-400" />
                         <span>{serverError}</span>
                       </div>
                     )}
@@ -529,9 +531,9 @@ export function ContactPage() {
                         <div>
                           <label
                             htmlFor="name"
-                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] mb-1.5"
+                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF] mb-1.5"
                           >
-                            Full Name <span className="text-red-500">*</span>
+                            Full Name <span className="text-red-500 dark:text-rose-400">*</span>
                           </label>
                           <div className="relative">
                             <input
@@ -542,16 +544,16 @@ export function ContactPage() {
                               onChange={handleInputChange}
                               placeholder="e.g. Dr. Rajesh Sharma"
                               required
-                              className={`w-full rounded-[10px] border px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] transition-all placeholder:text-[#76799C] focus:outline-none focus:ring-2 ${
+                              className={`w-full rounded-[10px] border px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] dark:text-[#F3F5FF] transition-all placeholder:text-[#76799C] dark:placeholder:text-[#7A81AC] focus:outline-none focus:ring-2 ${
                                 formErrors.name
-                                  ? "border-red-400 bg-red-50/30 focus:ring-red-400/30"
-                                  : "border-[#CAD0EB] bg-white hover:border-[#9B76FF] focus:border-[#663CF6] focus:ring-[#663CF6]/20"
+                                  ? "border-red-400 dark:border-rose-500/70 bg-red-50/30 dark:bg-red-950/30 focus:ring-red-400/30"
+                                  : "border-[#CAD0EB] dark:border-[#343A68] bg-white dark:bg-[#141731] hover:border-[#9B76FF] dark:hover:border-[#B59CFF] focus:border-[#663CF6] dark:focus:border-[#9D7CFE] focus:ring-[#663CF6]/20"
                               }`}
                             />
-                            <User className="absolute right-3 top-3 h-4 w-4 text-[#76799C] pointer-events-none" />
+                            <User className="absolute right-3 top-3 h-4 w-4 text-[#76799C] dark:text-[#969CC2] pointer-events-none" />
                           </div>
                           {formErrors.name && (
-                            <p className="mt-1 text-[11px] font-semibold text-red-600">
+                            <p className="mt-1 text-[11px] font-semibold text-red-600 dark:text-rose-400">
                               {formErrors.name}
                             </p>
                           )}
@@ -560,9 +562,9 @@ export function ContactPage() {
                         <div>
                           <label
                             htmlFor="email"
-                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] mb-1.5"
+                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF] mb-1.5"
                           >
-                            School / Work Email <span className="text-red-500">*</span>
+                            School / Work Email <span className="text-red-500 dark:text-rose-400">*</span>
                           </label>
                           <div className="relative">
                             <input
@@ -573,16 +575,16 @@ export function ContactPage() {
                               onChange={handleInputChange}
                               placeholder="principal@modernschool.edu"
                               required
-                              className={`w-full rounded-[10px] border px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] transition-all placeholder:text-[#76799C] focus:outline-none focus:ring-2 ${
+                              className={`w-full rounded-[10px] border px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] dark:text-[#F3F5FF] transition-all placeholder:text-[#76799C] dark:placeholder:text-[#7A81AC] focus:outline-none focus:ring-2 ${
                                 formErrors.email
-                                  ? "border-red-400 bg-red-50/30 focus:ring-red-400/30"
-                                  : "border-[#CAD0EB] bg-white hover:border-[#9B76FF] focus:border-[#663CF6] focus:ring-[#663CF6]/20"
+                                  ? "border-red-400 dark:border-rose-500/70 bg-red-50/30 dark:bg-red-950/30 focus:ring-red-400/30"
+                                  : "border-[#CAD0EB] dark:border-[#343A68] bg-white dark:bg-[#141731] hover:border-[#9B76FF] dark:hover:border-[#B59CFF] focus:border-[#663CF6] dark:focus:border-[#9D7CFE] focus:ring-[#663CF6]/20"
                               }`}
                             />
-                            <Mail className="absolute right-3 top-3 h-4 w-4 text-[#76799C] pointer-events-none" />
+                            <Mail className="absolute right-3 top-3 h-4 w-4 text-[#76799C] dark:text-[#969CC2] pointer-events-none" />
                           </div>
                           {formErrors.email && (
-                            <p className="mt-1 text-[11px] font-semibold text-red-600">
+                            <p className="mt-1 text-[11px] font-semibold text-red-600 dark:text-rose-400">
                               {formErrors.email}
                             </p>
                           )}
@@ -594,7 +596,7 @@ export function ContactPage() {
                         <div>
                           <label
                             htmlFor="phone"
-                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] mb-1.5"
+                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF] mb-1.5"
                           >
                             Phone Number
                           </label>
@@ -606,16 +608,16 @@ export function ContactPage() {
                               value={formData.phone}
                               onChange={handleInputChange}
                               placeholder="+91 98765 00000"
-                              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] transition-all placeholder:text-[#76799C] hover:border-[#9B76FF] focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
+                              className="w-full rounded-[10px] border border-[#CAD0EB] dark:border-[#343A68] bg-white dark:bg-[#141731] px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] dark:text-[#F3F5FF] transition-all placeholder:text-[#76799C] dark:placeholder:text-[#7A81AC] hover:border-[#9B76FF] dark:hover:border-[#B59CFF] focus:border-[#663CF6] dark:focus:border-[#9D7CFE] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
                             />
-                            <Phone className="absolute right-3 top-3 h-4 w-4 text-[#76799C] pointer-events-none" />
+                            <Phone className="absolute right-3 top-3 h-4 w-4 text-[#76799C] dark:text-[#969CC2] pointer-events-none" />
                           </div>
                         </div>
 
                         <div>
                           <label
                             htmlFor="schoolName"
-                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] mb-1.5"
+                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF] mb-1.5"
                           >
                             School / Institution Name
                           </label>
@@ -627,9 +629,9 @@ export function ContactPage() {
                               value={formData.schoolName}
                               onChange={handleInputChange}
                               placeholder="e.g. St. Xavier's International"
-                              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] transition-all placeholder:text-[#76799C] hover:border-[#9B76FF] focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
+                              className="w-full rounded-[10px] border border-[#CAD0EB] dark:border-[#343A68] bg-white dark:bg-[#141731] px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] dark:text-[#F3F5FF] transition-all placeholder:text-[#76799C] dark:placeholder:text-[#7A81AC] hover:border-[#9B76FF] dark:hover:border-[#B59CFF] focus:border-[#663CF6] dark:focus:border-[#9D7CFE] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
                             />
-                            <Building2 className="absolute right-3 top-3 h-4 w-4 text-[#76799C] pointer-events-none" />
+                            <Building2 className="absolute right-3 top-3 h-4 w-4 text-[#76799C] dark:text-[#969CC2] pointer-events-none" />
                           </div>
                         </div>
                       </div>
@@ -639,7 +641,7 @@ export function ContactPage() {
                         <div>
                           <label
                             htmlFor="role"
-                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] mb-1.5"
+                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF] mb-1.5"
                           >
                             Your Role at the School
                           </label>
@@ -648,7 +650,7 @@ export function ContactPage() {
                             name="role"
                             value={formData.role}
                             onChange={handleInputChange}
-                            className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] transition-all hover:border-[#9B76FF] focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20 cursor-pointer"
+                            className="w-full rounded-[10px] border border-[#CAD0EB] dark:border-[#343A68] bg-white dark:bg-[#141731] px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] dark:text-[#F3F5FF] transition-all hover:border-[#9B76FF] dark:hover:border-[#B59CFF] focus:border-[#663CF6] dark:focus:border-[#9D7CFE] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20 cursor-pointer"
                           >
                             <option>Principal / Head of School</option>
                             <option>School Trustee / Board Member</option>
@@ -662,16 +664,16 @@ export function ContactPage() {
                         <div>
                           <label
                             htmlFor="subject"
-                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] mb-1.5"
+                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF] mb-1.5"
                           >
-                            Primary Interest <span className="text-red-500">*</span>
+                            Primary Interest <span className="text-red-500 dark:text-rose-400">*</span>
                           </label>
                           <select
                             id="subject"
                             name="subject"
                             value={formData.subject}
                             onChange={handleInputChange}
-                            className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] transition-all hover:border-[#9B76FF] focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20 cursor-pointer"
+                            className="w-full rounded-[10px] border border-[#CAD0EB] dark:border-[#343A68] bg-white dark:bg-[#141731] px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] dark:text-[#F3F5FF] transition-all hover:border-[#9B76FF] dark:hover:border-[#B59CFF] focus:border-[#663CF6] dark:focus:border-[#9D7CFE] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20 cursor-pointer"
                           >
                             <option>Request a Product Demonstration</option>
                             <option>Pricing & Multi-Branch Licensing</option>
@@ -687,11 +689,11 @@ export function ContactPage() {
                         <div className="flex items-center justify-between mb-1.5">
                           <label
                             htmlFor="message"
-                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B]"
+                            className="block text-xs font-bold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]"
                           >
-                            How can we help your school? <span className="text-red-500">*</span>
+                            How can we help your school? <span className="text-red-500 dark:text-rose-400">*</span>
                           </label>
-                          <span className="text-[11px] text-[#76799C]">
+                          <span className="text-[11px] text-[#76799C] dark:text-[#969CC2]">
                             {formData.message.length}/2000
                           </span>
                         </div>
@@ -704,14 +706,14 @@ export function ContactPage() {
                           maxLength={2000}
                           placeholder="Tell us about your student strength, current pain points, or specific questions..."
                           required
-                          className={`w-full rounded-[10px] border px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] transition-all placeholder:text-[#76799C] focus:outline-none focus:ring-2 ${
+                          className={`w-full rounded-[10px] border px-3.5 py-2.5 text-xs sm:text-sm text-[#1B1D45] dark:text-[#F3F5FF] transition-all placeholder:text-[#76799C] dark:placeholder:text-[#7A81AC] focus:outline-none focus:ring-2 ${
                             formErrors.message
-                              ? "border-red-400 bg-red-50/30 focus:ring-red-400/30"
-                              : "border-[#CAD0EB] bg-white hover:border-[#9B76FF] focus:border-[#663CF6] focus:ring-[#663CF6]/20"
+                              ? "border-red-400 dark:border-rose-500/70 bg-red-50/30 dark:bg-red-950/30 focus:ring-red-400/30"
+                              : "border-[#CAD0EB] dark:border-[#343A68] bg-white dark:bg-[#141731] hover:border-[#9B76FF] dark:hover:border-[#B59CFF] focus:border-[#663CF6] dark:focus:border-[#9D7CFE] focus:ring-[#663CF6]/20"
                           }`}
                         />
                         {formErrors.message && (
-                          <p className="mt-1 text-[11px] font-semibold text-red-600">
+                          <p className="mt-1 text-[11px] font-semibold text-red-600 dark:text-rose-400">
                             {formErrors.message}
                           </p>
                         )}
@@ -736,7 +738,7 @@ export function ContactPage() {
                             </>
                           )}
                         </button>
-                        <p className="mt-2 text-center text-[11px] text-[#76799C]">
+                        <p className="mt-2 text-center text-[11px] text-[#76799C] dark:text-[#969CC2]">
                           🔒 We respect institutional confidentiality. Your details will never be
                           shared with third parties.
                         </p>
@@ -750,27 +752,27 @@ export function ContactPage() {
             {/* Right: Why Schools Trust ScholoNix & Next Steps (5 cols) */}
             <div className="space-y-6 lg:col-span-5">
               {/* Guarantee / SLA Card */}
-              <div className="rounded-[22px] border border-[#DDD6FE] bg-gradient-to-br from-[#EDE7FF]/60 via-white to-[#F6F2FF]/80 p-6 shadow-sm">
+              <div className="rounded-[22px] border border-[#DDD6FE] dark:border-[#3B306E] bg-gradient-to-br from-[#EDE7FF]/60 dark:from-[#231B47]/80 via-white dark:via-[#141731] to-[#F6F2FF]/80 dark:to-[#201C45]/80 p-6 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[#663CF6] text-white shadow-xs">
                     <ShieldCheck className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-[#08093B]">
+                    <h3 className="text-base font-bold text-[#08093B] dark:text-[#F3F5FF]">
                       Our Commitment to Your School
                     </h3>
-                    <p className="text-xs text-[#5A5E7A]">What happens once you reach out</p>
+                    <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">What happens once you reach out</p>
                   </div>
                 </div>
 
                 <div className="mt-5 space-y-4">
                   <div className="flex items-start gap-3">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] text-xs font-bold text-[#663CF6]">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                       1
                     </span>
                     <div>
-                      <h4 className="text-xs font-bold text-[#08093B]">Immediate Acknowledgment</h4>
-                      <p className="text-xs text-[#4D5072] leading-relaxed">
+                      <h4 className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Immediate Acknowledgment</h4>
+                      <p className="text-xs text-[#4D5072] dark:text-[#B4B9DA] leading-relaxed">
                         You receive a dedicated ticket reference and our team reviews your school
                         profile within 2 hours.
                       </p>
@@ -778,12 +780,12 @@ export function ContactPage() {
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] text-xs font-bold text-[#663CF6]">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                       2
                     </span>
                     <div>
-                      <h4 className="text-xs font-bold text-[#08093B]">Personalized Demonstration</h4>
-                      <p className="text-xs text-[#4D5072] leading-relaxed">
+                      <h4 className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Personalized Demonstration</h4>
+                      <p className="text-xs text-[#4D5072] dark:text-[#B4B9DA] leading-relaxed">
                         A focused session covering only the workflows you need—exams, fees, or
                         parent engagement.
                       </p>
@@ -791,12 +793,12 @@ export function ContactPage() {
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] text-xs font-bold text-[#663CF6]">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                       3
                     </span>
                     <div>
-                      <h4 className="text-xs font-bold text-[#08093B]">Zero-Obligation Trial</h4>
-                      <p className="text-xs text-[#4D5072] leading-relaxed">
+                      <h4 className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Zero-Obligation Trial</h4>
+                      <p className="text-xs text-[#4D5072] dark:text-[#B4B9DA] leading-relaxed">
                         Full sandbox environment with sample data ready so your teachers can test
                         real ease-of-use.
                       </p>
@@ -806,22 +808,22 @@ export function ContactPage() {
               </div>
 
               {/* Principal Quote / Testimonial Card */}
-              <div className="rounded-[22px] border border-[#D6DBF0] bg-white p-6 shadow-sm">
-                <div className="flex items-center gap-1 text-[#F59E0B]">
+              <div className="rounded-[22px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] p-6 shadow-sm">
+                <div className="flex items-center gap-1 text-[#F59E0B] dark:text-[#FBBF24]">
                   {"★".repeat(5)}
                 </div>
-                <p className="mt-3 text-xs leading-relaxed text-[#1B1D45] italic font-medium">
+                <p className="mt-3 text-xs leading-relaxed text-[#1B1D45] dark:text-[#F3F5FF] italic font-medium">
                   &ldquo;Transitioning 2,200 students to ScholoNix was seamless. The support team
                   set up our fee structures and ran training for all 80 teachers in just two days.
                   Our administrative overhead dropped by nearly 60%.&rdquo;
                 </p>
-                <div className="mt-4 flex items-center gap-3 border-t border-[#DFE3F5] pt-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EDE7FF] text-xs font-bold text-[#663CF6]">
+                <div className="mt-4 flex items-center gap-3 border-t border-[#DFE3F5] dark:border-[#2C3159] pt-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                     SM
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-[#08093B]">Sister Mary Thomas</h5>
-                    <p className="text-[11px] text-[#76799C]">
+                    <h5 className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Sister Mary Thomas</h5>
+                    <p className="text-[11px] text-[#76799C] dark:text-[#969CC2]">
                       Principal, St. Joseph Academy
                     </p>
                   </div>
@@ -829,11 +831,11 @@ export function ContactPage() {
               </div>
 
               {/* Direct WhatsApp / Quick Demo CTA */}
-              <div className="rounded-[22px] border border-[#BAE6FD] bg-gradient-to-r from-[#F0F5FE] to-[#EDE7FF]/60 p-5 text-center">
-                <p className="text-xs font-bold text-[#0284C7] uppercase tracking-wider">
+              <div className="rounded-[22px] border border-[#BAE6FD] dark:border-[#1E4670] bg-gradient-to-r from-[#F0F5FE] dark:from-[#15203E] to-[#EDE7FF]/60 dark:to-[#251D4A]/65 p-5 text-center">
+                <p className="text-xs font-bold text-[#0284C7] dark:text-[#56C2FF] uppercase tracking-wider">
                   Need an urgent answer?
                 </p>
-                <h4 className="mt-1 text-sm font-extrabold text-[#08093B]">
+                <h4 className="mt-1 text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                   Chat directly with our Technical Lead
                 </h4>
                 <a
@@ -857,10 +859,10 @@ export function ContactPage() {
       <section className="px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <div className="mx-auto max-w-4xl">
           <div className="text-center mb-8">
-            <span className="rounded-full bg-[#EDE7FF] px-3.5 py-1 text-xs font-bold text-[#663CF6]">
+            <span className="rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] px-3.5 py-1 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
               Frequently Asked Questions
             </span>
-            <h2 className="mt-3 text-2xl font-extrabold text-[#08093B] sm:text-3xl">
+            <h2 className="mt-3 text-2xl font-extrabold text-[#08093B] dark:text-[#F3F5FF] sm:text-3xl">
               Common Questions Before Contacting Us
             </h2>
           </div>
@@ -871,23 +873,23 @@ export function ContactPage() {
               return (
                 <div
                   key={idx}
-                  className="rounded-[16px] border border-[#D6DBF0] bg-white transition-all duration-200 overflow-hidden shadow-xs hover:border-[#9B76FF]"
+                  className="rounded-[16px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] transition-all duration-200 overflow-hidden shadow-xs hover:border-[#9B76FF] dark:hover:border-[#B59CFF]"
                 >
                   <button
                     type="button"
                     onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                    className="flex w-full items-center justify-between p-4 sm:p-5 text-left text-xs sm:text-sm font-bold text-[#08093B] transition hover:text-[#663CF6]"
+                    className="flex w-full items-center justify-between p-4 sm:p-5 text-left text-xs sm:text-sm font-bold text-[#08093B] dark:text-[#F3F5FF] transition hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                     aria-expanded={isOpen}
                   >
                     <span>{faq.question}</span>
                     <ChevronDown
-                      className={`h-4 w-4 shrink-0 text-[#663CF6] transition-transform duration-200 ${
+                      className={`h-4 w-4 shrink-0 text-[#663CF6] dark:text-[#B59CFF] transition-transform duration-200 ${
                         isOpen ? "rotate-180" : ""
                       }`}
                     />
                   </button>
                   {isOpen && (
-                    <div className="border-t border-[#DFE3F5]/80 px-4 pb-4 pt-3 sm:px-5 sm:pb-5 text-xs text-[#4D5072] leading-relaxed">
+                    <div className="border-t border-[#DFE3F5]/80 dark:border-[#2C3159]/90 px-4 pb-4 pt-3 sm:px-5 sm:pb-5 text-xs text-[#4D5072] dark:text-[#B4B9DA] leading-relaxed">
                       {faq.answer}
                     </div>
                   )}
@@ -903,44 +905,44 @@ export function ContactPage() {
           ========================================================================= */}
       <footer
         id="support"
-        className="border-t border-[#D6DBF0] bg-[#FAFBFF] pt-12 pb-8 sm:pt-16 sm:pb-12"
+        className="border-t border-[#D6DBF0] dark:border-[#2C3159] bg-[#FAFBFF] dark:bg-[#10132C] pt-12 pb-8 sm:pt-16 sm:pb-12"
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-12 sm:gap-10">
             {/* Brand column */}
             <div className="space-y-4 sm:col-span-2 md:col-span-4">
               <BrandLogo className="h-8 sm:h-9" />
-              <p className="max-w-sm text-xs leading-relaxed text-[#4D5072] font-medium">
+              <p className="max-w-sm text-xs leading-relaxed text-[#4D5072] dark:text-[#B4B9DA] font-medium">
                 A comprehensive, cloud-based school management platform to simplify and streamline
                 your school operations.
               </p>
               {/* Social icons */}
-              <div className="flex items-center gap-2.5 pt-1 text-[#4D5072]">
+              <div className="flex items-center gap-2.5 pt-1 text-[#4D5072] dark:text-[#B4B9DA]">
                 <a
                   href="#linkedin"
                   aria-label="LinkedIn"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] bg-[#F2EEFD] text-[#4F27E8] transition hover:bg-[#663CF6] hover:text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] dark:border-[#3E3275] bg-[#F2EEFD] dark:bg-[#251D4A] text-[#4F27E8] dark:text-[#C4B5FD] transition hover:bg-[#663CF6] hover:text-white"
                 >
                   <Linkedin className="h-4 w-4" />
                 </a>
                 <a
                   href="#youtube"
                   aria-label="YouTube"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] bg-[#F2EEFD] text-[#4F27E8] transition hover:bg-[#663CF6] hover:text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] dark:border-[#3E3275] bg-[#F2EEFD] dark:bg-[#251D4A] text-[#4F27E8] dark:text-[#C4B5FD] transition hover:bg-[#663CF6] hover:text-white"
                 >
                   <Youtube className="h-4 w-4" />
                 </a>
                 <a
                   href="#facebook"
                   aria-label="Facebook"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] bg-[#F2EEFD] text-[#4F27E8] transition hover:bg-[#663CF6] hover:text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] dark:border-[#3E3275] bg-[#F2EEFD] dark:bg-[#251D4A] text-[#4F27E8] dark:text-[#C4B5FD] transition hover:bg-[#663CF6] hover:text-white"
                 >
                   <Facebook className="h-4 w-4" />
                 </a>
                 <a
                   href="#instagram"
                   aria-label="Instagram"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] bg-[#F2EEFD] text-[#4F27E8] transition hover:bg-[#663CF6] hover:text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D8CCFD] dark:border-[#3E3275] bg-[#F2EEFD] dark:bg-[#251D4A] text-[#4F27E8] dark:text-[#C4B5FD] transition hover:bg-[#663CF6] hover:text-white"
                 >
                   <Instagram className="h-4 w-4" />
                 </a>
@@ -949,27 +951,27 @@ export function ContactPage() {
 
             {/* Product Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Product
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/features" className="hover:text-[#663CF6]">
+                  <Link href="/features" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Features
                   </Link>
                 </li>
                 <li>
-                  <Link href="/pricing" className="hover:text-[#663CF6]">
+                  <Link href="/pricing" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Pricing
                   </Link>
                 </li>
                 <li>
-                  <Link href="/for-schools" className="hover:text-[#663CF6]">
+                  <Link href="/for-schools" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     For Schools
                   </Link>
                 </li>
                 <li>
-                  <Link href="#integrations" className="hover:text-[#663CF6]">
+                  <Link href="#integrations" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Integrations
                   </Link>
                 </li>
@@ -978,27 +980,27 @@ export function ContactPage() {
 
             {/* Resources Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Resources
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/blog" className="hover:text-[#663CF6]">
+                  <Link href="/blog" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link href="/help" className="hover:text-[#663CF6]">
+                  <Link href="/help" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Help Center
                   </Link>
                 </li>
                 <li>
-                  <Link href="/faqs" className="hover:text-[#663CF6]">
+                  <Link href="/faqs" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     FAQs
                   </Link>
                 </li>
                 <li>
-                  <Link href="/guides" className="hover:text-[#663CF6]">
+                  <Link href="/guides" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Guides
                   </Link>
                 </li>
@@ -1007,27 +1009,27 @@ export function ContactPage() {
 
             {/* Company Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Company
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="#about" className="hover:text-[#663CF6]">
+                  <Link href="#about" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="hover:text-[#663CF6] text-[#663CF6] font-bold">
+                  <Link href="/contact" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD] text-[#663CF6] dark:text-[#B59CFF] font-bold">
                     Contact Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/feedback" className="hover:text-[#663CF6]">
+                  <Link href="/feedback" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Give Feedback
                   </Link>
                 </li>
                 <li>
-                  <Link href="#privacy" className="hover:text-[#663CF6]">
+                  <Link href="#privacy" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Privacy Policy
                   </Link>
                 </li>
@@ -1036,10 +1038,10 @@ export function ContactPage() {
 
             {/* Stay Updated Column */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Stay Updated
               </h4>
-              <p className="text-xs font-medium text-[#4D5072]">
+              <p className="text-xs font-medium text-[#4D5072] dark:text-[#B4B9DA]">
                 Subscribe to get product updates, tips and school management insights.
               </p>
               <form onSubmit={handleFooterSubscribe} className="flex gap-1.5 pt-1">
@@ -1049,7 +1051,7 @@ export function ContactPage() {
                   placeholder="Enter your email"
                   value={footerEmail}
                   onChange={(e) => setFooterEmail(e.target.value)}
-                  className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#1B1D45] shadow-xs placeholder:text-[#76799C] focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
+                  className="w-full rounded-[10px] border border-[#CAD0EB] dark:border-[#343A68] bg-white dark:bg-[#141731] px-3 py-2 text-xs text-[#1B1D45] dark:text-[#F3F5FF] shadow-xs placeholder:text-[#76799C] dark:placeholder:text-[#7A81AC] focus:border-[#663CF6] dark:focus:border-[#9D7CFE] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20"
                 />
                 <button
                   type="submit"
@@ -1060,7 +1062,7 @@ export function ContactPage() {
                 </button>
               </form>
               {newsletterSubscribed && (
-                <p className="text-[10px] font-bold text-[#15803D]">
+                <p className="text-[10px] font-bold text-[#15803D] dark:text-[#4ADE80]">
                   Thank you for subscribing!
                 </p>
               )}
@@ -1068,12 +1070,12 @@ export function ContactPage() {
           </div>
 
           {/* Bottom Bar */}
-          <div className="mt-8 sm:mt-12 flex flex-col items-center justify-between gap-3 border-t border-[#DFE3F5] pt-6 text-xs text-[#4D5072] sm:flex-row">
+          <div className="mt-8 sm:mt-12 flex flex-col items-center justify-between gap-3 border-t border-[#DFE3F5] dark:border-[#2C3159] pt-6 text-xs text-[#4D5072] dark:text-[#B4B9DA] sm:flex-row">
             <p className="font-medium">
               &copy; {new Date().getFullYear()} ScholoNix. All rights reserved.
             </p>
-            <div className="flex items-center gap-1 font-bold text-[#1B1D45]">
-              <span className="text-red-500">❤️</span> Made for Schools
+            <div className="flex items-center gap-1 font-bold text-[#1B1D45] dark:text-[#F3F5FF]">
+              <span className="text-red-500 dark:text-rose-400">❤️</span> Made for Schools
             </div>
           </div>
         </div>

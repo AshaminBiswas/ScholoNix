@@ -271,7 +271,7 @@ async function buildLiveDashboardData(
         statusBg: `${meta.bgClass} ${meta.borderClass}`,
         appliedOn: formatSafeIstDate(app.appliedAt, false),
         initials: formatAvatarInitials(app.studentName),
-        avatarBg: "bg-[#EDE7FF] text-[#663CF6]",
+        avatarBg: "bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]",
       };
     });
     base.recentActivities = snapshot.activities.slice(0, 5).map((act) => ({

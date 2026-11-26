@@ -28,7 +28,7 @@ interface AdmissionsKpisAndChartsProps {
 function formatDeltaBadge(delta: number | null, suffix: string) {
   if (delta === null) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
         New
       </span>
     );
@@ -37,7 +37,9 @@ function formatDeltaBadge(delta: number | null, suffix: string) {
   return (
     <span
       className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-        positive ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+        positive
+          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+          : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
       }`}
     >
       {positive ? (
@@ -107,69 +109,69 @@ export function AdmissionsKpisAndCharts({
           ===================================================================== */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Applications */}
-        <div className="rounded-[20px] border border-[#DDD6FE] bg-gradient-to-br from-white via-[#F6F2FF] to-[#EDE7FF]/70 p-4 sm:p-5 shadow-xs transition hover:shadow-md">
+        <div className="rounded-[20px] border border-[#DDD6FE] bg-gradient-to-br from-white via-[#F6F2FF] to-[#EDE7FF]/70 p-4 sm:p-5 shadow-xs transition hover:shadow-md dark:border-[#372D6B] dark:from-[#161936] dark:via-[#1B183E] dark:to-[#221A4A]">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#DDD6FE]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#DDD6FE] dark:bg-[#2A2056] dark:text-[#CBB8FF] dark:ring-[#4A3B8F]">
               <Users className="h-5 w-5" aria-hidden="true" />
             </div>
             {formatDeltaBadge(kpis.totalApplications.deltaPercent, "%")}
           </div>
-          <p className="mt-3 text-xs font-bold text-[#4D5072]">Total Applications</p>
-          <p className="mt-0.5 text-2xl sm:text-[28px] font-black text-[#08093B] leading-tight">
+          <p className="mt-3 text-xs font-bold text-[#4D5072] dark:text-[#B4BDD9]">Total Applications</p>
+          <p className="mt-0.5 text-2xl sm:text-[28px] font-black text-[#08093B] leading-tight dark:text-[#F3F5FF]">
             {kpis.totalApplications.value.toLocaleString("en-IN")}
           </p>
-          <p className="mt-1 text-[11px] text-[#76799C]">
+          <p className="mt-1 text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
             {hasPreviousBaseline ? "vs. previous period" : "no prior-period baseline"}
           </p>
         </div>
 
         {/* Shortlisted */}
-        <div className="rounded-[20px] border border-[#BAE6FD] bg-gradient-to-br from-white via-[#F0F9FF] to-[#E0F2FE]/70 p-4 sm:p-5 shadow-xs transition hover:shadow-md">
+        <div className="rounded-[20px] border border-[#BAE6FD] bg-gradient-to-br from-white via-[#F0F9FF] to-[#E0F2FE]/70 p-4 sm:p-5 shadow-xs transition hover:shadow-md dark:border-[#1E476E] dark:from-[#131934] dark:via-[#11223E] dark:to-[#122949]">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#E0F2FE] text-[#0284C7] ring-1 ring-[#BAE6FD]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#E0F2FE] text-[#0284C7] ring-1 ring-[#BAE6FD] dark:bg-[#133252] dark:text-[#7DD3FC] dark:ring-[#1E547A]">
               <FileCheck2 className="h-5 w-5" aria-hidden="true" />
             </div>
             {formatDeltaBadge(kpis.shortlisted.deltaPercent, "%")}
           </div>
-          <p className="mt-3 text-xs font-bold text-[#4D5072]">Shortlisted</p>
-          <p className="mt-0.5 text-2xl sm:text-[28px] font-black text-[#08093B] leading-tight">
+          <p className="mt-3 text-xs font-bold text-[#4D5072] dark:text-[#B4BDD9]">Shortlisted</p>
+          <p className="mt-0.5 text-2xl sm:text-[28px] font-black text-[#08093B] leading-tight dark:text-[#F3F5FF]">
             {kpis.shortlisted.value.toLocaleString("en-IN")}
           </p>
-          <p className="mt-1 text-[11px] text-[#76799C]">
+          <p className="mt-1 text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
             {kpis.shortlisted.deltaPercent !== null ? "vs. previous period" : "current shortlist count"}
           </p>
         </div>
 
         {/* Admitted */}
-        <div className="rounded-[20px] border border-[#DDD6FE] bg-gradient-to-br from-white via-[#FAF5FF] to-[#EDE7FF]/70 p-4 sm:p-5 shadow-xs transition hover:shadow-md">
+        <div className="rounded-[20px] border border-[#DDD6FE] bg-gradient-to-br from-white via-[#FAF5FF] to-[#EDE7FF]/70 p-4 sm:p-5 shadow-xs transition hover:shadow-md dark:border-[#372D6B] dark:from-[#161936] dark:via-[#1B183E] dark:to-[#221A4A]">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#DDD6FE]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#DDD6FE] dark:bg-[#2A2056] dark:text-[#CBB8FF] dark:ring-[#4A3B8F]">
               <UserCheck className="h-5 w-5" aria-hidden="true" />
             </div>
             {formatDeltaBadge(kpis.admitted.deltaPercent, "%")}
           </div>
-          <p className="mt-3 text-xs font-bold text-[#4D5072]">Admitted</p>
-          <p className="mt-0.5 text-2xl sm:text-[28px] font-black text-[#08093B] leading-tight">
+          <p className="mt-3 text-xs font-bold text-[#4D5072] dark:text-[#B4BDD9]">Admitted</p>
+          <p className="mt-0.5 text-2xl sm:text-[28px] font-black text-[#08093B] leading-tight dark:text-[#F3F5FF]">
             {kpis.admitted.value.toLocaleString("en-IN")}
           </p>
-          <p className="mt-1 text-[11px] text-[#76799C]">
+          <p className="mt-1 text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
             {kpis.admitted.deltaPercent !== null ? "vs. previous period" : "enrolled this period"}
           </p>
         </div>
 
         {/* Conversion Rate */}
-        <div className="rounded-[20px] border border-[#DDD6FE] bg-gradient-to-br from-white via-[#F5F3FF] to-[#EDE7FF]/70 p-4 sm:p-5 shadow-xs transition hover:shadow-md">
+        <div className="rounded-[20px] border border-[#DDD6FE] bg-gradient-to-br from-white via-[#F5F3FF] to-[#EDE7FF]/70 p-4 sm:p-5 shadow-xs transition hover:shadow-md dark:border-[#372D6B] dark:from-[#161936] dark:via-[#1B183E] dark:to-[#221A4A]">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#DDD6FE]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#DDD6FE] dark:bg-[#2A2056] dark:text-[#CBB8FF] dark:ring-[#4A3B8F]">
               <Hourglass className="h-5 w-5" aria-hidden="true" />
             </div>
             {formatDeltaBadge(kpis.conversionRate.deltaPercentagePoints, " pp")}
           </div>
-          <p className="mt-3 text-xs font-bold text-[#4D5072]">Conversion Rate</p>
-          <p className="mt-0.5 text-2xl sm:text-[28px] font-black text-[#08093B] leading-tight">
+          <p className="mt-3 text-xs font-bold text-[#4D5072] dark:text-[#B4BDD9]">Conversion Rate</p>
+          <p className="mt-0.5 text-2xl sm:text-[28px] font-black text-[#08093B] leading-tight dark:text-[#F3F5FF]">
             {kpis.conversionRate.rate.toFixed(1)}%
           </p>
-          <p className="mt-1 text-[11px] text-[#76799C]">Applications to Admitted</p>
+          <p className="mt-1 text-[11px] text-[#76799C] dark:text-[#9DA6CC]">Applications to Admitted</p>
         </div>
       </div>
 
@@ -178,12 +180,12 @@ export function AdmissionsKpisAndCharts({
           ===================================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Application Funnel (5 cols) */}
-        <div className="lg:col-span-5 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-5 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between dark:border-[#272B4D] dark:bg-[#141731]">
           <div className="flex items-center gap-2 mb-4">
-            <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#EDE7FF] text-[#663CF6]">
+            <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
               <Filter className="h-4 w-4" aria-hidden="true" />
             </span>
-            <h2 className="text-sm font-extrabold text-[#08093B]">Application Funnel</h2>
+            <h2 className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Application Funnel</h2>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -226,29 +228,29 @@ export function AdmissionsKpisAndCharts({
             </div>
 
             {/* Right Conversion Summary */}
-            <div className="w-full sm:w-40 shrink-0 rounded-[16px] border border-[#EDE7FF] bg-[#FAF8FE] p-3.5 text-center">
-              <p className="text-[11px] font-bold text-[#4D5072]">Conversion Rate</p>
-              <p className="mt-1 text-2xl font-black text-[#08093B]">
+            <div className="w-full sm:w-40 shrink-0 rounded-[16px] border border-[#EDE7FF] bg-[#FAF8FE] p-3.5 text-center dark:border-[#322961] dark:bg-[#10142C]">
+              <p className="text-[11px] font-bold text-[#4D5072] dark:text-[#9DA6CC]">Conversion Rate</p>
+              <p className="mt-1 text-2xl font-black text-[#08093B] dark:text-[#F3F5FF]">
                 {funnel.conversionRate.toFixed(1)}%
               </p>
-              <p className="text-[10px] text-[#76799C]">(Applications → Admitted)</p>
+              <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">(Applications → Admitted)</p>
               <div className="mt-2.5 flex justify-center">
                 {funnel.deltaPercentagePoints !== null ? (
                   <span
                     className={`inline-flex flex-col items-center rounded-[10px] px-2.5 py-1 text-[10px] font-bold ${
                       funnel.deltaPercentagePoints >= 0
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-rose-50 text-rose-700"
+                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                        : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
                     }`}
                   >
                     <span>
                       {funnel.deltaPercentagePoints >= 0 ? "+" : ""}
                       {funnel.deltaPercentagePoints} pp
                     </span>
-                    <span className="font-medium text-[#76799C]">vs. previous period</span>
+                    <span className="font-medium text-[#76799C] dark:text-[#9DA6CC]">vs. previous period</span>
                   </span>
                 ) : (
-                  <span className="inline-block rounded-[10px] bg-white px-2.5 py-1 text-[10px] font-medium text-[#76799C] border border-[#E2E8F0]">
+                  <span className="inline-block rounded-[10px] bg-white px-2.5 py-1 text-[10px] font-medium text-[#76799C] border border-[#E2E8F0] dark:bg-[#181C3B] dark:text-[#B4BDD9] dark:border-[#2E345B]">
                     Live tenant funnel
                   </span>
                 )}
@@ -258,16 +260,16 @@ export function AdmissionsKpisAndCharts({
         </div>
 
         {/* Applications Trend (7 cols) */}
-        <div className="lg:col-span-7 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-7 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between dark:border-[#272B4D] dark:bg-[#141731]">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#EDE7FF] text-[#663CF6]">
+              <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                 <TrendingUp className="h-4 w-4" aria-hidden="true" />
               </span>
-              <h2 className="text-sm font-extrabold text-[#08093B]">Applications Trend</h2>
+              <h2 className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Applications Trend</h2>
             </div>
 
-            <div className="inline-flex rounded-[10px] border border-[#D6DBF0] bg-[#FAF8FE] p-0.5">
+            <div className="inline-flex rounded-[10px] border border-[#D6DBF0] bg-[#FAF8FE] p-0.5 dark:border-[#2E345B] dark:bg-[#10142C]">
               {(
                 [
                   { key: "month", label: "By Month" },
@@ -280,8 +282,8 @@ export function AdmissionsKpisAndCharts({
                   onClick={() => onGranularityChange(opt.key)}
                   className={`rounded-[8px] px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
                     granularity === opt.key
-                      ? "bg-white text-[#663CF6] shadow-2xs"
-                      : "text-[#4D5072] hover:text-[#663CF6]"
+                      ? "bg-white text-[#663CF6] shadow-2xs dark:bg-[#231D4B] dark:text-[#E2D9FF]"
+                      : "text-[#4D5072] hover:text-[#663CF6] dark:text-[#9DA6CC] dark:hover:text-[#D9CEFF]"
                   }`}
                 >
                   {opt.label}
@@ -291,9 +293,9 @@ export function AdmissionsKpisAndCharts({
           </div>
 
           {trend.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-44 rounded-[14px] border border-dashed border-[#D6DBF0] bg-[#FAF8FE]/60 px-4 text-center">
-              <p className="text-xs font-bold text-[#08093B]">No trend data recorded yet</p>
-              <p className="mt-1 text-[11px] text-[#76799C]">
+            <div className="flex flex-col items-center justify-center h-44 rounded-[14px] border border-dashed border-[#D6DBF0] bg-[#FAF8FE]/60 px-4 text-center dark:border-[#2E345B] dark:bg-[#10142C]/60">
+              <p className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">No trend data recorded yet</p>
+              <p className="mt-1 text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
                 Applications submitted over time will plot automatically here.
               </p>
             </div>
@@ -308,8 +310,8 @@ export function AdmissionsKpisAndCharts({
                 <title>Applications Trend</title>
                 <defs>
                   <linearGradient id="admissionsTrendGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#663CF6" stopOpacity="0.28" />
-                    <stop offset="100%" stopColor="#663CF6" stopOpacity="0.02" />
+                    <stop offset="0%" stopColor="#7C5CFF" stopOpacity="0.34" />
+                    <stop offset="100%" stopColor="#7C5CFF" stopOpacity="0.02" />
                   </linearGradient>
                 </defs>
 
@@ -323,7 +325,7 @@ export function AdmissionsKpisAndCharts({
                         x2={chartW - padR}
                         y1={y}
                         y2={y}
-                        stroke="#E2E8F0"
+                        className="stroke-[#E2E8F0] dark:stroke-[#272B4D]"
                         strokeWidth="1"
                         strokeDasharray="3 3"
                       />
@@ -332,7 +334,7 @@ export function AdmissionsKpisAndCharts({
                         y={y + 3}
                         textAnchor="end"
                         fontSize="9"
-                        fill="#76799C"
+                        className="fill-[#76799C] dark:fill-[#9DA6CC]"
                         fontWeight="600"
                       >
                         {val}
@@ -346,7 +348,7 @@ export function AdmissionsKpisAndCharts({
                 {trendCoords.length > 1 && (
                   <polyline
                     fill="none"
-                    stroke="#663CF6"
+                    stroke="#7C5CFF"
                     strokeWidth="2.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -360,8 +362,7 @@ export function AdmissionsKpisAndCharts({
                       cx={pt.x}
                       cy={pt.y}
                       r="4"
-                      fill="#FFFFFF"
-                      stroke="#663CF6"
+                      className="fill-white dark:fill-[#141731] stroke-[#7C5CFF]"
                       strokeWidth="2.5"
                     />
                     {pt.count > 0 && (
@@ -371,7 +372,7 @@ export function AdmissionsKpisAndCharts({
                         textAnchor="middle"
                         fontSize="9"
                         fontWeight="700"
-                        fill="#08093B"
+                        className="fill-[#08093B] dark:fill-[#F3F5FF]"
                       >
                         {pt.count}
                       </text>
@@ -382,7 +383,7 @@ export function AdmissionsKpisAndCharts({
                       textAnchor="middle"
                       fontSize="9"
                       fontWeight="600"
-                      fill="#4D5072"
+                      className="fill-[#4D5072] dark:fill-[#9DA6CC]"
                     >
                       {pt.label}
                     </text>
@@ -399,19 +400,19 @@ export function AdmissionsKpisAndCharts({
           ===================================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Applications by Grade (6 cols) */}
-        <div className="lg:col-span-6 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-6 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between dark:border-[#272B4D] dark:bg-[#141731]">
           <div className="flex items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#EDE7FF] text-[#663CF6]">
+              <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                 <BarChart3 className="h-4 w-4" aria-hidden="true" />
               </span>
-              <h2 className="text-sm font-extrabold text-[#08093B]">Applications by Grade</h2>
+              <h2 className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Applications by Grade</h2>
             </div>
 
             <button
               type="button"
               onClick={onViewGradeDetails}
-              className="inline-flex items-center gap-1 text-xs font-bold text-[#663CF6] hover:underline cursor-pointer"
+              className="inline-flex items-center gap-1 text-xs font-bold text-[#663CF6] hover:underline cursor-pointer dark:text-[#A78BFA]"
             >
               <span>View Details</span>
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -419,9 +420,9 @@ export function AdmissionsKpisAndCharts({
           </div>
 
           {byGrade.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-44 rounded-[14px] border border-dashed border-[#D6DBF0] bg-[#FAF8FE]/60 px-4 text-center">
-              <p className="text-xs font-bold text-[#08093B]">No grade breakdown yet</p>
-              <p className="mt-1 text-[11px] text-[#76799C]">
+            <div className="flex flex-col items-center justify-center h-44 rounded-[14px] border border-dashed border-[#D6DBF0] bg-[#FAF8FE]/60 px-4 text-center dark:border-[#2E345B] dark:bg-[#10142C]/60">
+              <p className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">No grade breakdown yet</p>
+              <p className="mt-1 text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
                 Grade-wise application counts will appear once applications arrive.
               </p>
             </div>
@@ -435,7 +436,7 @@ export function AdmissionsKpisAndCharts({
                       key={item.grade}
                       className="flex-1 min-w-[36px] max-w-[54px] flex flex-col items-center justify-end h-full gap-1.5"
                     >
-                      <span className="text-[11px] font-bold text-[#08093B]">
+                      <span className="text-[11px] font-bold text-[#08093B] dark:text-[#F3F5FF]">
                         {item.count.toLocaleString("en-IN")}
                       </span>
                       <div
@@ -443,7 +444,7 @@ export function AdmissionsKpisAndCharts({
                         style={{ height: `${pctHeight}%` }}
                         title={`${item.grade}: ${item.count}`}
                       />
-                      <span className="text-[10px] font-semibold text-[#4D5072] truncate max-w-full">
+                      <span className="text-[10px] font-semibold text-[#4D5072] truncate max-w-full dark:text-[#9DA6CC]">
                         {item.shortLabel}
                       </span>
                     </div>
@@ -455,12 +456,12 @@ export function AdmissionsKpisAndCharts({
         </div>
 
         {/* Application Status Donut (6 cols) */}
-        <div className="lg:col-span-6 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-6 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between dark:border-[#272B4D] dark:bg-[#141731]">
           <div className="flex items-center gap-2 mb-4">
-            <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#EDE7FF] text-[#663CF6]">
+            <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
               <PieChart className="h-4 w-4" aria-hidden="true" />
             </span>
-            <h2 className="text-sm font-extrabold text-[#08093B]">Application Status</h2>
+            <h2 className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Application Status</h2>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -473,7 +474,14 @@ export function AdmissionsKpisAndCharts({
                 aria-label="Application status distribution chart"
               >
                 <title>Application Status Distribution</title>
-                <circle cx="50" cy="50" r="38" stroke="#F1F5F9" strokeWidth="14" fill="none" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="38"
+                  className="stroke-[#F1F5F9] dark:stroke-[#232746]"
+                  strokeWidth="14"
+                  fill="none"
+                />
                 {kpis.totalApplications.value > 0 &&
                   statusBreakdown.map((slice) => {
                     if (slice.count <= 0) return null;
@@ -497,10 +505,10 @@ export function AdmissionsKpisAndCharts({
                   })}
               </svg>
               <div className="absolute text-center">
-                <p className="text-xl font-black text-[#08093B]">
+                <p className="text-xl font-black text-[#08093B] dark:text-[#F3F5FF]">
                   {kpis.totalApplications.value.toLocaleString("en-IN")}
                 </p>
-                <p className="text-[10px] font-semibold text-[#76799C]">Applications</p>
+                <p className="text-[10px] font-semibold text-[#76799C] dark:text-[#9DA6CC]">Applications</p>
               </div>
             </div>
 
@@ -514,13 +522,13 @@ export function AdmissionsKpisAndCharts({
                       style={{ backgroundColor: slice.color }}
                       aria-hidden="true"
                     />
-                    <span className="font-semibold text-[#4D5072] truncate">{slice.label}</span>
+                    <span className="font-semibold text-[#4D5072] truncate dark:text-[#C5CCF0]">{slice.label}</span>
                   </div>
                   <div className="flex items-center gap-4 shrink-0 tabular-nums">
-                    <span className="font-extrabold text-[#08093B] w-10 text-right">
+                    <span className="font-extrabold text-[#08093B] w-10 text-right dark:text-[#F3F5FF]">
                       {slice.count}
                     </span>
-                    <span className="font-medium text-[#76799C] w-12 text-right">
+                    <span className="font-medium text-[#76799C] w-12 text-right dark:text-[#9DA6CC]">
                       {slice.percentage.toFixed(1)}%
                     </span>
                   </div>

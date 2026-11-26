@@ -95,37 +95,37 @@ export function SchoolHelpView({ school, user }: SchoolHelpViewProps) {
   return (
     <SchoolWorkspaceShell school={school} user={user} activeNav="help">
       {/* Breadcrumb & Header Banner */}
-      <div className="rounded-[22px] border border-[#D6DBF0] bg-white p-5 sm:p-7 shadow-xs">
+      <div className="rounded-[22px] border border-[#D6DBF0] bg-white p-5 sm:p-7 shadow-xs dark:border-[#272B4D] dark:bg-[#141731]">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <Link
             href={dashboardHref}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] hover:underline dark:text-[#A78BFA]"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Back to {school.name} Dashboard</span>
           </Link>
-          <span className="rounded-full bg-[#EDE7FF] px-3 py-1 text-[11px] font-bold text-[#663CF6]">
+          <span className="rounded-full bg-[#EDE7FF] px-3 py-1 text-[11px] font-bold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
             Authenticated School Help Center
           </span>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#08093B]">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
           Help Center for {school.name}
         </h1>
-        <p className="mt-1.5 text-xs sm:text-sm text-[#4D5072] max-w-2xl">
+        <p className="mt-1.5 text-xs sm:text-sm text-[#4D5072] max-w-2xl dark:text-[#9DA6CC]">
           Step-by-step setup guides, workflows, and troubleshooting documentation right inside your school workspace.
         </p>
 
         {/* Search Input */}
         <div className="mt-5 relative max-w-xl">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C]" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C] dark:text-[#9DA6CC]" />
           <input
             id="school-help-search-input"
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search guides on setup, admissions, attendance, fees..."
-            className="w-full rounded-[14px] border border-[#CAD0EB] bg-[#FAF8FE] pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-[#08093B] placeholder-[#9094B0] focus:border-[#663CF6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#EDE7FF]"
+            className="w-full rounded-[14px] border border-[#CAD0EB] bg-[#FAF8FE] pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-[#08093B] placeholder-[#9094B0] focus:border-[#663CF6] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#EDE7FF] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder-[#7A83AD] dark:focus:border-[#8B5CF6] dark:focus:bg-[#141731] dark:focus:ring-[#8B5CF6]/30"
           />
         </div>
 
@@ -137,7 +137,7 @@ export function SchoolHelpView({ school, user }: SchoolHelpViewProps) {
             className={`rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer ${
               selectedCategory === "all"
                 ? "bg-[#663CF6] text-white shadow-xs"
-                : "border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6]"
+                : "border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6] dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6]"
             }`}
           >
             All Topics
@@ -150,7 +150,7 @@ export function SchoolHelpView({ school, user }: SchoolHelpViewProps) {
               className={`rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer ${
                 selectedCategory === t.id
                   ? "bg-[#663CF6] text-white shadow-xs"
-                  : "border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6]"
+                  : "border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6] dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6]"
               }`}
             >
               {t.title}
@@ -162,17 +162,17 @@ export function SchoolHelpView({ school, user }: SchoolHelpViewProps) {
       {/* Step-by-Step Articles */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base sm:text-lg font-extrabold text-[#08093B] flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-[#663CF6]" />
+          <h2 className="text-base sm:text-lg font-extrabold text-[#08093B] flex items-center gap-2 dark:text-[#F3F5FF]">
+            <BookOpen className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" />
             <span>Step-by-Step Guides</span>
           </h2>
-          <span className="text-xs font-semibold text-[#76799C]">
+          <span className="text-xs font-semibold text-[#76799C] dark:text-[#9DA6CC]">
             {filteredArticles.length} guide{filteredArticles.length === 1 ? "" : "s"}
           </span>
         </div>
 
         {filteredArticles.length === 0 ? (
-          <div className="rounded-[18px] border border-[#D6DBF0] bg-white p-8 text-center text-xs text-[#76799C]">
+          <div className="rounded-[18px] border border-[#D6DBF0] bg-white p-8 text-center text-xs text-[#76799C] dark:border-[#272B4D] dark:bg-[#141731] dark:text-[#9DA6CC]">
             No help guides matched &ldquo;{searchQuery}&rdquo;. Try another keyword or choose All Topics.
           </div>
         ) : (
@@ -181,27 +181,27 @@ export function SchoolHelpView({ school, user }: SchoolHelpViewProps) {
               <Link
                 key={article.id}
                 href={buildSchoolRoute(school.slug, `help/${article.slug}`)}
-                className="group rounded-[18px] border border-[#D6DBF0] bg-white p-5 shadow-xs transition hover:border-[#663CF6] hover:shadow-md flex flex-col justify-between"
+                className="group rounded-[18px] border border-[#D6DBF0] bg-white p-5 shadow-xs transition hover:border-[#663CF6] hover:shadow-md flex flex-col justify-between dark:border-[#272B4D] dark:bg-[#141731] dark:hover:border-[#8B5CF6]"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
-                    <span className="rounded-full bg-[#EDE7FF] px-2.5 py-0.5 text-[#663CF6]">
+                    <span className="rounded-full bg-[#EDE7FF] px-2.5 py-0.5 text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                       {article.category}
                     </span>
-                    <span className="flex items-center gap-1 text-[#76799C]">
+                    <span className="flex items-center gap-1 text-[#76799C] dark:text-[#9DA6CC]">
                       <Clock className="h-3 w-3" />
                       {article.readTime}
                     </span>
                   </div>
-                  <h3 className="mt-3 text-sm font-extrabold text-[#08093B] group-hover:text-[#663CF6] transition">
+                  <h3 className="mt-3 text-sm font-extrabold text-[#08093B] group-hover:text-[#663CF6] transition dark:text-[#F3F5FF] dark:group-hover:text-[#A78BFA]">
                     {article.title}
                   </h3>
-                  <p className="mt-1.5 text-xs leading-relaxed text-[#4D5072] line-clamp-2">
+                  <p className="mt-1.5 text-xs leading-relaxed text-[#4D5072] line-clamp-2 dark:text-[#9DA6CC]">
                     {article.subtitle}
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-[#F0F2FA] flex items-center justify-between text-xs font-bold text-[#663CF6]">
+                <div className="mt-4 pt-3 border-t border-[#F0F2FA] flex items-center justify-between text-xs font-bold text-[#663CF6] dark:border-[#232746] dark:text-[#A78BFA]">
                   <span>Read Guide</span>
                   <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                 </div>
@@ -214,24 +214,24 @@ export function SchoolHelpView({ school, user }: SchoolHelpViewProps) {
       {/* Topics Directory & Quick Video Previews */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <section className="lg:col-span-8 space-y-3">
-          <h2 className="text-base sm:text-lg font-extrabold text-[#08093B]">Browse by Module</h2>
+          <h2 className="text-base sm:text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Browse by Module</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {filteredTopics.map((topic) => (
               <div
                 key={topic.id}
-                className="rounded-[18px] border border-[#D6DBF0] bg-white p-4 shadow-xs"
+                className="rounded-[18px] border border-[#D6DBF0] bg-white p-4 shadow-xs dark:border-[#272B4D] dark:bg-[#141731]"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#EDE7FF] text-[#663CF6]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                     <TopicIcon type={topic.iconType} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-extrabold text-[#08093B]">{topic.title}</h3>
-                    <p className="text-[11px] text-[#76799C]">{topic.articleCount} resources</p>
+                    <h3 className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">{topic.title}</h3>
+                    <p className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">{topic.articleCount} resources</p>
                   </div>
                 </div>
-                <p className="mt-2.5 text-xs text-[#4D5072]">{topic.description}</p>
-                <ul className="mt-3 space-y-1.5 border-t border-[#F0F2FA] pt-2.5 text-xs text-[#1B1D45]">
+                <p className="mt-2.5 text-xs text-[#4D5072] dark:text-[#9DA6CC]">{topic.description}</p>
+                <ul className="mt-3 space-y-1.5 border-t border-[#F0F2FA] pt-2.5 text-xs text-[#1B1D45] dark:border-[#232746] dark:text-[#DCE1F9]">
                   {topic.articles.map((title) => {
                     const matched = DETAILED_HELP_ARTICLES.find(
                       (a) => a.title.toLowerCase() === title.toLowerCase(),
@@ -241,14 +241,14 @@ export function SchoolHelpView({ school, user }: SchoolHelpViewProps) {
                         {matched ? (
                           <Link
                             href={buildSchoolRoute(school.slug, `help/${matched.slug}`)}
-                            className="font-semibold text-[#663CF6] hover:underline flex items-center gap-1.5"
+                            className="font-semibold text-[#663CF6] hover:underline flex items-center gap-1.5 dark:text-[#A78BFA]"
                           >
                             <ArrowRight className="h-3 w-3 shrink-0" />
                             <span>{title}</span>
                           </Link>
                         ) : (
-                          <span className="text-[#4D5072] flex items-center gap-1.5">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#CAD0EB] shrink-0" />
+                          <span className="text-[#4D5072] flex items-center gap-1.5 dark:text-[#9DA6CC]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#CAD0EB] shrink-0 dark:bg-[#4C5582]" />
                             <span>{title}</span>
                           </span>
                         )}
@@ -262,19 +262,19 @@ export function SchoolHelpView({ school, user }: SchoolHelpViewProps) {
         </section>
 
         <section className="lg:col-span-4 space-y-3">
-          <h2 className="text-base sm:text-lg font-extrabold text-[#08093B]">Quick Walkthroughs</h2>
-          <div className="rounded-[18px] border border-[#D6DBF0] bg-white p-4 shadow-xs space-y-3">
+          <h2 className="text-base sm:text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Quick Walkthroughs</h2>
+          <div className="rounded-[18px] border border-[#D6DBF0] bg-white p-4 shadow-xs space-y-3 dark:border-[#272B4D] dark:bg-[#141731]">
             {VIDEO_TUTORIALS.map((vid) => (
               <div
                 key={vid.id}
-                className="flex items-start gap-3 rounded-[12px] border border-[#E2E6F5] bg-[#FAF8FE] p-3"
+                className="flex items-start gap-3 rounded-[12px] border border-[#E2E6F5] bg-[#FAF8FE] p-3 dark:border-[#2A2F58] dark:bg-[#10142C]"
               >
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#663CF6] text-white">
                   <Play className="h-3.5 w-3.5 ml-0.5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-[#08093B] leading-snug">{vid.title}</p>
-                  <p className="mt-0.5 text-[10px] text-[#76799C]">{vid.duration}</p>
+                  <p className="text-xs font-bold text-[#08093B] leading-snug dark:text-[#F3F5FF]">{vid.title}</p>
+                  <p className="mt-0.5 text-[10px] text-[#76799C] dark:text-[#9DA6CC]">{vid.duration}</p>
                 </div>
               </div>
             ))}

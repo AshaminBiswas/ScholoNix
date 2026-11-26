@@ -32,6 +32,7 @@ import { AtmosphericBackground } from "@/components/ui/atmospheric-background";
 import { SchoolIllustration } from "@/modules/schools/components/school-illustration";
 import { CountryCodeSelect } from "@/components/ui/country-code-select";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 type LoginMode = "otp" | "email" | "password" | "otp-verify";
 type OtpChannel = "phone" | "email";
@@ -359,24 +360,27 @@ export function SchoolLoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen text-[#1B1D45] overflow-x-clip">
+    <div className="relative min-h-screen text-[#1B1D45] overflow-x-clip dark:text-[#DCE1F9]">
       {/* Background Ambience */}
       <AtmosphericBackground />
 
       {/* Top Navbar */}
-      <header id="login-header" className="sticky top-0 z-40 border-b border-[#D6DBF0] bg-white/95 backdrop-blur-md">
+      <header id="login-header" className="sticky top-0 z-40 border-b border-[#D6DBF0] bg-white/95 backdrop-blur-md dark:border-[#272B4D] dark:bg-[#0E1026]/95">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <BrandLogo className="h-8 sm:h-9" />
 
-          <Link href="/register?step=1">
-            <Button
-              variant="gradient"
-              size="sm"
-              className="rounded-[12px] text-xs font-bold px-4"
-            >
-              Register Now
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            <Link href="/register?step=1">
+              <Button
+                variant="gradient"
+                size="sm"
+                className="rounded-[12px] text-xs font-bold px-4"
+              >
+                Register Now
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -386,10 +390,10 @@ export function SchoolLoginPage() {
           {/* LEFT COLUMN: HERO & BRANDING - Placed below the login form on small devices (< lg) */}
           <div className="order-2 lg:order-1 lg:col-span-6 flex flex-col justify-center">
             <div className="space-y-3 text-center lg:text-left">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#08093B]">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
                 School Login
               </h1>
-              <p className="text-sm sm:text-base font-medium leading-relaxed text-[#4D5072] max-w-md mx-auto lg:mx-0">
+              <p className="text-sm sm:text-base font-medium leading-relaxed text-[#4D5072] max-w-md mx-auto lg:mx-0 dark:text-[#9DA6CC]">
                 Sign in to your school&apos;s workspace and manage students, staff, academics, fees
                 and more.
               </p>
@@ -404,37 +408,37 @@ export function SchoolLoginPage() {
             <div className="grid grid-cols-3 gap-2 pt-2 max-w-md mx-auto lg:mx-0 w-full">
               {/* Pillar 1 */}
               <div className="flex flex-col items-center text-center">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] shadow-xs">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] shadow-xs dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                   <Users className="h-5 w-5" />
                 </div>
-                <div className="mt-2 text-xs font-bold leading-tight text-[#08093B]">
+                <div className="mt-2 text-xs font-bold leading-tight text-[#08093B] dark:text-[#F3F5FF]">
                   Manage
                   <br />
-                  <span className="text-[11px] font-medium text-[#4D5072]">Students & Staff</span>
+                  <span className="text-[11px] font-medium text-[#4D5072] dark:text-[#9DA6CC]">Students & Staff</span>
                 </div>
               </div>
 
               {/* Pillar 2 */}
               <div className="flex flex-col items-center text-center">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] shadow-xs">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] shadow-xs dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                   <BookOpen className="h-5 w-5" />
                 </div>
-                <div className="mt-2 text-xs font-bold leading-tight text-[#08093B]">
+                <div className="mt-2 text-xs font-bold leading-tight text-[#08093B] dark:text-[#F3F5FF]">
                   Run
                   <br />
-                  <span className="text-[11px] font-medium text-[#4D5072]">Academics</span>
+                  <span className="text-[11px] font-medium text-[#4D5072] dark:text-[#9DA6CC]">Academics</span>
                 </div>
               </div>
 
               {/* Pillar 3 */}
               <div className="flex flex-col items-center text-center">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] shadow-xs">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] shadow-xs dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                   <BarChart3 className="h-5 w-5" />
                 </div>
-                <div className="mt-2 text-xs font-bold leading-tight text-[#08093B]">
+                <div className="mt-2 text-xs font-bold leading-tight text-[#08093B] dark:text-[#F3F5FF]">
                   Track
                   <br />
-                  <span className="text-[11px] font-medium text-[#4D5072]">Fees & Reports</span>
+                  <span className="text-[11px] font-medium text-[#4D5072] dark:text-[#9DA6CC]">Fees & Reports</span>
                 </div>
               </div>
             </div>
@@ -442,7 +446,7 @@ export function SchoolLoginPage() {
 
           {/* RIGHT COLUMN: LOGIN FORM CARD - Placed on top on small devices (< lg) */}
           <div className="order-1 lg:order-2 lg:col-span-6 flex justify-center lg:justify-end">
-            <div className="w-full max-w-[480px] rounded-[28px] border border-[#D6DBF0] bg-white p-6 sm:p-9 shadow-[0_16px_40px_rgba(24,18,77,0.08)]">
+            <div className="w-full max-w-[480px] rounded-[28px] border border-[#D6DBF0] bg-white p-6 sm:p-9 shadow-[0_16px_40px_rgba(24,18,77,0.08)] dark:border-[#2C325B] dark:bg-[#141731] dark:shadow-[0_20px_50px_rgba(3,5,18,0.6)]">
               {/* Card Brand Header */}
               <div className="flex items-center justify-center">
                 <BrandLogo variant="full" className="h-7 sm:h-8" asLink={false} />
@@ -450,7 +454,7 @@ export function SchoolLoginPage() {
 
               {/* Error Callout */}
               {errorMessage && (
-                <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
+                <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
                   {errorMessage}
                 </div>
               )}
@@ -459,16 +463,16 @@ export function SchoolLoginPage() {
               {mode !== "otp-verify" && (
                 <>
                   <div className="mt-4 text-center">
-                    <h2 className="text-2xl font-black tracking-tight text-[#08093B]">
+                    <h2 className="text-2xl font-black tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
                       Sign In to Your School
                     </h2>
-                    <p className="mt-1 text-xs font-medium text-[#4D5072]">
+                    <p className="mt-1 text-xs font-medium text-[#4D5072] dark:text-[#9DA6CC]">
                       Access your school&apos;s independent workspace on the platform.
                     </p>
                   </div>
 
                   {/* Top Switcher Tabs: Mobile, Email, Password */}
-                  <div className="mt-4 grid grid-cols-3 gap-1 rounded-[14px] bg-[#F1F3F9] p-1 border border-[#DFE3F5]">
+                  <div className="mt-4 grid grid-cols-3 gap-1 rounded-[14px] bg-[#F1F3F9] p-1 border border-[#DFE3F5] dark:bg-[#0E1126] dark:border-[#262B4D]">
                     <button
                       id="tab-signin-otp"
                       type="button"
@@ -477,7 +481,7 @@ export function SchoolLoginPage() {
                         "flex items-center justify-center gap-1.5 rounded-[10px] py-2 text-[11px] sm:text-xs font-bold transition-all",
                         mode === "otp"
                           ? "bg-gradient-to-r from-[#663CF6] to-[#4F27E8] text-white shadow-sm"
-                          : "text-[#4D5072] hover:text-[#08093B]"
+                          : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
                       )}
                     >
                       <Smartphone className="h-3.5 w-3.5 shrink-0" />
@@ -491,7 +495,7 @@ export function SchoolLoginPage() {
                         "flex items-center justify-center gap-1.5 rounded-[10px] py-2 text-[11px] sm:text-xs font-bold transition-all",
                         mode === "email"
                           ? "bg-gradient-to-r from-[#663CF6] to-[#4F27E8] text-white shadow-sm"
-                          : "text-[#4D5072] hover:text-[#08093B]"
+                          : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
                       )}
                     >
                       <Mail className="h-3.5 w-3.5 shrink-0" />
@@ -505,7 +509,7 @@ export function SchoolLoginPage() {
                         "flex items-center justify-center gap-1.5 rounded-[10px] py-2 text-[11px] sm:text-xs font-bold transition-all",
                         mode === "password"
                           ? "bg-gradient-to-r from-[#663CF6] to-[#4F27E8] text-white shadow-sm"
-                          : "text-[#4D5072] hover:text-[#08093B]"
+                          : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
                       )}
                     >
                       <Lock className="h-3.5 w-3.5 shrink-0" />
@@ -523,22 +527,22 @@ export function SchoolLoginPage() {
                   <form onSubmit={handleSendOtp} className="space-y-4">
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-[#08093B]">
+                        <label className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
                           Mobile Number <span className="text-red-500">*</span>
                         </label>
                         <button
                           id="otp-mode-use-email-link"
                           type="button"
                           onClick={() => updateMode("email")}
-                          className="text-[11px] font-bold text-[#663CF6] hover:underline flex items-center gap-1"
+                          className="text-[11px] font-bold text-[#663CF6] hover:underline flex items-center gap-1 dark:text-[#A78BFA]"
                         >
                           <Mail className="h-3 w-3" />
                           <span>Use Email Address</span>
                         </button>
                       </div>
-                      <div className="flex items-center rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2 shadow-xs transition-all focus-within:border-[#663CF6] focus-within:ring-2 focus-within:ring-[#EDE7FF]">
+                      <div className="flex items-center rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2 shadow-xs transition-all focus-within:border-[#663CF6] focus-within:ring-2 focus-within:ring-[#EDE7FF] dark:border-[#343B6B] dark:bg-[#10142C] dark:focus-within:border-[#8B5CF6] dark:focus-within:ring-[#8B5CF6]/30">
                         {/* Interactive Country Code Selector */}
-                        <div className="border-r border-[#E2E6F5] pr-2.5">
+                        <div className="border-r border-[#E2E6F5] pr-2.5 dark:border-[#2A3058]">
                           <CountryCodeSelect
                             id="login-country-code-select"
                             value={countryDialCode}
@@ -558,14 +562,14 @@ export function SchoolLoginPage() {
                             setPhone(`${countryDialCode} ${val}`.trim());
                           }}
                           placeholder="98765 43210"
-                          className="ml-3 w-full bg-transparent text-sm font-semibold text-[#08093B] placeholder-[#9094B0] focus:outline-none"
+                          className="ml-3 w-full bg-transparent text-sm font-semibold text-[#08093B] placeholder-[#9094B0] focus:outline-none dark:text-[#F3F5FF] dark:placeholder-[#7A83AD]"
                         />
                       </div>
                     </div>
 
                     {/* Helper Callout */}
-                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#4D5072]">
-                      <Info className="h-3.5 w-3.5 text-[#666987] shrink-0" />
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#4D5072] dark:text-[#9DA6CC]">
+                      <Info className="h-3.5 w-3.5 text-[#666987] shrink-0 dark:text-[#9DA6CC]" />
                       <span>We&apos;ll send a one-time password (OTP) to verify your number.</span>
                     </div>
 
@@ -583,22 +587,22 @@ export function SchoolLoginPage() {
                   </form>
 
                   {/* Registration Link */}
-                  <p className="text-center text-xs font-medium text-[#4D5072]">
+                  <p className="text-center text-xs font-medium text-[#4D5072] dark:text-[#9DA6CC]">
                     Don&apos;t have a school on our platform?{" "}
                     <Link
                       href="/register?step=1"
-                      className="font-bold text-[#663CF6] hover:underline"
+                      className="font-bold text-[#663CF6] hover:underline dark:text-[#A78BFA]"
                     >
                       Register Now &rarr;
                     </Link>
                   </p>
 
                   {/* Security Assurance Card */}
-                  <div className="rounded-[16px] border border-[#E2E6F7] bg-[#FAF9FF] p-3.5 flex items-start gap-2.5">
-                    <ShieldCheck className="h-5 w-5 text-[#663CF6] shrink-0 mt-0.5" />
+                  <div className="rounded-[16px] border border-[#E2E6F7] bg-[#FAF9FF] p-3.5 flex items-start gap-2.5 dark:border-[#2E2A5C] dark:bg-[#10142C]">
+                    <ShieldCheck className="h-5 w-5 text-[#663CF6] shrink-0 mt-0.5 dark:text-[#A78BFA]" />
                     <div>
-                      <h4 className="text-xs font-bold text-[#08093B]">Your data is secure</h4>
-                      <p className="text-[11px] text-[#4D5072] leading-tight mt-0.5">
+                      <h4 className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Your data is secure</h4>
+                      <p className="text-[11px] text-[#4D5072] leading-tight mt-0.5 dark:text-[#9DA6CC]">
                         We keep your information safe and use it only to operate your
                         school&apos;s workspace.
                       </p>
@@ -615,35 +619,35 @@ export function SchoolLoginPage() {
                   <form onSubmit={handleSendEmailOtp} className="space-y-4">
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-[#08093B]">
+                        <label className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
                           Email Address <span className="text-red-500">*</span>
                         </label>
                         <button
                           id="email-mode-use-phone-link"
                           type="button"
                           onClick={() => updateMode("otp")}
-                          className="text-[11px] font-bold text-[#663CF6] hover:underline flex items-center gap-1"
+                          className="text-[11px] font-bold text-[#663CF6] hover:underline flex items-center gap-1 dark:text-[#A78BFA]"
                         >
                           <Smartphone className="h-3 w-3" />
                           <span>Use Mobile Number</span>
                         </button>
                       </div>
-                      <div className="flex items-center rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2.5 shadow-xs transition-all focus-within:border-[#663CF6] focus-within:ring-2 focus-within:ring-[#EDE7FF]">
-                        <Mail className="h-4 w-4 text-[#666987] shrink-0" />
+                      <div className="flex items-center rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2.5 shadow-xs transition-all focus-within:border-[#663CF6] focus-within:ring-2 focus-within:ring-[#EDE7FF] dark:border-[#343B6B] dark:bg-[#10142C] dark:focus-within:border-[#8B5CF6] dark:focus-within:ring-[#8B5CF6]/30">
+                        <Mail className="h-4 w-4 text-[#666987] shrink-0 dark:text-[#9DA6CC]" />
                         <input
                           id="login-email-input"
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="principal@sunriseis.edu.in"
-                          className="ml-2.5 w-full bg-transparent text-sm font-semibold text-[#08093B] placeholder-[#9094B0] focus:outline-none"
+                          className="ml-2.5 w-full bg-transparent text-sm font-semibold text-[#08093B] placeholder-[#9094B0] focus:outline-none dark:text-[#F3F5FF] dark:placeholder-[#7A83AD]"
                         />
                       </div>
                     </div>
 
                     {/* Helper Callout */}
-                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#4D5072]">
-                      <Info className="h-3.5 w-3.5 text-[#666987] shrink-0" />
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#4D5072] dark:text-[#9DA6CC]">
+                      <Info className="h-3.5 w-3.5 text-[#666987] shrink-0 dark:text-[#9DA6CC]" />
                       <span>We&apos;ll send a 6-digit verification code (OTP) to your email address.</span>
                     </div>
 
@@ -661,22 +665,22 @@ export function SchoolLoginPage() {
                   </form>
 
                   {/* Registration Link */}
-                  <p className="text-center text-xs font-medium text-[#4D5072]">
+                  <p className="text-center text-xs font-medium text-[#4D5072] dark:text-[#9DA6CC]">
                     Don&apos;t have a school on our platform?{" "}
                     <Link
                       href="/register?step=1"
-                      className="font-bold text-[#663CF6] hover:underline"
+                      className="font-bold text-[#663CF6] hover:underline dark:text-[#A78BFA]"
                     >
                       Register Now &rarr;
                     </Link>
                   </p>
 
                   {/* Security Assurance Card */}
-                  <div className="rounded-[16px] border border-[#E2E6F7] bg-[#FAF9FF] p-3.5 flex items-start gap-2.5">
-                    <ShieldCheck className="h-5 w-5 text-[#663CF6] shrink-0 mt-0.5" />
+                  <div className="rounded-[16px] border border-[#E2E6F7] bg-[#FAF9FF] p-3.5 flex items-start gap-2.5 dark:border-[#2E2A5C] dark:bg-[#10142C]">
+                    <ShieldCheck className="h-5 w-5 text-[#663CF6] shrink-0 mt-0.5 dark:text-[#A78BFA]" />
                     <div>
-                      <h4 className="text-xs font-bold text-[#08093B]">Your data is secure</h4>
-                      <p className="text-[11px] text-[#4D5072] leading-tight mt-0.5">
+                      <h4 className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Your data is secure</h4>
+                      <p className="text-[11px] text-[#4D5072] leading-tight mt-0.5 dark:text-[#9DA6CC]">
                         We keep your information safe and use it only to operate your
                         school&apos;s workspace.
                       </p>
@@ -693,11 +697,11 @@ export function SchoolLoginPage() {
                   <form onSubmit={handlePasswordLogin} className="space-y-4">
                     {/* Identifier */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[#08093B]">
+                      <label className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
                         Email Address or Mobile / Login ID <span className="text-red-500">*</span>
                       </label>
-                      <div className="flex items-center rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2.5 shadow-xs transition-all focus-within:border-[#663CF6] focus-within:ring-2 focus-within:ring-[#EDE7FF]">
-                        <Mail className="h-4 w-4 text-[#666987] shrink-0" />
+                      <div className="flex items-center rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2.5 shadow-xs transition-all focus-within:border-[#663CF6] focus-within:ring-2 focus-within:ring-[#EDE7FF] dark:border-[#343B6B] dark:bg-[#10142C] dark:focus-within:border-[#8B5CF6] dark:focus-within:ring-[#8B5CF6]/30">
+                        <Mail className="h-4 w-4 text-[#666987] shrink-0 dark:text-[#9DA6CC]" />
                         <input
                           id="login-id-input"
                           name="identifier"
@@ -706,18 +710,18 @@ export function SchoolLoginPage() {
                           value={loginId}
                           onChange={(e) => setLoginId(e.target.value)}
                           placeholder="principal@sunriseis.edu.in or 9876543210"
-                          className="ml-2.5 w-full bg-transparent text-sm font-semibold text-[#08093B] placeholder-[#9094B0] focus:outline-none"
+                          className="ml-2.5 w-full bg-transparent text-sm font-semibold text-[#08093B] placeholder-[#9094B0] focus:outline-none dark:text-[#F3F5FF] dark:placeholder-[#7A83AD]"
                         />
                       </div>
                     </div>
 
                     {/* Password */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[#08093B]">
+                      <label className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
                         Password <span className="text-red-500">*</span>
                       </label>
-                      <div className="flex items-center rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2.5 shadow-xs transition-all focus-within:border-[#663CF6] focus-within:ring-2 focus-within:ring-[#EDE7FF]">
-                        <Lock className="h-4 w-4 text-[#666987] shrink-0" />
+                      <div className="flex items-center rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2.5 shadow-xs transition-all focus-within:border-[#663CF6] focus-within:ring-2 focus-within:ring-[#EDE7FF] dark:border-[#343B6B] dark:bg-[#10142C] dark:focus-within:border-[#8B5CF6] dark:focus-within:ring-[#8B5CF6]/30">
+                        <Lock className="h-4 w-4 text-[#666987] shrink-0 dark:text-[#9DA6CC]" />
                         <input
                           id="login-password-input"
                           name="password"
@@ -726,12 +730,12 @@ export function SchoolLoginPage() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="ml-2.5 w-full bg-transparent text-sm font-semibold text-[#08093B] placeholder-[#9094B0] focus:outline-none"
+                          className="ml-2.5 w-full bg-transparent text-sm font-semibold text-[#08093B] placeholder-[#9094B0] focus:outline-none dark:text-[#F3F5FF] dark:placeholder-[#7A83AD]"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="text-[#666987] hover:text-[#08093B]"
+                          className="text-[#666987] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
                           aria-label="Toggle password visibility"
                         >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -743,7 +747,7 @@ export function SchoolLoginPage() {
                     <div className="flex justify-end pt-0.5">
                       <Link
                         href="/forgot-password"
-                        className="text-xs font-bold text-[#663CF6] hover:underline"
+                        className="text-xs font-bold text-[#663CF6] hover:underline dark:text-[#A78BFA]"
                       >
                         Forgot Password?
                       </Link>
@@ -763,22 +767,22 @@ export function SchoolLoginPage() {
                   </form>
 
                   {/* Registration Link */}
-                  <p className="text-center text-xs font-medium text-[#4D5072]">
+                  <p className="text-center text-xs font-medium text-[#4D5072] dark:text-[#9DA6CC]">
                     Don&apos;t have a school on our platform?{" "}
                     <Link
                       href="/register?step=1"
-                      className="font-bold text-[#663CF6] hover:underline"
+                      className="font-bold text-[#663CF6] hover:underline dark:text-[#A78BFA]"
                     >
                       Register Now &rarr;
                     </Link>
                   </p>
 
                   {/* Security Assurance Card */}
-                  <div className="rounded-[16px] border border-[#E2E6F7] bg-[#FAF9FF] p-3.5 flex items-start gap-2.5">
-                    <ShieldCheck className="h-5 w-5 text-[#663CF6] shrink-0 mt-0.5" />
+                  <div className="rounded-[16px] border border-[#E2E6F7] bg-[#FAF9FF] p-3.5 flex items-start gap-2.5 dark:border-[#2E2A5C] dark:bg-[#10142C]">
+                    <ShieldCheck className="h-5 w-5 text-[#663CF6] shrink-0 mt-0.5 dark:text-[#A78BFA]" />
                     <div>
-                      <h4 className="text-xs font-bold text-[#08093B]">Your data is secure</h4>
-                      <p className="text-[11px] text-[#4D5072] leading-tight mt-0.5">
+                      <h4 className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Your data is secure</h4>
+                      <p className="text-[11px] text-[#4D5072] leading-tight mt-0.5 dark:text-[#9DA6CC]">
                         We keep your information safe and use it only to operate your
                         school&apos;s workspace.
                       </p>
@@ -793,12 +797,12 @@ export function SchoolLoginPage() {
               {mode === "otp-verify" && (
                 <div className="mt-5 space-y-5">
                   <div className="text-center">
-                    <h2 className="text-2xl font-black tracking-tight text-[#08093B]">
+                    <h2 className="text-2xl font-black tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
                       OTP Verification
                     </h2>
-                    <p className="mt-1 text-xs font-medium text-[#4D5072]">
+                    <p className="mt-1 text-xs font-medium text-[#4D5072] dark:text-[#9DA6CC]">
                       We&apos;ve sent a 6-digit OTP to{" "}
-                      <span className="font-semibold text-[#08093B]">
+                      <span className="font-semibold text-[#08093B] dark:text-[#F3F5FF]">
                         {otpChannel === "email" ? email : phone}
                       </span>.
                     </p>
@@ -807,8 +811,8 @@ export function SchoolLoginPage() {
                   <form onSubmit={handleVerifyOtp} className="space-y-4">
                     {/* Resend Notice Feedback */}
                     {resendNotice && (
-                      <div className="flex items-center gap-2 rounded-[10px] bg-[#F0FDF4] border border-[#BBF7D0] px-3 py-2 text-xs font-semibold text-[#166534]">
-                        <Check className="h-4 w-4 shrink-0 text-[#16A34A]" />
+                      <div className="flex items-center gap-2 rounded-[10px] bg-[#F0FDF4] border border-[#BBF7D0] px-3 py-2 text-xs font-semibold text-[#166534] dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                        <Check className="h-4 w-4 shrink-0 text-[#16A34A] dark:text-emerald-400" />
                         <span>{resendNotice}</span>
                       </div>
                     )}
@@ -828,21 +832,21 @@ export function SchoolLoginPage() {
                           value={digit}
                           onChange={(e) => handleOtpChange(e.target.value, idx)}
                           onKeyDown={(e) => handleOtpKeyDown(e, idx)}
-                          className={`h-11 sm:h-13 w-10 sm:w-12 flex-1 min-w-0 max-w-[48px] text-center text-lg sm:text-xl font-black text-[#08093B] rounded-[12px] bg-white transition-all focus:outline-none ${
+                          className={`h-11 sm:h-13 w-10 sm:w-12 flex-1 min-w-0 max-w-[48px] text-center text-lg sm:text-xl font-black text-[#08093B] rounded-[12px] bg-white transition-all focus:outline-none dark:bg-[#10142C] dark:text-[#F3F5FF] ${
                             idx === 5
-                              ? "border-2 border-[#663CF6] ring-4 ring-[#EDE7FF]"
-                              : "border border-[#CAD0EB] focus:border-[#663CF6] focus:ring-4 focus:ring-[#EDE7FF]"
+                              ? "border-2 border-[#663CF6] ring-4 ring-[#EDE7FF] dark:border-[#8B5CF6] dark:ring-[#8B5CF6]/30"
+                              : "border border-[#CAD0EB] focus:border-[#663CF6] focus:ring-4 focus:ring-[#EDE7FF] dark:border-[#343B6B] dark:focus:border-[#8B5CF6] dark:focus:ring-[#8B5CF6]/30"
                           }`}
                         />
                       ))}
                     </div>
 
                     {/* Timer & Change Destination Row */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-[#4D5072] pt-1">
-                      <div className="flex items-center gap-1.5 text-[#4D5072]">
-                        <Clock className="h-3.5 w-3.5 text-[#663CF6]" />
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-[#4D5072] pt-1 dark:text-[#9DA6CC]">
+                      <div className="flex items-center gap-1.5 text-[#4D5072] dark:text-[#9DA6CC]">
+                        <Clock className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" />
                         {isResendingOtp ? (
-                          <span className="inline-flex items-center gap-1 font-semibold text-[#663CF6]">
+                          <span className="inline-flex items-center gap-1 font-semibold text-[#663CF6] dark:text-[#A78BFA]">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending...
                           </span>
                         ) : resendTimer > 0 ? (
@@ -852,7 +856,7 @@ export function SchoolLoginPage() {
                             type="button"
                             onClick={handleResendOtp}
                             disabled={isResendingOtp}
-                            className="font-bold text-[#663CF6] hover:underline"
+                            className="font-bold text-[#663CF6] hover:underline dark:text-[#A78BFA]"
                           >
                             Resend OTP Now
                           </button>
@@ -863,7 +867,7 @@ export function SchoolLoginPage() {
                         id="change-mobile-btn"
                         type="button"
                         onClick={() => updateMode(otpChannel === "email" ? "email" : "otp")}
-                        className="flex items-center gap-1 font-bold text-[#663CF6] hover:underline"
+                        className="flex items-center gap-1 font-bold text-[#663CF6] hover:underline dark:text-[#A78BFA]"
                       >
                         <Pencil className="h-3 w-3" />
                         <span>
@@ -888,9 +892,9 @@ export function SchoolLoginPage() {
                   {/* "or" Divider */}
                   <div className="relative flex items-center justify-center py-1">
                     <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-[#E5E9F5]" />
+                      <div className="w-full border-t border-[#E5E9F5] dark:border-[#262B4D]" />
                     </div>
-                    <span className="relative bg-white px-3 text-xs font-semibold text-[#76799C]">
+                    <span className="relative bg-white px-3 text-xs font-semibold text-[#76799C] dark:bg-[#141731] dark:text-[#9DA6CC]">
                       or
                     </span>
                   </div>
@@ -901,18 +905,18 @@ export function SchoolLoginPage() {
                     type="button"
                     variant="secondary"
                     onClick={() => updateMode("password")}
-                    className="w-full rounded-[14px] border border-[#D6DBF0] py-3 text-xs font-bold text-[#08093B] hover:bg-[#F7F4FF] hover:border-[#663CF6] flex items-center justify-center gap-2 transition-colors"
+                    className="w-full rounded-[14px] border border-[#D6DBF0] py-3 text-xs font-bold text-[#08093B] hover:bg-[#F7F4FF] hover:border-[#663CF6] flex items-center justify-center gap-2 transition-colors dark:border-[#2E345B] dark:text-[#F3F5FF] dark:hover:bg-[#1E2245] dark:hover:border-[#8B5CF6]"
                   >
-                    <Lock className="h-3.5 w-3.5 text-[#663CF6]" />
+                    <Lock className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" />
                     <span>Sign in with Password</span>
                   </Button>
 
                   {/* Security Assurance Card */}
-                  <div className="rounded-[16px] border border-[#E2E6F7] bg-[#FAF9FF] p-3.5 flex items-start gap-2.5">
-                    <ShieldCheck className="h-5 w-5 text-[#663CF6] shrink-0 mt-0.5" />
+                  <div className="rounded-[16px] border border-[#E2E6F7] bg-[#FAF9FF] p-3.5 flex items-start gap-2.5 dark:border-[#2E2A5C] dark:bg-[#10142C]">
+                    <ShieldCheck className="h-5 w-5 text-[#663CF6] shrink-0 mt-0.5 dark:text-[#A78BFA]" />
                     <div>
-                      <h4 className="text-xs font-bold text-[#08093B]">Your data is secure</h4>
-                      <p className="text-[11px] text-[#4D5072] leading-tight mt-0.5">
+                      <h4 className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Your data is secure</h4>
+                      <p className="text-[11px] text-[#4D5072] leading-tight mt-0.5 dark:text-[#9DA6CC]">
                         We keep your information safe and use it only to operate your
                         school&apos;s workspace.
                       </p>
@@ -926,16 +930,16 @@ export function SchoolLoginPage() {
       </main>
 
       {/* =======================================================================
-          STATE D: LOGIN SUCCESSFUL POPUP MODAL (Screenshot 1)
+          STATE D: LOGIN SUCCESSFUL POPUP MODAL
           ======================================================================= */}
       {loginSuccess && (
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="login-success-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200 dark:bg-black/65"
         >
-          <div className="relative w-full max-w-md rounded-[28px] bg-white p-7 shadow-2xl border border-[#EAE6FD] text-center animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-md rounded-[28px] bg-white p-7 shadow-2xl border border-[#EAE6FD] text-center animate-in zoom-in-95 duration-200 dark:bg-[#141731] dark:border-[#2E345B]">
             {/* Close Button */}
             <button
               id="close-login-success-modal"
@@ -947,7 +951,7 @@ export function SchoolLoginPage() {
                 }
                 setLoginSuccess(false);
               }}
-              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#666987] hover:bg-[#F1F3F9] hover:text-[#08093B] transition-colors"
+              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#666987] hover:bg-[#F1F3F9] hover:text-[#08093B] transition-colors dark:text-[#9DA6CC] dark:hover:bg-[#1E2245] dark:hover:text-[#F3F5FF]"
               aria-label="Close modal"
             >
               <X className="h-4 w-4" />
@@ -975,7 +979,7 @@ export function SchoolLoginPage() {
               </svg>
 
               {/* Radiant Green Success Badge */}
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[#22C55E] text-white shadow-lg ring-8 ring-[#DCFCE7]">
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[#22C55E] text-white shadow-lg ring-8 ring-[#DCFCE7] dark:ring-emerald-950/60">
                 <Check className="h-8 w-8 stroke-[3]" />
               </div>
             </div>
@@ -983,35 +987,35 @@ export function SchoolLoginPage() {
             {/* Headings */}
             <h3
               id="login-success-title"
-              className="mt-3 text-2xl font-black tracking-tight text-[#08093B]"
+              className="mt-3 text-2xl font-black tracking-tight text-[#08093B] dark:text-[#F3F5FF]"
             >
               Login Successful!
             </h3>
-            <p className="mt-1 text-sm font-bold text-[#08093B]">
+            <p className="mt-1 text-sm font-bold text-[#08093B] dark:text-[#F3F5FF]">
               Welcome back, {loggedInUser?.name || "Administrator"}!
             </p>
-            <p className="text-xs font-medium text-[#4D5072]">
+            <p className="text-xs font-medium text-[#4D5072] dark:text-[#9DA6CC]">
               You have been signed in to {loggedInUser?.schoolName || "your school portal"}.
             </p>
 
             {/* 3 Quick-Access Modules */}
-            <div className="mt-6 rounded-2xl border border-[#EAE6FD] bg-[#F7F6FE] p-4">
-              <div className="grid grid-cols-3 divide-x divide-[#E5E0FA]">
+            <div className="mt-6 rounded-2xl border border-[#EAE6FD] bg-[#F7F6FE] p-4 dark:border-[#2E345B] dark:bg-[#10142C]">
+              <div className="grid grid-cols-3 divide-x divide-[#E5E0FA] dark:divide-[#262B4D]">
                 <div className="flex flex-col items-center px-1 text-center">
-                  <Monitor className="h-5 w-5 text-[#663CF6]" />
-                  <span className="mt-1 text-[11px] font-bold text-[#08093B] leading-tight">
+                  <Monitor className="h-5 w-5 text-[#663CF6] dark:text-[#A78BFA]" />
+                  <span className="mt-1 text-[11px] font-bold text-[#08093B] leading-tight dark:text-[#F3F5FF]">
                     Go to Dashboard
                   </span>
                 </div>
                 <div className="flex flex-col items-center px-1 text-center">
-                  <GraduationCap className="h-5 w-5 text-[#663CF6]" />
-                  <span className="mt-1 text-[11px] font-bold text-[#08093B] leading-tight">
+                  <GraduationCap className="h-5 w-5 text-[#663CF6] dark:text-[#A78BFA]" />
+                  <span className="mt-1 text-[11px] font-bold text-[#08093B] leading-tight dark:text-[#F3F5FF]">
                     Manage Academics
                   </span>
                 </div>
                 <div className="flex flex-col items-center px-1 text-center">
-                  <Users className="h-5 w-5 text-[#663CF6]" />
-                  <span className="mt-1 text-[11px] font-bold text-[#08093B] leading-tight">
+                  <Users className="h-5 w-5 text-[#663CF6] dark:text-[#A78BFA]" />
+                  <span className="mt-1 text-[11px] font-bold text-[#08093B] leading-tight dark:text-[#F3F5FF]">
                     Manage Students & Staff
                   </span>
                 </div>

@@ -34,6 +34,7 @@ import {
 import { AtmosphericBackground } from "@/components/ui/atmospheric-background";
 import { ResourcesDropdown, MobileResourcesMenu } from "./resources-dropdown";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import {
   DETAILED_HELP_ARTICLES,
   HELP_TOPICS,
@@ -47,17 +48,17 @@ function HelpHeroIllustration() {
   return (
     <div className="relative mx-auto flex w-full max-w-lg items-center justify-center p-4">
       {/* Soft background glow */}
-      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/40 to-[#93C5FD]/35 blur-2xl filter" />
+      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/40 dark:from-[#663CF6]/25 to-[#93C5FD]/35 dark:to-[#0284C7]/20 blur-2xl filter" />
 
       {/* Floating Sparkle / Status badges */}
-      <div className="absolute -top-3 left-6 z-20 flex animate-bounce items-center gap-1.5 rounded-full border border-[#D4C4FE]/80 bg-white/95 px-3 py-1 shadow-md shadow-[#663CF6]/10 backdrop-blur-md">
-        <Sparkles className="h-3.5 w-3.5 text-[#7C3AED]" />
-        <span className="text-xs font-bold text-[#08093B]">24/7 Knowledge Base</span>
+      <div className="absolute -top-3 left-6 z-20 flex animate-bounce items-center gap-1.5 rounded-full border border-[#D4C4FE]/80 dark:border-[#42357D]/90 bg-white/95 dark:bg-[#141731]/95 px-3 py-1 shadow-md shadow-[#663CF6]/10 backdrop-blur-md">
+        <Sparkles className="h-3.5 w-3.5 text-[#7C3AED] dark:text-[#B99BFF]" />
+        <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">24/7 Knowledge Base</span>
       </div>
 
-      <div className="absolute -bottom-2 right-4 z-20 flex items-center gap-1.5 rounded-full border border-[#BAE6FD] bg-white/95 px-3 py-1 shadow-md shadow-[#0284C7]/10 backdrop-blur-md">
-        <CheckCircle2 className="h-3.5 w-3.5 text-[#0284C7]" />
-        <span className="text-xs font-bold text-[#08093B]">Verified Solutions</span>
+      <div className="absolute -bottom-2 right-4 z-20 flex items-center gap-1.5 rounded-full border border-[#BAE6FD] dark:border-[#1E4670] bg-white/95 dark:bg-[#141731]/95 px-3 py-1 shadow-md shadow-[#0284C7]/10 backdrop-blur-md">
+        <CheckCircle2 className="h-3.5 w-3.5 text-[#0284C7] dark:text-[#56C2FF]" />
+        <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Verified Solutions</span>
       </div>
 
       <svg
@@ -236,14 +237,14 @@ export function HelpPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45]">
+    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45] dark:text-[#F3F5FF]">
       {/* Luminous Atmospheric Aurora & Wave Background with rich contrast */}
       <AtmosphericBackground />
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-[#7C3AED]/40 bg-white/98 px-4 py-3 text-sm font-semibold text-[#08093B] shadow-xl backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-3">
-          <Sparkles className="h-4 w-4 text-[#7C3AED]" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-[#7C3AED]/40 bg-white/98 dark:bg-[#141731]/98 px-4 py-3 text-sm font-semibold text-[#08093B] dark:text-[#F3F5FF] shadow-xl backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-3">
+          <Sparkles className="h-4 w-4 text-[#7C3AED] dark:text-[#B99BFF]" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -251,20 +252,20 @@ export function HelpPage() {
       {/* =========================================================================
           1. HEADER / NAVBAR
           ========================================================================= */}
-      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] dark:border-[#2C3159] bg-white/95 dark:bg-[#141731]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           {/* Logo */}
           <BrandLogo className="h-8 sm:h-9" />
 
           {/* Desktop Navigation Menu */}
-          <nav className="hidden items-center gap-8 text-sm font-semibold text-[#4D5072] md:flex">
-            <Link href="/features" className="transition-colors hover:text-[#663CF6]">
+          <nav className="hidden items-center gap-8 text-sm font-semibold text-[#4D5072] dark:text-[#B4B9DA] md:flex">
+            <Link href="/features" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Features
             </Link>
-            <Link href="/pricing" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/pricing" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Pricing
             </Link>
-            <Link href="/for-schools" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/for-schools" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               For Schools
             </Link>
             <ResourcesDropdown active={true} />
@@ -272,9 +273,10 @@ export function HelpPage() {
 
           {/* Right Action CTAs & Mobile Hamburger */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <Link
               href="/login"
-              className="hidden sm:inline-flex items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] bg-white px-3.5 py-1.5 text-xs font-bold text-[#4F27E8] shadow-xs transition hover:border-[#4F27E8] hover:bg-[#F7F4FF]"
+              className="hidden sm:inline-flex items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] dark:border-[#8B5CF6] bg-white dark:bg-[#141731] px-3.5 py-1.5 text-xs font-bold text-[#4F27E8] dark:text-[#C4B5FD] shadow-xs transition hover:border-[#4F27E8] dark:hover:border-[#9D7CFE] hover:bg-[#F7F4FF] dark:hover:bg-[#241E4A]"
             >
               Sign In
             </Link>
@@ -289,7 +291,7 @@ export function HelpPage() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#D6DBF0] bg-white text-[#08093B] shadow-sm transition hover:bg-[#F2EEFD] hover:text-[#663CF6] md:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#08093B] dark:text-[#F3F5FF] shadow-sm transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] md:hidden"
               aria-label="Toggle Navigation Menu"
               aria-expanded={mobileMenuOpen}
             >
@@ -300,37 +302,37 @@ export function HelpPage() {
 
         {/* Mobile Dropdown Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="border-b border-[#D6DBF0] bg-white/98 px-4 pt-3 pb-6 shadow-xl backdrop-blur-lg md:hidden">
-            <nav className="flex flex-col space-y-3.5 text-sm font-semibold text-[#1B1D45]">
+          <div className="border-b border-[#D6DBF0] dark:border-[#2C3159] bg-white/98 dark:bg-[#141731]/98 px-4 pt-3 pb-6 shadow-xl backdrop-blur-lg md:hidden">
+            <nav className="flex flex-col space-y-3.5 text-sm font-semibold text-[#1B1D45] dark:text-[#F3F5FF]">
               <Link
                 href="/features"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Features
               </Link>
               <Link
                 href="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Pricing
               </Link>
               <Link
                 href="/for-schools"
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] hover:text-[#663CF6]"
+                className="rounded-[10px] px-3 py-2 transition hover:bg-[#F2EEFD] dark:hover:bg-[#261E52] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 For Schools
               </Link>
               <MobileResourcesMenu onItemClick={() => setMobileMenuOpen(false)} />
             </nav>
 
-            <div className="mt-4 flex flex-col gap-2.5 border-t border-[#DFE3F5] pt-4">
+            <div className="mt-4 flex flex-col gap-2.5 border-t border-[#DFE3F5] dark:border-[#2C3159] pt-4">
               <Link
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex w-full items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] bg-white py-2.5 text-xs font-bold text-[#4F27E8] shadow-xs"
+                className="flex w-full items-center justify-center rounded-[12px] border-[1.5px] border-[#7C3AED] dark:border-[#8B5CF6] bg-white dark:bg-[#141731] py-2.5 text-xs font-bold text-[#4F27E8] dark:text-[#C4B5FD] shadow-xs"
               >
                 Sign In
               </Link>
@@ -350,30 +352,30 @@ export function HelpPage() {
         {/* =========================================================================
             2. HERO SECTION (Help Center Badge, Title, Subtitle, Search, Illustration)
             ========================================================================= */}
-        <section className="relative overflow-hidden rounded-[28px] border border-[#CDC2F7] bg-gradient-to-br from-white/95 via-[#F8F6FE]/90 to-[#EDE7FF]/80 p-6 sm:p-10 lg:p-12 shadow-[0_16px_40px_rgba(24,18,77,0.08)] backdrop-blur-md">
+        <section className="relative overflow-hidden rounded-[28px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#F8F6FE]/90 dark:via-[#191C3B]/90 to-[#EDE7FF]/80 dark:to-[#251D4A]/85 p-6 sm:p-10 lg:p-12 shadow-[0_16px_40px_rgba(24,18,77,0.08)] backdrop-blur-md">
           <div className="grid items-center gap-8 lg:grid-cols-12 lg:gap-12">
             {/* Left Content */}
             <div className="space-y-5 lg:col-span-7">
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#D4C4FE]/80 bg-[#EDE7FF] px-3.5 py-1 text-xs font-extrabold text-[#663CF6] shadow-xs">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#D4C4FE]/80 dark:border-[#42357D]/90 bg-[#EDE7FF] dark:bg-[#251D4A] px-3.5 py-1 text-xs font-extrabold text-[#663CF6] dark:text-[#B59CFF] shadow-xs">
                 <HelpCircle className="h-3.5 w-3.5" />
                 <span>Help Center</span>
               </div>
 
               {/* Headline */}
-              <h1 className="text-3xl font-extrabold tracking-tight text-[#08093B] sm:text-4xl lg:text-5xl lg:leading-[1.15]">
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF] sm:text-4xl lg:text-5xl lg:leading-[1.15]">
                 Help Center
               </h1>
 
               {/* Subtitle */}
-              <p className="max-w-xl text-sm font-medium leading-relaxed text-[#4D5072] sm:text-base">
+              <p className="max-w-xl text-sm font-medium leading-relaxed text-[#4D5072] dark:text-[#B4B9DA] sm:text-base">
                 Find answers, learn how to use the platform, and get the most out of ScholoNix.
               </p>
 
               {/* Search Bar with Micro-interactions */}
               <div className="relative max-w-lg pt-2">
-                <div className="relative flex items-center rounded-2xl border border-[#D6DBF0] bg-white p-1.5 shadow-[0_8px_25px_rgba(24,18,77,0.06)] transition-all focus-within:border-[#7C3AED] focus-within:ring-3 focus-within:ring-[#7C3AED]/15">
-                  <div className="pl-3 pr-2 text-[#8E92BC]">
+                <div className="relative flex items-center rounded-2xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] p-1.5 shadow-[0_8px_25px_rgba(24,18,77,0.06)] transition-all focus-within:border-[#7C3AED] dark:focus-within:border-[#9D7CFE] focus-within:ring-3 focus-within:ring-[#7C3AED]/15">
+                  <div className="pl-3 pr-2 text-[#8E92BC] dark:text-[#888EB5]">
                     <Search className="h-5 w-5" />
                   </div>
                   <input
@@ -381,14 +383,14 @@ export function HelpPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search for help articles, guides, or topics..."
-                    className="w-full bg-transparent text-sm font-semibold text-[#08093B] placeholder-[#8E92BC] outline-none"
+                    className="w-full bg-transparent text-sm font-semibold text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] outline-none"
                     aria-label="Search for help articles"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={() => setSearchQuery("")}
-                      className="mr-1 p-1 text-[#8E92BC] hover:text-[#08093B]"
+                      className="mr-1 p-1 text-[#8E92BC] dark:text-[#888EB5] hover:text-[#08093B] dark:hover:text-white"
                       title="Clear search"
                     >
                       <X className="h-4 w-4" />
@@ -408,7 +410,7 @@ export function HelpPage() {
                   </button>
                 </div>
                 {searchQuery && (
-                  <p className="mt-2 text-xs font-semibold text-[#663CF6]">
+                  <p className="mt-2 text-xs font-semibold text-[#663CF6] dark:text-[#B59CFF]">
                     Found {filteredArticles.length} matching article(s) and {filteredTopics.length} topic(s)
                   </p>
                 )}
@@ -475,15 +477,15 @@ export function HelpPage() {
                     setActiveTopic(topic);
                   }
                 }}
-                className="group flex flex-col items-center rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F3EEFF]/80 p-4 text-center shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] hover:shadow-[0_14px_30px_rgba(102,60,246,0.14)]"
+                className="group flex flex-col items-center rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F3EEFF]/80 dark:to-[#221C4A]/80 p-4 text-center shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_14px_30px_rgba(102,60,246,0.14)]"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60 transition-transform group-hover:scale-110 group-hover:bg-[#E4DAFF]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60 transition-transform group-hover:scale-110 group-hover:bg-[#E4DAFF] dark:group-hover:bg-[#332766]">
                   <Icon className="h-5 w-5" />
                 </div>
-                <span className="mt-3 text-xs font-bold text-[#08093B] group-hover:text-[#663CF6] transition-colors leading-tight">
+                <span className="mt-3 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition-colors leading-tight">
                   {cat.title}
                 </span>
-                <span className="mt-1 text-[11px] font-medium text-[#7C829E] leading-tight line-clamp-2">
+                <span className="mt-1 text-[11px] font-medium text-[#7C829E] dark:text-[#969CC2] leading-tight line-clamp-2">
                   {cat.desc}
                 </span>
               </button>
@@ -497,7 +499,7 @@ export function HelpPage() {
         <section className="mt-12 grid gap-8 lg:grid-cols-12 lg:gap-10">
           {/* Left Column: Popular Help Articles */}
           <div className="space-y-4 lg:col-span-8">
-            <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B]">
+            <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
               Popular Help Articles
             </h2>
 
@@ -506,23 +508,23 @@ export function HelpPage() {
                 <Link
                   key={article.id}
                   href={`/help/${article.slug}`}
-                  className="group flex items-center justify-between rounded-2xl border border-[#CDC2F7] bg-gradient-to-r from-white/95 via-[#FAF8FF] to-[#F5F2FE]/70 px-5 py-4 shadow-[0_4px_16px_rgba(24,18,77,0.05)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#663CF6] hover:bg-[#FAF9FF] hover:shadow-[0_10px_26px_rgba(102,60,246,0.12)]"
+                  className="group flex items-center justify-between rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-r from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F2FE]/70 dark:to-[#201C45]/70 px-5 py-4 shadow-[0_4px_16px_rgba(24,18,77,0.05)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:bg-[#FAF9FF] dark:hover:bg-[#201C42] hover:shadow-[0_10px_26px_rgba(102,60,246,0.12)]"
                 >
                   <div className="flex items-center gap-3.5">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60 transition-transform group-hover:scale-105">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60 transition-transform group-hover:scale-105">
                       <FileText className="h-4 w-4" />
                     </div>
                     <div>
-                      <span className="text-sm font-bold text-[#08093B] transition-colors group-hover:text-[#663CF6]">
+                      <span className="text-sm font-bold text-[#08093B] dark:text-[#F3F5FF] transition-colors group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD]">
                         {article.title}
                       </span>
-                      <div className="mt-0.5 text-[11px] font-medium text-[#7C829E]">
+                      <div className="mt-0.5 text-[11px] font-medium text-[#7C829E] dark:text-[#969CC2]">
                         {article.category} &bull; {article.readTime}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full text-[#7C829E] transition-transform group-hover:translate-x-1 group-hover:text-[#663CF6]">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full text-[#7C829E] dark:text-[#969CC2] transition-transform group-hover:translate-x-1 group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD]">
                     <ArrowRight className="h-4 w-4" />
                   </div>
                 </Link>
@@ -533,17 +535,17 @@ export function HelpPage() {
           {/* Right Column: Video Tutorials & Still Need Help */}
           <div className="space-y-6 lg:col-span-4">
             {/* Card 1: Video Tutorials */}
-            <div className="rounded-[24px] border border-[#CDC2F7] bg-gradient-to-br from-white/95 via-[#FAF8FF] to-[#F5F2FE]/90 p-6 text-center shadow-[0_12px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+            <div className="rounded-[24px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F2FE]/90 dark:to-[#201C45]/90 p-6 text-center shadow-[0_12px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm">
               {/* Video Monitor graphic */}
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EDE7FF] text-[#663CF6] shadow-xs">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] shadow-xs">
                 <Video className="h-7 w-7" />
               </div>
 
-              <h3 className="mt-4 text-lg font-extrabold text-[#08093B]">
+              <h3 className="mt-4 text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                 Video Tutorials
               </h3>
 
-              <p className="mt-1 text-xs font-medium leading-relaxed text-[#5A5E7A]">
+              <p className="mt-1 text-xs font-medium leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
                 Step-by-step videos to help you set up and use the platform.
               </p>
 
@@ -551,7 +553,7 @@ export function HelpPage() {
                 <button
                   type="button"
                   onClick={() => setVideoModalOpen(true)}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#CDC2F7] bg-white px-5 py-2.5 text-xs font-bold text-[#08093B] shadow-xs transition-all hover:border-[#663CF6] hover:bg-[#F7F4FF] hover:text-[#663CF6] hover:scale-105"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#CDC2F7] dark:border-[#40347A] bg-white dark:bg-[#141731] px-5 py-2.5 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] shadow-xs transition-all hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:bg-[#F7F4FF] dark:hover:bg-[#241E4A] hover:text-[#663CF6] dark:hover:text-[#C4B5FD] hover:scale-105"
                 >
                   <span>Watch Tutorials</span>
                   <ArrowRight className="h-3.5 w-3.5" />
@@ -560,16 +562,16 @@ export function HelpPage() {
             </div>
 
             {/* Card 2: Still Need Help? */}
-            <div className="rounded-[24px] border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F3EEFF] p-6 shadow-[0_12px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+            <div className="rounded-[24px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F3EEFF] dark:to-[#221C4A] p-6 shadow-[0_12px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60">
                   <Headphones className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-[#08093B]">
+                  <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                     Still Need Help?
                   </h3>
-                  <p className="text-[11px] font-medium text-[#7C829E]">
+                  <p className="text-[11px] font-medium text-[#7C829E] dark:text-[#969CC2]">
                     Can&apos;t find what you&apos;re looking for? Our support team is here to help.
                   </p>
                 </div>
@@ -593,7 +595,7 @@ export function HelpPage() {
             5. BROWSE BY TOPIC (8 Cards Grid)
             ========================================================================= */}
         <section className="mt-16 space-y-6">
-          <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B]">
+          <h2 className="text-2xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
             Browse by Topic
           </h2>
 
@@ -619,27 +621,27 @@ export function HelpPage() {
               return (
                 <div
                   key={topic.id}
-                  className="group relative flex flex-col justify-between rounded-[22px] border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F3EEFF]/80 p-6 shadow-[0_8px_24px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] hover:shadow-[0_16px_36px_rgba(102,60,246,0.14)]"
+                  className="group relative flex flex-col justify-between rounded-[22px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F3EEFF]/80 dark:to-[#221C4A]/80 p-6 shadow-[0_8px_24px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_16px_36px_rgba(102,60,246,0.14)]"
                 >
                   <div className="space-y-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60 transition-transform group-hover:scale-105 group-hover:bg-[#E4DAFF]">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60 transition-transform group-hover:scale-105 group-hover:bg-[#E4DAFF] dark:group-hover:bg-[#332766]">
                       <Icon className="h-5 w-5" />
                     </div>
 
-                    <h3 className="text-base font-extrabold text-[#08093B] group-hover:text-[#663CF6] transition-colors">
+                    <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF] group-hover:text-[#663CF6] dark:group-hover:text-[#C4B5FD] transition-colors">
                       {topic.title}
                     </h3>
 
-                    <p className="text-xs font-medium leading-relaxed text-[#5A5E7A]">
+                    <p className="text-xs font-medium leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
                       {topic.description}
                     </p>
                   </div>
 
-                  <div className="mt-5 pt-3 border-t border-[#F0F2FA]">
+                  <div className="mt-5 pt-3 border-t border-[#F0F2FA] dark:border-[#23284A]">
                     <button
                       type="button"
                       onClick={() => setActiveTopic(topic)}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] transition-colors group-hover:text-[#4F27E8]"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF] transition-colors group-hover:text-[#4F27E8] dark:group-hover:text-[#C4B5FD]"
                     >
                       <span>View Articles</span>
                       <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
@@ -674,7 +676,7 @@ export function HelpPage() {
             <button
               type="button"
               onClick={() => setGettingStartedModalOpen(true)}
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-3 text-xs font-bold text-[#663CF6] shadow-md transition-all hover:bg-[#F7F4FF] hover:scale-105 active:scale-95"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white dark:bg-[#141731] px-5 py-3 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF] shadow-md transition-all hover:bg-[#F7F4FF] dark:hover:bg-[#241E4A] hover:scale-105 active:scale-95"
             >
               <span>View Getting Started Guide</span>
               <ArrowRight className="h-4 w-4" />
@@ -694,40 +696,40 @@ export function HelpPage() {
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
-          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[24px] border border-[#D6DBF0] bg-white p-6 sm:p-8 shadow-2xl">
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[24px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] p-6 sm:p-8 shadow-2xl">
             {/* Close button */}
             <button
               type="button"
               onClick={() => setActiveArticle(null)}
-              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] transition hover:bg-[#F1F3FB] hover:text-[#08093B]"
+              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] dark:text-[#888EB5] transition hover:bg-[#F1F3FB] dark:hover:bg-[#232748] hover:text-[#08093B] dark:hover:text-white"
               aria-label="Close dialog"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <span className="inline-block rounded-full bg-[#EDE7FF] px-3 py-1 text-xs font-extrabold text-[#663CF6]">
+            <span className="inline-block rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] px-3 py-1 text-xs font-extrabold text-[#663CF6] dark:text-[#B59CFF]">
               {activeArticle.category}
             </span>
 
-            <h2 className="mt-2 text-xl sm:text-2xl font-extrabold text-[#08093B]">
+            <h2 className="mt-2 text-xl sm:text-2xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
               {activeArticle.title}
             </h2>
 
-            <p className="mt-2 text-xs sm:text-sm font-medium leading-relaxed text-[#5A5E7A]">
+            <p className="mt-2 text-xs sm:text-sm font-medium leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
               {activeArticle.subtitle}
             </p>
 
             {/* Step-by-Step Guide */}
             <div className="mt-6 space-y-3">
-              <h3 className="text-sm font-extrabold text-[#08093B]">Step-by-Step Instructions</h3>
+              <h3 className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Step-by-Step Instructions</h3>
               {activeArticle.setupSteps.map((step) => (
-                <div key={step.number} className="flex items-start gap-3 rounded-xl bg-[#F8FAFC] p-3 text-xs font-medium text-[#374151]">
+                <div key={step.number} className="flex items-start gap-3 rounded-xl bg-[#F8FAFC] dark:bg-[#171B38] p-3 text-xs font-medium text-[#374151] dark:text-[#E2E6FF]">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#663CF6] text-xs font-bold text-white">
                     {step.number}
                   </span>
                   <div>
-                    <strong className="block text-[#08093B]">{step.title}</strong>
-                    <p className="leading-relaxed text-[#5A5E7A] mt-0.5">{step.description}</p>
+                    <strong className="block text-[#08093B] dark:text-[#F3F5FF]">{step.title}</strong>
+                    <p className="leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA] mt-0.5">{step.description}</p>
                   </div>
                 </div>
               ))}
@@ -737,7 +739,7 @@ export function HelpPage() {
             <div className="mt-5">
               <Link
                 href={`/help/${activeArticle.slug}`}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF] hover:underline"
               >
                 <span>Read Full Step-by-Step Guide Page</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -745,16 +747,16 @@ export function HelpPage() {
             </div>
 
             {/* Was this helpful? */}
-            <div className="mt-6 flex items-center justify-between border-t border-[#F0F2FA] pt-4">
-              <span className="text-xs font-semibold text-[#5A5E7A]">Was this article helpful?</span>
+            <div className="mt-6 flex items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-4">
+              <span className="text-xs font-semibold text-[#5A5E7A] dark:text-[#B4B9DA]">Was this article helpful?</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleArticleFeedback(activeArticle.id, "yes")}
                   className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-bold transition ${
                     feedbackGiven[activeArticle.id] === "yes"
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                      : "border-[#D6DBF0] text-[#5A5E7A] hover:bg-[#F8FAFC]"
+                      ? "border-emerald-300 dark:border-emerald-700/70 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
+                      : "border-[#D6DBF0] dark:border-[#2C3159] text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-[#F8FAFC] dark:hover:bg-[#1E2248]"
                   }`}
                 >
                   <ThumbsUp className="h-3.5 w-3.5" />
@@ -765,8 +767,8 @@ export function HelpPage() {
                   onClick={() => handleArticleFeedback(activeArticle.id, "no")}
                   className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-bold transition ${
                     feedbackGiven[activeArticle.id] === "no"
-                      ? "border-rose-300 bg-rose-50 text-rose-700"
-                      : "border-[#D6DBF0] text-[#5A5E7A] hover:bg-[#F8FAFC]"
+                      ? "border-rose-300 dark:border-rose-700/70 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300"
+                      : "border-[#D6DBF0] dark:border-[#2C3159] text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-[#F8FAFC] dark:hover:bg-[#1E2248]"
                   }`}
                 >
                   <ThumbsDown className="h-3.5 w-3.5" />
@@ -785,20 +787,20 @@ export function HelpPage() {
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
-          <div className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-[24px] border border-[#D6DBF0] bg-white p-6 shadow-2xl">
+          <div className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-[24px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] p-6 shadow-2xl">
             <button
               type="button"
               onClick={() => setActiveTopic(null)}
-              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] transition hover:bg-[#F1F3FB] hover:text-[#08093B]"
+              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] dark:text-[#888EB5] transition hover:bg-[#F1F3FB] dark:hover:bg-[#232748] hover:text-[#08093B] dark:hover:text-white"
               aria-label="Close dialog"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <h2 className="text-xl font-extrabold text-[#08093B]">
+            <h2 className="text-xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
               {activeTopic.title} ({activeTopic.articleCount} Articles)
             </h2>
-            <p className="mt-1 text-xs text-[#5A5E7A]">{activeTopic.description}</p>
+            <p className="mt-1 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">{activeTopic.description}</p>
 
             <div className="mt-5 space-y-2">
               {activeTopic.articles.map((art, idx) => (
@@ -813,10 +815,10 @@ export function HelpPage() {
                       showToast(`Opening guide: "${art}"`);
                     }
                   }}
-                  className="flex cursor-pointer items-center justify-between rounded-xl border border-[#D6DBF0]/70 p-3 text-xs font-bold text-[#08093B] transition hover:border-[#663CF6] hover:bg-[#FAF9FF] hover:text-[#663CF6]"
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-[#D6DBF0]/70 dark:border-[#2C3159]/80 p-3 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:bg-[#FAF9FF] dark:hover:bg-[#201C42] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                 >
                   <span>{art}</span>
-                  <ChevronRight className="h-4 w-4 text-[#8E92BC]" />
+                  <ChevronRight className="h-4 w-4 text-[#8E92BC] dark:text-[#888EB5]" />
                 </div>
               ))}
             </div>
@@ -831,19 +833,19 @@ export function HelpPage() {
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
         >
-          <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[24px] border border-[#D6DBF0] bg-white p-6 shadow-2xl">
+          <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[24px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] p-6 shadow-2xl">
             <button
               type="button"
               onClick={() => setVideoModalOpen(false)}
-              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] transition hover:bg-[#F1F3FB] hover:text-[#08093B]"
+              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] dark:text-[#888EB5] transition hover:bg-[#F1F3FB] dark:hover:bg-[#232748] hover:text-[#08093B] dark:hover:text-white"
               aria-label="Close dialog"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="flex items-center gap-2">
-              <Play className="h-5 w-5 text-[#663CF6]" />
-              <h2 className="text-xl font-extrabold text-[#08093B]">
+              <Play className="h-5 w-5 text-[#663CF6] dark:text-[#B59CFF]" />
+              <h2 className="text-xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                 School Management Video Academy
               </h2>
             </div>
@@ -859,7 +861,7 @@ export function HelpPage() {
 
             {/* Playlist */}
             <div className="mt-6 space-y-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#6B7280]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#6B7280] dark:text-[#A5ACD2]">
                 Tutorial Playlist
               </h4>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -870,12 +872,12 @@ export function HelpPage() {
                     onClick={() => setActiveVideo(vid)}
                     className={`flex items-center justify-between rounded-xl border p-3 text-left transition ${
                       activeVideo.id === vid.id
-                        ? "border-[#663CF6] bg-[#EDE7FF] font-bold text-[#663CF6]"
-                        : "border-[#D6DBF0] bg-white text-xs font-semibold text-[#08093B] hover:bg-[#F8FAFC]"
+                        ? "border-[#663CF6] dark:border-[#8B5CF6] bg-[#EDE7FF] dark:bg-[#251D4A] font-bold text-[#663CF6] dark:text-[#B59CFF]"
+                        : "border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-xs font-semibold text-[#08093B] dark:text-[#F3F5FF] hover:bg-[#F8FAFC] dark:hover:bg-[#1E2248]"
                     }`}
                   >
                     <span className="line-clamp-1">{vid.title}</span>
-                    <span className="text-[11px] text-[#7C829E] shrink-0 ml-2">{vid.duration}</span>
+                    <span className="text-[11px] text-[#7C829E] dark:text-[#969CC2] shrink-0 ml-2">{vid.duration}</span>
                   </button>
                 ))}
               </div>
@@ -891,70 +893,70 @@ export function HelpPage() {
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
-          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[24px] border border-[#D6DBF0] bg-white p-6 sm:p-8 shadow-2xl">
+          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[24px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] p-6 sm:p-8 shadow-2xl">
             <button
               type="button"
               onClick={() => setContactModalOpen(false)}
-              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] transition hover:bg-[#F1F3FB] hover:text-[#08093B]"
+              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] dark:text-[#888EB5] transition hover:bg-[#F1F3FB] dark:hover:bg-[#232748] hover:text-[#08093B] dark:hover:text-white"
               aria-label="Close dialog"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="flex items-center gap-2">
-              <Headphones className="h-5 w-5 text-[#663CF6]" />
-              <h2 className="text-xl font-extrabold text-[#08093B]">Contact Support</h2>
+              <Headphones className="h-5 w-5 text-[#663CF6] dark:text-[#B59CFF]" />
+              <h2 className="text-xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Contact Support</h2>
             </div>
-            <p className="mt-1 text-xs text-[#5A5E7A]">
+            <p className="mt-1 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
               We usually respond to institutional inquiries within 2 hours.
             </p>
 
             <form onSubmit={handleSubmitTicket} className="mt-5 space-y-3.5">
               <div>
-                <label className="text-xs font-bold text-[#08093B]">Your Name</label>
+                <label className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Your Name</label>
                 <input
                   type="text"
                   required
                   value={ticketName}
                   onChange={(e) => setTicketName(e.target.value)}
                   placeholder="e.g. Principal Sharma"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] p-2.5 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] p-2.5 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#08093B]">Official Email</label>
+                <label className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Official Email</label>
                 <input
                   type="email"
                   required
                   value={ticketEmail}
                   onChange={(e) => setTicketEmail(e.target.value)}
                   placeholder="admin@yourschool.edu"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] p-2.5 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] p-2.5 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#08093B]">Subject</label>
+                <label className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Subject</label>
                 <input
                   type="text"
                   required
                   value={ticketSubject}
                   onChange={(e) => setTicketSubject(e.target.value)}
                   placeholder="e.g. Assistance with timetable generation"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] p-2.5 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] p-2.5 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#08093B]">How can we help?</label>
+                <label className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">How can we help?</label>
                 <textarea
                   rows={3}
                   required
                   value={ticketMessage}
                   onChange={(e) => setTicketMessage(e.target.value)}
                   placeholder="Describe your issue or question in detail..."
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] p-2.5 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] p-2.5 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
@@ -979,23 +981,23 @@ export function HelpPage() {
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         >
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[24px] border border-[#D6DBF0] bg-white p-6 sm:p-8 shadow-2xl">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[24px] border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] p-6 sm:p-8 shadow-2xl">
             <button
               type="button"
               onClick={() => setGettingStartedModalOpen(false)}
-              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] transition hover:bg-[#F1F3FB] hover:text-[#08093B]"
+              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center rounded-full text-[#8E92BC] dark:text-[#888EB5] transition hover:bg-[#F1F3FB] dark:hover:bg-[#232748] hover:text-[#08093B] dark:hover:text-white"
               aria-label="Close dialog"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="flex items-center gap-2">
-              <Rocket className="h-5 w-5 text-[#663CF6]" />
-              <h2 className="text-xl font-extrabold text-[#08093B]">
+              <Rocket className="h-5 w-5 text-[#663CF6] dark:text-[#B59CFF]" />
+              <h2 className="text-xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                 School Quick Start Checklist
               </h2>
             </div>
-            <p className="mt-1 text-xs text-[#5A5E7A]">
+            <p className="mt-1 text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
               Get your institution up and running in 4 easy steps:
             </p>
 
@@ -1006,11 +1008,11 @@ export function HelpPage() {
                 "Import students and guardian records via CSV bulk template",
                 "Configure tuition fee structures and enable online payments",
               ].map((step, idx) => (
-                <div key={idx} className="flex items-center gap-3 rounded-xl border border-[#D6DBF0]/80 p-3">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] text-xs font-bold text-[#663CF6]">
+                <div key={idx} className="flex items-center gap-3 rounded-xl border border-[#D6DBF0]/80 dark:border-[#2C3159]/90 p-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                     {idx + 1}
                   </div>
-                  <span className="text-xs font-semibold text-[#08093B]">{step}</span>
+                  <span className="text-xs font-semibold text-[#08093B] dark:text-[#F3F5FF]">{step}</span>
                 </div>
               ))}
             </div>
@@ -1030,13 +1032,13 @@ export function HelpPage() {
       {/* =========================================================================
           7. FOOTER (Matching Site Standards)
           ========================================================================= */}
-      <footer className="mt-20 border-t border-[#D6DBF0] bg-white pt-12 pb-8">
+      <footer className="mt-20 border-t border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] pt-12 pb-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-12">
             {/* Logo & Description */}
             <div className="space-y-4 md:col-span-4">
               <BrandLogo className="h-8 sm:h-9" />
-              <p className="max-w-xs text-xs font-medium leading-relaxed text-[#4D5072]">
+              <p className="max-w-xs text-xs font-medium leading-relaxed text-[#4D5072] dark:text-[#B4B9DA]">
                 A comprehensive, cloud-based school management platform to simplify and streamline your school operations.
               </p>
               <div className="flex items-center gap-2.5 pt-1">
@@ -1044,7 +1046,7 @@ export function HelpPage() {
                   href="https://linkedin.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="LinkedIn"
                 >
                   <Linkedin className="h-3.5 w-3.5" />
@@ -1053,7 +1055,7 @@ export function HelpPage() {
                   href="https://youtube.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="YouTube"
                 >
                   <Youtube className="h-3.5 w-3.5" />
@@ -1062,7 +1064,7 @@ export function HelpPage() {
                   href="https://facebook.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="Facebook"
                 >
                   <Facebook className="h-3.5 w-3.5" />
@@ -1071,7 +1073,7 @@ export function HelpPage() {
                   href="https://instagram.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] text-[#4D5072] transition hover:border-[#663CF6] hover:text-[#663CF6]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] text-[#4D5072] dark:text-[#B4B9DA] transition hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
                   aria-label="Instagram"
                 >
                   <Instagram className="h-3.5 w-3.5" />
@@ -1081,27 +1083,27 @@ export function HelpPage() {
 
             {/* Product Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Product
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/features" className="hover:text-[#663CF6]">
+                  <Link href="/features" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Features
                   </Link>
                 </li>
                 <li>
-                  <Link href="/pricing" className="hover:text-[#663CF6]">
+                  <Link href="/pricing" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Pricing
                   </Link>
                 </li>
                 <li>
-                  <Link href="/for-schools" className="hover:text-[#663CF6]">
+                  <Link href="/for-schools" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     For Schools
                   </Link>
                 </li>
                 <li>
-                  <Link href="/features#integrations" className="hover:text-[#663CF6]">
+                  <Link href="/features#integrations" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Integrations
                   </Link>
                 </li>
@@ -1110,27 +1112,27 @@ export function HelpPage() {
 
             {/* Resources Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Resources
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/blog" className="hover:text-[#663CF6]">
+                  <Link href="/blog" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link href="/help" className="text-[#663CF6] font-bold">
+                  <Link href="/help" className="text-[#663CF6] dark:text-[#B59CFF] font-bold">
                     Help Center
                   </Link>
                 </li>
                 <li>
-                  <Link href="/faqs" className="hover:text-[#663CF6]">
+                  <Link href="/faqs" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     FAQs
                   </Link>
                 </li>
                 <li>
-                  <Link href="/guides" className="hover:text-[#663CF6]">
+                  <Link href="/guides" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Guides
                   </Link>
                 </li>
@@ -1139,32 +1141,32 @@ export function HelpPage() {
 
             {/* Company Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Company
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/#about" className="hover:text-[#663CF6]">
+                  <Link href="/#about" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="hover:text-[#663CF6]">
+                  <Link href="/contact" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Contact Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/feedback" className="hover:text-[#663CF6]">
+                  <Link href="/feedback" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Give Feedback
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#privacy" className="hover:text-[#663CF6]">
+                  <Link href="/#privacy" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#terms" className="hover:text-[#663CF6]">
+                  <Link href="/#terms" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Terms of Service
                   </Link>
                 </li>
@@ -1173,10 +1175,10 @@ export function HelpPage() {
 
             {/* Stay Updated Newsletter */}
             <div className="space-y-3 sm:col-span-2 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Stay Updated
               </h4>
-              <p className="text-xs text-[#5A5E7A]">
+              <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                 Subscribe to get product updates, tips and school management insights.
               </p>
               <form
@@ -1189,7 +1191,7 @@ export function HelpPage() {
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className="w-full rounded-xl border border-[#D6DBF0] bg-white py-2 pr-10 pl-3 text-xs text-[#08093B] placeholder-[#8E92BC] outline-none focus:border-[#7C3AED]"
+                  className="w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] py-2 pr-10 pl-3 text-xs text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
                 <button
                   type="submit"
@@ -1203,10 +1205,10 @@ export function HelpPage() {
           </div>
 
           {/* Bottom Copyright */}
-          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] pt-6 text-xs text-[#5A5E7A] sm:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-6 text-xs text-[#5A5E7A] dark:text-[#B4B9DA] sm:flex-row">
             <p>&copy; 2026 ScholoNix. All rights reserved.</p>
             <p className="mt-2 flex items-center gap-1 sm:mt-0">
-              <span className="text-rose-500">&hearts;</span> Made for Schools
+              <span className="text-rose-500 dark:text-rose-400">&hearts;</span> Made for Schools
             </p>
           </div>
         </div>

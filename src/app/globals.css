@@ -1,7 +1,11 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   :root {
+    color-scheme: light dark;
+    accent-color: var(--brand-primary);
+
     /* 1. Brand Identity */
     --brand-primary: #663cf6;
     --brand-deep: #4f27e8;
@@ -47,28 +51,117 @@
     --secondary-foreground: var(--brand-deep);
     --muted: var(--bg-secondary);
     --muted-foreground: var(--text-muted);
+    --accent: var(--bg-lavender);
+    --accent-foreground: var(--text-heading);
     --border: var(--border-default);
     --input: var(--border-input);
     --ring: var(--brand-primary);
     --card: var(--bg-card);
     --card-foreground: var(--text-body);
   }
-}
 
-body {
-  background-color: var(--bg-main);
-  color: var(--text-body);
-  font-family:
-    var(--font-plus-jakarta),
-    "Plus Jakarta Sans",
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  :root:has(> head > meta[name="color-scheme"][content="dark"]) {
+    color-scheme: dark;
+  }
+
+  :root:has(> head > meta[name="color-scheme"][content="light"]) {
+    color-scheme: light;
+  }
+
+  :root.dark {
+    color-scheme: dark;
+
+    --brand-primary: #7c5cff;
+    --brand-deep: #663cf6;
+    --brand-light: #a78bfa;
+    --brand-lavender: #251d4a;
+
+    --text-heading: #f3f5ff;
+    --text-body: #dce1f9;
+    --text-muted: #9da6cc;
+    --text-placeholder: #7a83ad;
+
+    --bg-main: #090b1a;
+    --bg-secondary: #10142c;
+    --bg-lavender: #1c183b;
+    --bg-blue: #10243d;
+    --bg-card: #141731;
+
+    --border-default: #272b4d;
+    --border-input: #343b6b;
+    --border-hover: #8b5cf6;
+    --border-focus: #8b5cf6;
+    --border-divider: #232746;
+
+    --shadow-card: 0 10px 28px rgba(3, 5, 18, 0.45), 0 2px 8px rgba(3, 5, 18, 0.3);
+    --shadow-card-hover: 0 14px 34px rgba(124, 92, 255, 0.24);
+    --shadow-button: 0 4px 16px rgba(124, 92, 255, 0.34);
+
+    --secondary-foreground: #c9b8ff;
+    --accent: var(--brand-lavender);
+    --accent-foreground: var(--text-heading);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light):not(.dark) {
+      color-scheme: dark;
+
+      --brand-primary: #7c5cff;
+      --brand-deep: #663cf6;
+      --brand-light: #a78bfa;
+      --brand-lavender: #251d4a;
+
+      --text-heading: #f3f5ff;
+      --text-body: #dce1f9;
+      --text-muted: #9da6cc;
+      --text-placeholder: #7a83ad;
+
+      --bg-main: #090b1a;
+      --bg-secondary: #10142c;
+      --bg-lavender: #1c183b;
+      --bg-blue: #10243d;
+      --bg-card: #141731;
+
+      --border-default: #272b4d;
+      --border-input: #343b6b;
+      --border-hover: #8b5cf6;
+      --border-focus: #8b5cf6;
+      --border-divider: #232746;
+
+      --shadow-card: 0 10px 28px rgba(3, 5, 18, 0.45), 0 2px 8px rgba(3, 5, 18, 0.3);
+      --shadow-card-hover: 0 14px 34px rgba(124, 92, 255, 0.24);
+      --shadow-button: 0 4px 16px rgba(124, 92, 255, 0.34);
+
+      --secondary-foreground: #c9b8ff;
+      --accent: var(--brand-lavender);
+      --accent-foreground: var(--text-heading);
+    }
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--text-heading);
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-body);
+    font-family:
+      var(--font-plus-jakarta),
+      "Plus Jakarta Sans",
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
 /* Hide default browser side scrollbars across the entire application while preserving scrolling */
@@ -131,6 +224,17 @@ body::-webkit-scrollbar {
   }
 }
 
+/* Text highlight colors adapt automatically in Light and Dark themes */
+::selection {
+  background-color: rgba(102, 60, 246, 0.2);
+  color: var(--text-heading);
+}
+
+:root.dark ::selection {
+  background-color: rgba(139, 92, 246, 0.38);
+  color: #f3f5ff;
+}
+
 /* Native <dialog> modal scroll containment (prevents page scroll chaining behind modals) */
 dialog:modal {
   overscroll-behavior: contain;
@@ -143,15 +247,11 @@ dialog::backdrop {
   overscroll-behavior: contain;
 }
 
-/* Headings default to dark navy for high contrast */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  color: var(--text-heading);
+:root.dark dialog::backdrop {
+  background: rgba(2, 4, 15, 0.72);
 }
+
+/* Legacy unlayered heading rule moved into @layer base above so Tailwind text utilities win cleanly */
 
 /* 8. Reusable Design System Utility Classes (Enhanced Contrast) */
 .btn-primary {
@@ -182,48 +282,53 @@ h6 {
 }
 
 .btn-secondary {
-  background-color: #ffffff;
-  color: #4f27e8;
+  background-color: var(--bg-card);
+  color: var(--brand-deep);
   border: 1.5px solid #7c3aed;
   border-radius: 12px;
   font-weight: 600;
   box-shadow: 0 2px 6px rgba(102, 60, 246, 0.08);
   transition: all 200ms ease;
 }
+:root.dark .btn-secondary {
+  color: #c9b8ff;
+  border-color: #8b5cf6;
+}
 .btn-secondary:hover {
-  background-color: #f7f4ff;
-  border-color: #4f27e8;
+  background-color: var(--bg-lavender);
+  border-color: var(--brand-primary);
   box-shadow: 0 4px 12px rgba(102, 60, 246, 0.15);
 }
 
 .card-saas {
-  background-color: #ffffff;
-  border: 1px solid #d6dbf0;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  color: var(--text-body);
   border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 8px 24px rgba(24, 18, 77, 0.08);
+  box-shadow: var(--shadow-card);
   transition: all 200ms ease;
 }
 .card-saas-hover:hover {
-  border-color: #9b76ff;
-  box-shadow: 0 14px 34px rgba(102, 60, 246, 0.16);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-card-hover);
   transform: translateY(-2px);
 }
 
 .input-saas {
-  background-color: #ffffff;
-  border: 1px solid #cad0eb;
-  color: #1b1d45;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-input);
+  color: var(--text-body);
   border-radius: 10px;
   transition: all 150ms ease;
 }
 .input-saas::placeholder {
-  color: #76799c;
+  color: var(--text-placeholder);
 }
 .input-saas:focus {
-  border-color: #663cf6;
+  border-color: var(--border-focus);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(102, 60, 246, 0.2);
+  box-shadow: 0 0 0 3px rgba(102, 60, 246, 0.25);
 }
 
 /* 9. Hero Dashboard Smooth Motion Keyframes */

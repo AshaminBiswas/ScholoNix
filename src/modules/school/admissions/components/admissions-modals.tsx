@@ -175,18 +175,18 @@ export function NewApplicationModal({
     <dialog
       ref={dialogRef}
       aria-labelledby="new-application-dialog-title"
-      className="m-auto w-[min(95vw,600px)] rounded-[22px] border border-[#D6DBF0] bg-white p-0 shadow-2xl"
+      className="m-auto w-[min(95vw,600px)] rounded-[22px] border border-[#D6DBF0] bg-white p-0 text-[#1B1D45] shadow-2xl dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#DCE1F9]"
     >
-      <div className="flex items-center justify-between border-b border-[#DFE3F5] px-6 py-4">
+      <div className="flex items-center justify-between border-b border-[#DFE3F5] px-6 py-4 dark:border-[#232746]">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6]">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
             <UserPlus className="h-4 w-4" aria-hidden="true" />
           </span>
           <div>
-            <h1 id="new-application-dialog-title" className="text-base font-extrabold text-[#08093B]">
+            <h1 id="new-application-dialog-title" className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
               New Admission Application
             </h1>
-            <p className="text-[11px] text-[#76799C]">
+            <p className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
               Creates a real tenant-scoped admission record and generates an Application ID.
             </p>
           </div>
@@ -195,7 +195,7 @@ export function NewApplicationModal({
           type="button"
           onClick={onClose}
           aria-label="Close application modal"
-          className="rounded-full p-1.5 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer"
+          className="rounded-full p-1.5 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer dark:text-[#9DA6CC] dark:hover:bg-[#1E2245] dark:hover:text-[#F3F5FF]"
         >
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
@@ -205,7 +205,7 @@ export function NewApplicationModal({
         {errorMsg && (
           <div
             role="alert"
-            className="rounded-[12px] border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700"
+            className="rounded-[12px] border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
           >
             {errorMsg}
           </div>
@@ -213,7 +213,7 @@ export function NewApplicationModal({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
-            <label htmlFor="app-student-name" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="app-student-name" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Student Name <span className="text-rose-500">*</span>
             </label>
             <input
@@ -225,19 +225,19 @@ export function NewApplicationModal({
               value={studentName}
               onChange={(e) => setStudentName(e.target.value)}
               placeholder="Full student name"
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD]"
             />
           </div>
 
           <div>
-            <label htmlFor="app-grade" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="app-grade" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Admission Grade <span className="text-rose-500">*</span>
             </label>
             <select
               id="app-grade"
               value={gradeApplied}
               onChange={(e) => setGradeApplied(e.target.value)}
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             >
               {grades.map((g) => (
                 <option key={g} value={g}>
@@ -248,14 +248,14 @@ export function NewApplicationModal({
           </div>
 
           <div>
-            <label htmlFor="app-ay" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="app-ay" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Academic Year <span className="text-rose-500">*</span>
             </label>
             <select
               id="app-ay"
               value={academicYear}
               onChange={(e) => setAcademicYear(e.target.value)}
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             >
               {academicYears.map((ay) => (
                 <option key={ay} value={ay}>
@@ -266,7 +266,7 @@ export function NewApplicationModal({
           </div>
 
           <div>
-            <label htmlFor="app-status" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="app-status" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Initial Stage
             </label>
             <select
@@ -275,7 +275,7 @@ export function NewApplicationModal({
               onChange={(e) =>
                 setStatus(e.target.value as "UNDER_REVIEW" | "DOCUMENTS_PENDING" | "SHORTLISTED")
               }
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             >
               <option value="UNDER_REVIEW">Under Review</option>
               <option value="DOCUMENTS_PENDING">Documents Pending</option>
@@ -284,7 +284,7 @@ export function NewApplicationModal({
           </div>
 
           <div>
-            <label htmlFor="app-guardian-name" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="app-guardian-name" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Guardian Name <span className="text-rose-500">*</span>
             </label>
             <input
@@ -295,12 +295,12 @@ export function NewApplicationModal({
               value={guardianName}
               onChange={(e) => setGuardianName(e.target.value)}
               placeholder="Parent or guardian name"
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD]"
             />
           </div>
 
           <div>
-            <label htmlFor="app-guardian-phone" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="app-guardian-phone" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Guardian Phone <span className="text-rose-500">*</span>
             </label>
             <input
@@ -311,12 +311,12 @@ export function NewApplicationModal({
               value={guardianPhone}
               onChange={(e) => setGuardianPhone(e.target.value)}
               placeholder="+91 98XXXXXXXX"
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD]"
             />
           </div>
 
           <div>
-            <label htmlFor="app-guardian-email" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="app-guardian-email" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Guardian Email
             </label>
             <input
@@ -325,19 +325,19 @@ export function NewApplicationModal({
               value={guardianEmail}
               onChange={(e) => setGuardianEmail(e.target.value)}
               placeholder="Optional email address"
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD]"
             />
           </div>
 
           <div>
-            <label htmlFor="app-guardian-relation" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="app-guardian-relation" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Relation
             </label>
             <select
               id="app-guardian-relation"
               value={guardianRelation}
               onChange={(e) => setGuardianRelation(e.target.value)}
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             >
               <option value="Parent">Parent</option>
               <option value="Mother">Mother</option>
@@ -347,14 +347,14 @@ export function NewApplicationModal({
           </div>
 
           <div>
-            <label htmlFor="app-gender" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="app-gender" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Gender
             </label>
             <select
               id="app-gender"
               value={gender}
               onChange={(e) => setGender(e.target.value as "Male" | "Female" | "Other" | "")}
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             >
               <option value="">Not specified</option>
               <option value="Male">Male</option>
@@ -364,7 +364,7 @@ export function NewApplicationModal({
           </div>
 
           <div>
-            <label htmlFor="app-dob" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="app-dob" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Date of Birth
             </label>
             <input
@@ -372,13 +372,13 @@ export function NewApplicationModal({
               type="date"
               value={dateOfBirth}
               onChange={(e) => setDateOfBirth(e.target.value)}
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             />
           </div>
         </div>
 
         <div>
-          <label htmlFor="app-prev-school" className="block text-xs font-bold text-[#08093B] mb-1">
+          <label htmlFor="app-prev-school" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
             Previous School
           </label>
           <input
@@ -387,12 +387,12 @@ export function NewApplicationModal({
             value={previousSchool}
             onChange={(e) => setPreviousSchool(e.target.value)}
             placeholder="Optional previous school name"
-            className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+            className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD]"
           />
         </div>
 
         <div>
-          <label htmlFor="app-notes" className="block text-xs font-bold text-[#08093B] mb-1">
+          <label htmlFor="app-notes" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
             Review Notes
           </label>
           <textarea
@@ -401,15 +401,15 @@ export function NewApplicationModal({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Any initial verification or admission remarks..."
-            className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none resize-y"
+            className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none resize-y dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD]"
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-[#DFE3F5]">
+        <div className="flex justify-end gap-2 pt-2 border-t border-[#DFE3F5] dark:border-[#232746]">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] hover:bg-[#F8FAFC] cursor-pointer"
+            className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] hover:bg-[#F8FAFC] cursor-pointer dark:border-[#30365C] dark:text-[#C5CCF0] dark:hover:bg-[#1E2245]"
           >
             Cancel
           </button>
@@ -503,17 +503,17 @@ export function NewEnquiryModal({
     <dialog
       ref={dialogRef}
       aria-labelledby="new-enquiry-dialog-title"
-      className="m-auto w-[min(95vw,520px)] rounded-[22px] border border-[#D6DBF0] bg-white p-0 shadow-2xl"
+      className="m-auto w-[min(95vw,520px)] rounded-[22px] border border-[#D6DBF0] bg-white p-0 text-[#1B1D45] shadow-2xl dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#DCE1F9]"
     >
-      <div className="flex items-center justify-between border-b border-[#DFE3F5] px-6 py-4">
-        <h1 id="new-enquiry-dialog-title" className="text-base font-extrabold text-[#08093B]">
+      <div className="flex items-center justify-between border-b border-[#DFE3F5] px-6 py-4 dark:border-[#232746]">
+        <h1 id="new-enquiry-dialog-title" className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
           Log Admission Enquiry
         </h1>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close enquiry modal"
-          className="rounded-full p-1.5 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer"
+          className="rounded-full p-1.5 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer dark:text-[#9DA6CC] dark:hover:bg-[#1E2245] dark:hover:text-[#F3F5FF]"
         >
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
@@ -523,7 +523,7 @@ export function NewEnquiryModal({
         {errorMsg && (
           <div
             role="alert"
-            className="rounded-[12px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700"
+            className="rounded-[12px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
           >
             {errorMsg}
           </div>
@@ -531,7 +531,7 @@ export function NewEnquiryModal({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label htmlFor="enq-student-name" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="enq-student-name" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Student Name *
             </label>
             <input
@@ -542,11 +542,11 @@ export function NewEnquiryModal({
               minLength={2}
               value={studentName}
               onChange={(e) => setStudentName(e.target.value)}
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             />
           </div>
           <div>
-            <label htmlFor="enq-guardian-name" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="enq-guardian-name" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Guardian Name *
             </label>
             <input
@@ -556,11 +556,11 @@ export function NewEnquiryModal({
               minLength={2}
               value={guardianName}
               onChange={(e) => setGuardianName(e.target.value)}
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             />
           </div>
           <div>
-            <label htmlFor="enq-phone" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="enq-phone" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Phone *
             </label>
             <input
@@ -570,11 +570,11 @@ export function NewEnquiryModal({
               minLength={7}
               value={guardianPhone}
               onChange={(e) => setGuardianPhone(e.target.value)}
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             />
           </div>
           <div>
-            <label htmlFor="enq-email" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="enq-email" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Email
             </label>
             <input
@@ -582,18 +582,18 @@ export function NewEnquiryModal({
               type="email"
               value={guardianEmail}
               onChange={(e) => setGuardianEmail(e.target.value)}
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             />
           </div>
           <div>
-            <label htmlFor="enq-grade" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="enq-grade" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Grade *
             </label>
             <select
               id="enq-grade"
               value={gradeApplied}
               onChange={(e) => setGradeApplied(e.target.value)}
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B]"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             >
               {grades.map((g) => (
                 <option key={g} value={g}>
@@ -603,7 +603,7 @@ export function NewEnquiryModal({
             </select>
           </div>
           <div>
-            <label htmlFor="enq-source" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="enq-source" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Source
             </label>
             <select
@@ -620,7 +620,7 @@ export function NewEnquiryModal({
                     | "Other",
                 )
               }
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B]"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             >
               <option value="Walk-In">Walk-In</option>
               <option value="Website">Website</option>
@@ -633,14 +633,14 @@ export function NewEnquiryModal({
         </div>
 
         <div>
-          <label htmlFor="enq-ay" className="block text-xs font-bold text-[#08093B] mb-1">
+          <label htmlFor="enq-ay" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
             Academic Year
           </label>
           <select
             id="enq-ay"
             value={academicYear}
             onChange={(e) => setAcademicYear(e.target.value)}
-            className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B]"
+            className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
           >
             {academicYears.map((ay) => (
               <option key={ay} value={ay}>
@@ -651,7 +651,7 @@ export function NewEnquiryModal({
         </div>
 
         <div>
-          <label htmlFor="enq-notes" className="block text-xs font-bold text-[#08093B] mb-1">
+          <label htmlFor="enq-notes" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
             Enquiry Notes
           </label>
           <textarea
@@ -659,15 +659,15 @@ export function NewEnquiryModal({
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] resize-y"
+            className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] resize-y dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-[#DFE3F5]">
+        <div className="flex justify-end gap-2 pt-2 border-t border-[#DFE3F5] dark:border-[#232746]">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] cursor-pointer"
+            className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] cursor-pointer dark:border-[#30365C] dark:text-[#C5CCF0] dark:hover:bg-[#1E2245]"
           >
             Cancel
           </button>
@@ -770,18 +770,18 @@ export function ApplicationDetailModal({
     <dialog
       ref={dialogRef}
       aria-labelledby="app-detail-dialog-title"
-      className="m-auto w-[min(95vw,640px)] rounded-[22px] border border-[#D6DBF0] bg-white p-0 shadow-2xl"
+      className="m-auto w-[min(95vw,640px)] rounded-[22px] border border-[#D6DBF0] bg-white p-0 text-[#1B1D45] shadow-2xl dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#DCE1F9]"
     >
-      <div className="flex items-center justify-between border-b border-[#DFE3F5] px-6 py-4">
+      <div className="flex items-center justify-between border-b border-[#DFE3F5] px-6 py-4 dark:border-[#232746]">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6]">
+          <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
             <FileCheck2 className="h-5 w-5" aria-hidden="true" />
           </span>
           <div>
-            <h1 id="app-detail-dialog-title" className="text-base font-extrabold text-[#08093B]">
+            <h1 id="app-detail-dialog-title" className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
               {application.studentName} · {application.applicationCode}
             </h1>
-            <p className="text-[11px] text-[#76799C]">
+            <p className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
               {application.gradeApplied} · {application.academicYear}
               {application.admissionNumber ? ` · Admission No: ${application.admissionNumber}` : ""}
             </p>
@@ -791,7 +791,7 @@ export function ApplicationDetailModal({
           type="button"
           onClick={onClose}
           aria-label="Close application details"
-          className="rounded-full p-1.5 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer"
+          className="rounded-full p-1.5 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer dark:text-[#9DA6CC] dark:hover:bg-[#1E2245] dark:hover:text-[#F3F5FF]"
         >
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
@@ -801,38 +801,38 @@ export function ApplicationDetailModal({
         {errorMsg && (
           <div
             role="alert"
-            className="rounded-[12px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700"
+            className="rounded-[12px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
           >
             {errorMsg}
           </div>
         )}
 
         {/* Applicant & Guardian Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-3.5 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-3.5 text-xs dark:border-[#272B4D] dark:bg-[#10142C]">
           <div>
-            <span className="text-[#76799C]">Guardian:</span>{" "}
-            <strong className="text-[#08093B]">
+            <span className="text-[#76799C] dark:text-[#9DA6CC]">Guardian:</span>{" "}
+            <strong className="text-[#08093B] dark:text-[#F3F5FF]">
               {application.guardianName} ({application.guardianRelation})
             </strong>
           </div>
           <div>
-            <span className="text-[#76799C]">Phone:</span>{" "}
-            <strong className="text-[#08093B]">{application.guardianPhone}</strong>
+            <span className="text-[#76799C] dark:text-[#9DA6CC]">Phone:</span>{" "}
+            <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.guardianPhone}</strong>
           </div>
           <div>
-            <span className="text-[#76799C]">Email:</span>{" "}
-            <strong className="text-[#08093B]">{application.guardianEmail || "Not provided"}</strong>
+            <span className="text-[#76799C] dark:text-[#9DA6CC]">Email:</span>{" "}
+            <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.guardianEmail || "Not provided"}</strong>
           </div>
           <div>
-            <span className="text-[#76799C]">Previous School:</span>{" "}
-            <strong className="text-[#08093B]">{application.previousSchool || "Not provided"}</strong>
+            <span className="text-[#76799C] dark:text-[#9DA6CC]">Previous School:</span>{" "}
+            <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.previousSchool || "Not provided"}</strong>
           </div>
         </div>
 
         {/* Status & Verification Controls */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label htmlFor="detail-status" className="block text-xs font-bold text-[#08093B] mb-1">
+            <label htmlFor="detail-status" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Application Stage
             </label>
             <select
@@ -840,7 +840,7 @@ export function ApplicationDetailModal({
               disabled={!canWrite}
               value={status}
               onChange={(e) => setStatus(e.target.value as AdmissionApplicationStatusType)}
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs font-semibold text-[#08093B]"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             >
               <option value="UNDER_REVIEW">Under Review</option>
               <option value="DOCUMENTS_PENDING">Documents Pending</option>
@@ -858,7 +858,7 @@ export function ApplicationDetailModal({
           <div>
             <label
               htmlFor="detail-verification"
-              className="block text-xs font-bold text-[#08093B] mb-1"
+              className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]"
             >
               Document Verification
             </label>
@@ -869,7 +869,7 @@ export function ApplicationDetailModal({
               onChange={(e) =>
                 setVerificationStatus(e.target.value as DocumentVerificationStatusType)
               }
-              className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs font-semibold text-[#08093B]"
+              className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             >
               <option value="PENDING">Pending</option>
               <option value="VERIFIED">Verified</option>
@@ -885,16 +885,16 @@ export function ApplicationDetailModal({
 
         {/* Checklist */}
         <div className="space-y-2">
-          <p className="text-xs font-bold text-[#08093B]">Document Checklist</p>
-          <div className="divide-y divide-[#F1F5F9] rounded-[12px] border border-[#DFE3F5]">
+          <p className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Document Checklist</p>
+          <div className="divide-y divide-[#F1F5F9] rounded-[12px] border border-[#DFE3F5] dark:divide-[#232746] dark:border-[#272B4D]">
             {checklist.map((doc) => (
               <div
                 key={doc.key}
                 className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs"
               >
-                <span className="font-semibold text-[#08093B]">{doc.label}</span>
+                <span className="font-semibold text-[#08093B] dark:text-[#F3F5FF]">{doc.label}</span>
                 <div className="flex items-center gap-4">
-                  <label className="inline-flex items-center gap-1.5 text-[#4D5072] cursor-pointer">
+                  <label className="inline-flex items-center gap-1.5 text-[#4D5072] cursor-pointer dark:text-[#B4BDD9]">
                     <input
                       type="checkbox"
                       disabled={!canVerify}
@@ -904,7 +904,7 @@ export function ApplicationDetailModal({
                     />
                     <span>Submitted</span>
                   </label>
-                  <label className="inline-flex items-center gap-1.5 text-emerald-700 font-semibold cursor-pointer">
+                  <label className="inline-flex items-center gap-1.5 text-emerald-700 font-semibold cursor-pointer dark:text-emerald-400">
                     <input
                       type="checkbox"
                       disabled={!canVerify}
@@ -923,7 +923,7 @@ export function ApplicationDetailModal({
         <div>
           <label
             htmlFor="detail-verification-notes"
-            className="block text-xs font-bold text-[#08093B] mb-1"
+            className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]"
           >
             Verification / Review Remarks
           </label>
@@ -933,15 +933,15 @@ export function ApplicationDetailModal({
             disabled={!canVerify && !canWrite}
             value={verificationNotes}
             onChange={(e) => setVerificationNotes(e.target.value)}
-            className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs text-[#08093B] resize-y"
+            className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] resize-y dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-[#DFE3F5]">
+        <div className="flex justify-end gap-2 pt-2 border-t border-[#DFE3F5] dark:border-[#232746]">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] cursor-pointer"
+            className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] cursor-pointer dark:border-[#30365C] dark:text-[#C5CCF0] dark:hover:bg-[#1E2245]"
           >
             Close
           </button>

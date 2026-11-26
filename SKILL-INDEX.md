@@ -7,6 +7,7 @@
 | `domain-driven-design`            | Model school-management domains and enforce clear module boundaries.                               |
 | `react-typescript`                | Build reliable React and TypeScript components with strong types and predictable state.            |
 | `design-system-tailwind`          | Create and maintain a consistent Tailwind and component design system.                             |
+| `light-dark-theme`                | Mandatory dual Light and Dark mode tokens, toggle, FOUC prevention, and contrast rules.            |
 | `ui-ux-design`                    | Design intuitive, accessible workflows for school administrators, teachers, parents, and students. |
 | `accessibility`                   | Make interfaces accessible and keyboard-operable.                                                  |
 | `node-api`                        | Implement secure, maintainable backend services and HTTP APIs.                                     |

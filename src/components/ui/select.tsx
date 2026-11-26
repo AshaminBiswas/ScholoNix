@@ -18,13 +18,13 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         <select
           ref={ref}
           className={cn(
-            "flex h-10 w-full appearance-none rounded-[10px] border border-[#CAD0EB] bg-white px-3.5 py-2 pr-10 text-sm text-[#1B1D45] shadow-xs transition-all duration-150 focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20 disabled:cursor-not-allowed disabled:bg-[#F5F7FD] disabled:opacity-60",
+            "flex h-10 w-full appearance-none rounded-[10px] border border-[#CAD0EB] bg-white px-3.5 py-2 pr-10 text-sm text-[#1B1D45] shadow-xs transition-all duration-150 focus:border-[#663CF6] focus:outline-none focus:ring-2 focus:ring-[#663CF6]/20 disabled:cursor-not-allowed disabled:bg-[#F5F7FD] disabled:opacity-60 dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#DCE1F9] dark:focus:border-[#8B5CF6] dark:focus:ring-[#8B5CF6]/30 dark:disabled:bg-[#161B38]",
             className,
           )}
           {...props}
         >
           {placeholder && (
-            <option value="" disabled className="text-[#76799C]">
+            <option value="" disabled className="text-[#76799C] dark:text-[#7A83AD]">
               {placeholder}
             </option>
           )}
@@ -36,7 +36,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               ))
             : children}
         </select>
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-[#4D5072]">
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-[#4D5072] dark:text-[#9DA6CC]">
           <svg
             className="h-4 w-4"
             xmlns="http://www.w3.org/2000/svg"

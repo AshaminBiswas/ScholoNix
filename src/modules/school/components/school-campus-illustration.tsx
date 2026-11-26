@@ -10,10 +10,10 @@ export function SchoolCampusIllustration({ schoolName, className = "" }: CampusI
 
   return (
     <div
-      className={`relative flex items-center justify-center overflow-hidden rounded-[20px] border border-[#CAD0EB]/70 bg-gradient-to-b from-[#F0F5FE] via-[#E6F0FA] to-[#DFEDF9] p-3 shadow-xs ${className}`}
+      className={`relative flex items-center justify-center overflow-hidden rounded-[20px] border border-[#CAD0EB]/70 bg-gradient-to-b from-[#F0F5FE] via-[#E6F0FA] to-[#DFEDF9] p-3 shadow-xs dark:border-[#2C335E] dark:bg-gradient-to-b dark:from-[#121B38] dark:via-[#161B38] dark:to-[#11152D] ${className}`}
     >
-      {/* Background Soft Sky & Clouds */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/80 via-transparent to-transparent pointer-events-none" />
+      {/* Background Soft Sky & Glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/80 via-transparent to-transparent pointer-events-none dark:from-[#3B2A7A]/35" />
 
       <svg
         viewBox="0 0 540 200"

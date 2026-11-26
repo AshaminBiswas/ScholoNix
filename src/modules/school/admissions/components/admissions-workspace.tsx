@@ -441,10 +441,10 @@ export function AdmissionsWorkspace({
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#08093B] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#08093B] tracking-tight dark:text-[#F3F5FF]">
             Admissions
           </h1>
-          <p className="mt-1 text-xs sm:text-sm font-medium text-[#4D5072]">
+          <p className="mt-1 text-xs sm:text-sm font-medium text-[#4D5072] dark:text-[#9DA6CC]">
             Manage enquiries, applications, document verification, and student admissions in one place.
           </p>
         </div>
@@ -467,9 +467,9 @@ export function AdmissionsWorkspace({
               id="admissions-download-report-btn"
               type="button"
               onClick={handleDownloadReport}
-              className="inline-flex items-center gap-2 rounded-[12px] border border-[#D6DBF0] bg-white px-4 py-2.5 text-xs font-bold text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-[12px] border border-[#D6DBF0] bg-white px-4 py-2.5 text-xs font-bold text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#F3F5FF] dark:hover:border-[#8B5CF6] dark:hover:text-[#C4B5FD]"
             >
-              <Download className="h-4 w-4 text-[#663CF6]" aria-hidden="true" />
+              <Download className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
               <span>Download Report</span>
             </button>
           )}
@@ -482,8 +482,8 @@ export function AdmissionsWorkspace({
           role={feedbackBanner.type === "error" ? "alert" : "status"}
           className={`flex items-center justify-between gap-3 rounded-[14px] border px-4 py-3 text-xs font-semibold ${
             feedbackBanner.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border-rose-200 bg-rose-50 text-rose-700"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+              : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
           }`}
         >
           <div className="flex items-center gap-2">
@@ -508,16 +508,16 @@ export function AdmissionsWorkspace({
           FILTER CONTROL BAR (Shared across Overview / Applications / Admitted)
           ===================================================================== */}
       {activeTab !== "settings" && (
-        <div className="rounded-[18px] border border-[#D6DBF0] bg-white p-3.5 shadow-xs">
+        <div className="rounded-[18px] border border-[#D6DBF0] bg-white p-3.5 shadow-xs dark:border-[#272B4D] dark:bg-[#141731]">
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Academic Year Filter */}
-            <label className="flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3 py-1.5 text-xs">
-              <span className="font-semibold text-[#76799C]">Academic Year:</span>
+            <label className="flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3 py-1.5 text-xs dark:border-[#343B6B] dark:bg-[#10142C]">
+              <span className="font-semibold text-[#76799C] dark:text-[#9DA6CC]">Academic Year:</span>
               <select
                 aria-label="Filter by academic year"
                 value={filters.academicYear}
                 onChange={(e) => applyFilterUpdate({ academicYear: e.target.value })}
-                className="bg-transparent font-bold text-[#08093B] focus:outline-none cursor-pointer"
+                className="bg-transparent font-bold text-[#08093B] focus:outline-none cursor-pointer dark:text-[#F3F5FF] dark:[&>option]:bg-[#141731]"
               >
                 <option value="all">All Years</option>
                 {data.availableAcademicYears.map((ay) => (
@@ -529,13 +529,13 @@ export function AdmissionsWorkspace({
             </label>
 
             {/* Admission Grade Filter */}
-            <label className="flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3 py-1.5 text-xs">
-              <span className="font-semibold text-[#76799C]">Admission Grade:</span>
+            <label className="flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3 py-1.5 text-xs dark:border-[#343B6B] dark:bg-[#10142C]">
+              <span className="font-semibold text-[#76799C] dark:text-[#9DA6CC]">Admission Grade:</span>
               <select
                 aria-label="Filter by admission grade"
                 value={filters.grade}
                 onChange={(e) => applyFilterUpdate({ grade: e.target.value })}
-                className="bg-transparent font-bold text-[#08093B] focus:outline-none cursor-pointer"
+                className="bg-transparent font-bold text-[#08093B] focus:outline-none cursor-pointer dark:text-[#F3F5FF] dark:[&>option]:bg-[#141731]"
               >
                 <option value="all">All Grades</option>
                 {data.availableGrades.map((g) => (
@@ -547,8 +547,8 @@ export function AdmissionsWorkspace({
             </label>
 
             {/* Status Filter */}
-            <label className="flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3 py-1.5 text-xs">
-              <span className="font-semibold text-[#76799C]">Status:</span>
+            <label className="flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3 py-1.5 text-xs dark:border-[#343B6B] dark:bg-[#10142C]">
+              <span className="font-semibold text-[#76799C] dark:text-[#9DA6CC]">Status:</span>
               <select
                 aria-label="Filter by status"
                 value={filters.status}
@@ -557,7 +557,7 @@ export function AdmissionsWorkspace({
                     status: e.target.value as AdmissionApplicationStatusType | "all",
                   })
                 }
-                className="bg-transparent font-bold text-[#08093B] focus:outline-none cursor-pointer"
+                className="bg-transparent font-bold text-[#08093B] focus:outline-none cursor-pointer dark:text-[#F3F5FF] dark:[&>option]:bg-[#141731]"
               >
                 <option value="all">All Status</option>
                 <option value="UNDER_REVIEW">Under Review</option>
@@ -569,15 +569,15 @@ export function AdmissionsWorkspace({
             </label>
 
             {/* Date Range Filter */}
-            <label className="flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3 py-1.5 text-xs">
-              <Calendar className="h-3.5 w-3.5 text-[#663CF6]" aria-hidden="true" />
+            <label className="flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3 py-1.5 text-xs dark:border-[#343B6B] dark:bg-[#10142C]">
+              <Calendar className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
               <select
                 aria-label="Filter by date range"
                 value={filters.datePreset}
                 onChange={(e) =>
                   applyFilterUpdate({ datePreset: e.target.value as AdmissionsDatePreset })
                 }
-                className="bg-transparent font-bold text-[#08093B] focus:outline-none cursor-pointer"
+                className="bg-transparent font-bold text-[#08093B] focus:outline-none cursor-pointer dark:text-[#F3F5FF] dark:[&>option]:bg-[#141731]"
               >
                 <option value="all">All Dates</option>
                 <option value="year">Selected Academic Year</option>
@@ -594,15 +594,15 @@ export function AdmissionsWorkspace({
                   aria-label="From date"
                   value={filters.from}
                   onChange={(e) => applyFilterUpdate({ from: e.target.value })}
-                  className="rounded-[10px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#08093B]"
+                  className="rounded-[10px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
                 />
-                <span className="text-[#76799C]">–</span>
+                <span className="text-[#76799C] dark:text-[#9DA6CC]">–</span>
                 <input
                   type="date"
                   aria-label="To date"
                   value={filters.to}
                   onChange={(e) => applyFilterUpdate({ to: e.target.value })}
-                  className="rounded-[10px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#08093B]"
+                  className="rounded-[10px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
                 />
               </div>
             )}
@@ -679,13 +679,13 @@ export function AdmissionsWorkspace({
 
       {activeTab === "enquiries" && (
         <div className="space-y-4">
-          <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs space-y-4">
+          <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs space-y-4 dark:border-[#272B4D] dark:bg-[#141731]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-extrabold text-[#08093B]">
+                <h2 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                   Admission Enquiries ({data.enquiries.length})
                 </h2>
-                <p className="text-xs text-[#76799C]">
+                <p className="text-xs text-[#76799C] dark:text-[#9DA6CC]">
                   Track parent enquiries and convert qualified leads directly into formal applications.
                 </p>
               </div>
@@ -702,16 +702,16 @@ export function AdmissionsWorkspace({
             </div>
 
             {data.enquiries.length === 0 ? (
-              <div className="rounded-[14px] border border-dashed border-[#D6DBF0] bg-[#FAF8FE]/60 py-12 px-4 text-center">
-                <p className="text-sm font-bold text-[#08093B]">No enquiries recorded yet</p>
-                <p className="mt-1 text-xs text-[#76799C]">
+              <div className="rounded-[14px] border border-dashed border-[#D6DBF0] bg-[#FAF8FE]/60 py-12 px-4 text-center dark:border-[#2E345B] dark:bg-[#10142C]/60">
+                <p className="text-sm font-bold text-[#08093B] dark:text-[#F3F5FF]">No enquiries recorded yet</p>
+                <p className="mt-1 text-xs text-[#76799C] dark:text-[#9DA6CC]">
                   Log walk-in, phone, or website admission enquiries for {school.name}.
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto school-menu-scrollbar rounded-[14px] border border-[#DFE3F5]">
+              <div className="overflow-x-auto school-menu-scrollbar rounded-[14px] border border-[#DFE3F5] dark:border-[#272B4D]">
                 <table className="w-full min-w-[720px] text-left text-xs border-collapse">
-                  <thead className="bg-[#F6F5FD] text-[11px] font-bold uppercase tracking-wider text-[#4D5072] border-b border-[#DFE3F5]">
+                  <thead className="bg-[#F6F5FD] text-[11px] font-bold uppercase tracking-wider text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
                     <tr>
                       <th scope="col" className="px-3 py-3">Enquiry ID</th>
                       <th scope="col" className="px-3 py-3">Student</th>
@@ -722,19 +722,19 @@ export function AdmissionsWorkspace({
                       <th scope="col" className="px-3 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#F1F5F9]">
+                  <tbody className="divide-y divide-[#F1F5F9] dark:divide-[#232746]">
                     {data.enquiries.map((enq) => {
                       const meta = ENQUIRY_STATUS_META[enq.status];
                       return (
-                        <tr key={enq.id} className="hover:bg-[#FAF8FE]">
-                          <td className="px-3 py-3 font-bold text-[#663CF6]">{enq.enquiryCode}</td>
-                          <td className="px-3 py-3 font-bold text-[#08093B]">{enq.studentName}</td>
-                          <td className="px-3 py-3 text-[#4D5072]">
+                        <tr key={enq.id} className="hover:bg-[#FAF8FE] dark:hover:bg-[#1B2042]">
+                          <td className="px-3 py-3 font-bold text-[#663CF6] dark:text-[#A78BFA]">{enq.enquiryCode}</td>
+                          <td className="px-3 py-3 font-bold text-[#08093B] dark:text-[#F3F5FF]">{enq.studentName}</td>
+                          <td className="px-3 py-3 text-[#4D5072] dark:text-[#C5CCF0]">
                             <div>{enq.guardianName}</div>
-                            <div className="text-[11px] text-[#76799C]">{enq.guardianPhone}</div>
+                            <div className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">{enq.guardianPhone}</div>
                           </td>
-                          <td className="px-3 py-3 font-semibold text-[#4D5072]">{enq.gradeApplied}</td>
-                          <td className="px-3 py-3 text-[#4D5072]">{enq.source}</td>
+                          <td className="px-3 py-3 font-semibold text-[#4D5072] dark:text-[#C5CCF0]">{enq.gradeApplied}</td>
+                          <td className="px-3 py-3 text-[#4D5072] dark:text-[#C5CCF0]">{enq.source}</td>
                           <td className="px-3 py-3">
                             {data.permissions.canWrite && enq.status !== "CONVERTED" ? (
                               <select
@@ -763,7 +763,7 @@ export function AdmissionsWorkspace({
                           </td>
                           <td className="px-3 py-3 text-right">
                             {enq.status === "CONVERTED" ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
                                 <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                                 <span>Converted</span>
                               </span>
@@ -771,7 +771,7 @@ export function AdmissionsWorkspace({
                               <button
                                 type="button"
                                 onClick={() => handleEnquiryAction(enq.id, { action: "convert" })}
-                                className="inline-flex items-center gap-1 rounded-[8px] border border-[#DDD6FE] bg-[#FAF8FE] px-2.5 py-1 text-[11px] font-bold text-[#663CF6] hover:bg-[#663CF6] hover:text-white transition cursor-pointer"
+                                className="inline-flex items-center gap-1 rounded-[8px] border border-[#DDD6FE] bg-[#FAF8FE] px-2.5 py-1 text-[11px] font-bold text-[#663CF6] hover:bg-[#663CF6] hover:text-white transition cursor-pointer dark:border-[#3D3170] dark:bg-[#1E1A40] dark:text-[#CBB8FF] dark:hover:bg-[#7C5CFF] dark:hover:text-white"
                               >
                                 <span>Convert to Application</span>
                                 <ArrowRight className="h-3 w-3" aria-hidden="true" />
@@ -791,29 +791,29 @@ export function AdmissionsWorkspace({
 
       {activeTab === "admitted" && (
         <div className="space-y-4">
-          <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs space-y-4">
+          <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs space-y-4 dark:border-[#272B4D] dark:bg-[#141731]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="text-base font-extrabold text-[#08093B]">
+                <h2 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                   Admitted Students ({data.admittedStudents.length})
                 </h2>
-                <p className="text-xs text-[#76799C]">
+                <p className="text-xs text-[#76799C] dark:text-[#9DA6CC]">
                   Applicants who completed admission and received a tenant Admission Number.
                 </p>
               </div>
             </div>
 
             {data.admittedStudents.length === 0 ? (
-              <div className="rounded-[14px] border border-dashed border-[#D6DBF0] bg-[#FAF8FE]/60 py-12 px-4 text-center">
-                <p className="text-sm font-bold text-[#08093B]">No admitted students yet</p>
-                <p className="mt-1 text-xs text-[#76799C]">
+              <div className="rounded-[14px] border border-dashed border-[#D6DBF0] bg-[#FAF8FE]/60 py-12 px-4 text-center dark:border-[#2E345B] dark:bg-[#10142C]/60">
+                <p className="text-sm font-bold text-[#08093B] dark:text-[#F3F5FF]">No admitted students yet</p>
+                <p className="mt-1 text-xs text-[#76799C] dark:text-[#9DA6CC]">
                   Once an application stage is updated to Admitted, the student and generated Admission Number appear here.
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto school-menu-scrollbar rounded-[14px] border border-[#DFE3F5]">
+              <div className="overflow-x-auto school-menu-scrollbar rounded-[14px] border border-[#DFE3F5] dark:border-[#272B4D]">
                 <table className="w-full min-w-[700px] text-left text-xs border-collapse">
-                  <thead className="bg-[#F6F5FD] text-[11px] font-bold uppercase tracking-wider text-[#4D5072] border-b border-[#DFE3F5]">
+                  <thead className="bg-[#F6F5FD] text-[11px] font-bold uppercase tracking-wider text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
                     <tr>
                       <th scope="col" className="px-3 py-3">Admission No</th>
                       <th scope="col" className="px-3 py-3">Application ID</th>
@@ -824,21 +824,21 @@ export function AdmissionsWorkspace({
                       <th scope="col" className="px-3 py-3 text-right">Details</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#F1F5F9]">
+                  <tbody className="divide-y divide-[#F1F5F9] dark:divide-[#232746]">
                     {data.admittedStudents.map((stu) => (
-                      <tr key={stu.id} className="hover:bg-[#FAF8FE]">
-                        <td className="px-3 py-3 font-extrabold text-emerald-700">
+                      <tr key={stu.id} className="hover:bg-[#FAF8FE] dark:hover:bg-[#1B2042]">
+                        <td className="px-3 py-3 font-extrabold text-emerald-700 dark:text-emerald-400">
                           {stu.admissionNumber || "Assigned"}
                         </td>
-                        <td className="px-3 py-3 font-semibold text-[#663CF6]">
+                        <td className="px-3 py-3 font-semibold text-[#663CF6] dark:text-[#A78BFA]">
                           {stu.applicationCode}
                         </td>
-                        <td className="px-3 py-3 font-bold text-[#08093B]">{stu.studentName}</td>
-                        <td className="px-3 py-3 text-[#4D5072]">{stu.gradeApplied}</td>
-                        <td className="px-3 py-3 text-[#4D5072]">
+                        <td className="px-3 py-3 font-bold text-[#08093B] dark:text-[#F3F5FF]">{stu.studentName}</td>
+                        <td className="px-3 py-3 text-[#4D5072] dark:text-[#C5CCF0]">{stu.gradeApplied}</td>
+                        <td className="px-3 py-3 text-[#4D5072] dark:text-[#C5CCF0]">
                           {stu.guardianName} · {stu.guardianPhone}
                         </td>
-                        <td className="px-3 py-3 text-[#4D5072]">
+                        <td className="px-3 py-3 text-[#4D5072] dark:text-[#9DA6CC]">
                           {stu.admittedAt
                             ? new Intl.DateTimeFormat("en-IN", {
                                 day: "2-digit",
@@ -852,7 +852,7 @@ export function AdmissionsWorkspace({
                           <button
                             type="button"
                             onClick={() => setInspectApp(stu)}
-                            className="rounded-[8px] border border-[#D6DBF0] px-2.5 py-1 text-[11px] font-bold text-[#663CF6] hover:bg-[#FAF8FE] cursor-pointer"
+                            className="rounded-[8px] border border-[#D6DBF0] px-2.5 py-1 text-[11px] font-bold text-[#663CF6] hover:bg-[#FAF8FE] cursor-pointer dark:border-[#30365C] dark:text-[#C4B5FD] dark:hover:bg-[#1F2447]"
                           >
                             View
                           </button>
@@ -869,14 +869,14 @@ export function AdmissionsWorkspace({
 
       {activeTab === "settings" && (
         <div className="space-y-4">
-          <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-6 shadow-xs max-w-3xl">
+          <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-6 shadow-xs max-w-3xl dark:border-[#272B4D] dark:bg-[#141731]">
             <div className="flex items-center gap-2.5 mb-4">
-              <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6]">
+              <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
               </span>
               <div>
-                <h2 className="text-base font-extrabold text-[#08093B]">Admission Settings</h2>
-                <p className="text-xs text-[#76799C]">
+                <h2 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Admission Settings</h2>
+                <p className="text-xs text-[#76799C] dark:text-[#9DA6CC]">
                   Configure active admission cycle, last date reminder, code prefix, and open grades for {school.name}.
                 </p>
               </div>
@@ -887,7 +887,7 @@ export function AdmissionsWorkspace({
                 <div>
                   <label
                     htmlFor="settings-ay"
-                    className="block text-xs font-bold text-[#08093B] mb-1"
+                    className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]"
                   >
                     Current Academic Year
                   </label>
@@ -899,14 +899,14 @@ export function AdmissionsWorkspace({
                     value={settingsAcademicYear}
                     onChange={(e) => setSettingsAcademicYear(e.target.value)}
                     placeholder="2026 – 2027"
-                    className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs font-semibold text-[#08093B]"
+                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="settings-deadline"
-                    className="block text-xs font-bold text-[#08093B] mb-1"
+                    className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]"
                   >
                     Application Last Date
                   </label>
@@ -916,14 +916,14 @@ export function AdmissionsWorkspace({
                     disabled={!data.permissions.canManageSettings}
                     value={settingsDeadline}
                     onChange={(e) => setSettingsDeadline(e.target.value)}
-                    className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs font-semibold text-[#08093B]"
+                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="settings-prefix"
-                    className="block text-xs font-bold text-[#08093B] mb-1"
+                    className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]"
                   >
                     Application ID Prefix
                   </label>
@@ -935,13 +935,13 @@ export function AdmissionsWorkspace({
                     value={settingsPrefix}
                     onChange={(e) => setSettingsPrefix(e.target.value.toUpperCase())}
                     maxLength={8}
-                    className="w-full rounded-[10px] border border-[#CAD0EB] px-3 py-2 text-xs font-semibold text-[#08093B]"
+                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
                   />
                 </div>
               </div>
 
               <div>
-                <p className="text-xs font-bold text-[#08093B] mb-2">
+                <p className="text-xs font-bold text-[#08093B] mb-2 dark:text-[#F3F5FF]">
                   Grades Open for Admission
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -952,8 +952,8 @@ export function AdmissionsWorkspace({
                         key={grade}
                         className={`flex items-center gap-2 rounded-[10px] border px-3 py-2 text-xs font-semibold cursor-pointer transition ${
                           checked
-                            ? "border-[#663CF6] bg-[#FAF8FE] text-[#663CF6]"
-                            : "border-[#DFE3F5] bg-white text-[#4D5072]"
+                            ? "border-[#663CF6] bg-[#FAF8FE] text-[#663CF6] dark:border-[#8B5CF6] dark:bg-[#231D4B] dark:text-[#D9CEFF]"
+                            : "border-[#DFE3F5] bg-white text-[#4D5072] dark:border-[#2A2F58] dark:bg-[#10142C] dark:text-[#9DA6CC]"
                         }`}
                       >
                         <input

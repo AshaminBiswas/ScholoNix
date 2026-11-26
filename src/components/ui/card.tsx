@@ -6,7 +6,7 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     <div
       ref={ref}
       className={cn(
-        "rounded-[16px] border border-[#D6DBF0] bg-white p-5 text-[#1B1D45] shadow-[0_8px_24px_rgba(24,18,77,0.08)] transition-all duration-200 ease-in-out hover:border-[#8B5CF6] hover:shadow-[0_14px_34px_rgba(102,60,246,0.16)]",
+        "rounded-[16px] border border-[#D6DBF0] bg-white p-5 text-[#1B1D45] shadow-[0_8px_24px_rgba(24,18,77,0.08)] transition-all duration-200 ease-in-out hover:border-[#8B5CF6] hover:shadow-[0_14px_34px_rgba(102,60,246,0.16)] dark:border-[#272B4D] dark:bg-[#141731] dark:text-[#DCE1F9] dark:shadow-[0_10px_28px_rgba(3,5,18,0.45)] dark:hover:border-[#8B5CF6] dark:hover:shadow-[0_14px_34px_rgba(124,92,255,0.22)]",
         className,
       )}
       {...props}
@@ -32,7 +32,7 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn("text-lg font-extrabold tracking-tight text-[#08093B]", className)}
+    className={cn("text-lg font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF]", className)}
     {...props}
   />
 ));
@@ -44,7 +44,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-xs leading-relaxed text-[#4D5072] font-medium", className)}
+    className={cn("text-xs leading-relaxed text-[#4D5072] font-medium dark:text-[#9DA6CC]", className)}
     {...props}
   />
 ));
@@ -62,7 +62,7 @@ const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("flex items-center pt-4 border-t border-[#DFE3F5]", className)}
+      className={cn("flex items-center pt-4 border-t border-[#DFE3F5] dark:border-[#232746]", className)}
       {...props}
     />
   ),

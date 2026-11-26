@@ -11,7 +11,7 @@ export default function RootLoading() {
       role="status"
       aria-busy="true"
       aria-label="Loading page content"
-      className="relative min-h-screen overflow-x-hidden bg-[#FCFDFE]"
+      className="relative min-h-screen overflow-x-hidden bg-[#FCFDFE] dark:bg-[#090B1A]"
     >
       <span className="sr-only">Loading page content...</span>
 
@@ -19,11 +19,11 @@ export default function RootLoading() {
       <AtmosphericBackground />
 
       {/* 1. Header / Navbar Skeleton */}
-      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-[#D6DBF0] bg-white/95 backdrop-blur-md dark:border-[#272B4D] dark:bg-[#0E1026]/95">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           {/* Logo & Brand Skeleton */}
           <div className="flex items-center gap-2.5">
-            <Skeleton className="h-9 w-9 rounded-[12px] bg-[#EDE7FF]" />
+            <Skeleton className="h-9 w-9 rounded-[12px] bg-[#EDE7FF] dark:bg-[#251D4A]" />
             <Skeleton className="h-5 w-40 sm:w-48" />
           </div>
 
@@ -81,9 +81,9 @@ export default function RootLoading() {
 
           {/* Right Column: Live Mockup Dashboard Card Skeleton */}
           <div className="mx-auto w-full max-w-lg lg:col-span-6 lg:max-w-none">
-            <div className="rounded-[20px] border border-[#D0D6F0] bg-white p-4 sm:p-5 shadow-[0_20px_48px_rgba(79,39,232,0.16),0_4px_14px_rgba(8,9,59,0.08)]">
+            <div className="rounded-[20px] border border-[#D0D6F0] bg-white p-4 sm:p-5 shadow-[0_20px_48px_rgba(79,39,232,0.16),0_4px_14px_rgba(8,9,59,0.08)] dark:border-[#272B4D] dark:bg-[#141731] dark:shadow-[0_20px_48px_rgba(3,5,18,0.5)]">
               {/* Header inside card */}
-              <div className="flex items-center justify-between border-b border-[#DFE3F5] pb-3">
+              <div className="flex items-center justify-between border-b border-[#DFE3F5] pb-3 dark:border-[#232746]">
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-8 w-8 rounded-[8px]" />
                   <Skeleton className="h-4 w-32" />
@@ -100,7 +100,7 @@ export default function RootLoading() {
                 {[1, 2, 3, 4].map((i) => (
                   <div
                     key={i}
-                    className="rounded-[10px] border border-[#DDE2F4] bg-[#F5F7FD] p-2.5"
+                    className="rounded-[10px] border border-[#DDE2F4] bg-[#F5F7FD] p-2.5 dark:border-[#272B4D] dark:bg-[#10142C]"
                   >
                     <Skeleton className="h-3 w-12" />
                     <Skeleton className="mt-2 h-5 w-16" />
@@ -110,11 +110,11 @@ export default function RootLoading() {
 
               {/* Chart Placeholders */}
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-12">
-                <div className="flex flex-col items-center justify-center rounded-[10px] border border-[#DDE2F4] bg-[#F5F7FD] p-3 sm:col-span-4">
+                <div className="flex flex-col items-center justify-center rounded-[10px] border border-[#DDE2F4] bg-[#F5F7FD] p-3 sm:col-span-4 dark:border-[#272B4D] dark:bg-[#10142C]">
                   <Skeleton className="h-16 w-16 rounded-full" />
                   <Skeleton className="mt-2 h-3 w-20" />
                 </div>
-                <div className="flex flex-col justify-between rounded-[10px] border border-[#DDE2F4] bg-[#F5F7FD] p-3 sm:col-span-8">
+                <div className="flex flex-col justify-between rounded-[10px] border border-[#DDE2F4] bg-[#F5F7FD] p-3 sm:col-span-8 dark:border-[#272B4D] dark:bg-[#10142C]">
                   <Skeleton className="h-3 w-28" />
                   <div className="mt-3 flex h-14 items-end justify-between gap-1.5">
                     {[40, 65, 50, 75, 60, 90, 85, 70].map((h, idx) => (
@@ -143,9 +143,9 @@ export default function RootLoading() {
             {[1, 2, 3, 4].map((item) => (
               <div
                 key={item}
-                className="rounded-[16px] border border-[#D6DBF0] bg-white p-5 shadow-[0_8px_24px_rgba(24,18,77,0.08)] space-y-3"
+                className="rounded-[16px] border border-[#D6DBF0] bg-white p-5 shadow-[0_8px_24px_rgba(24,18,77,0.08)] space-y-3 dark:border-[#272B4D] dark:bg-[#141731] dark:shadow-[0_10px_28px_rgba(3,5,18,0.45)]"
               >
-                <Skeleton className="h-11 w-11 rounded-[12px] bg-[#EDE7FF]" />
+                <Skeleton className="h-11 w-11 rounded-[12px] bg-[#EDE7FF] dark:bg-[#251D4A]" />
                 <Skeleton className="h-5 w-28" />
                 <Skeleton className="h-3 w-full" />
                 <Skeleton className="h-3 w-4/5" />

@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { siteConfig } from "@/config/site";
 import { ConsoleCleaner } from "@/components/ui/console-cleaner";
+import { ThemeProvider } from "@/components/theme/theme-provider";
+import { THEME_INIT_SCRIPT } from "@/components/theme/theme-config";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -37,15 +39,19 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" className={plusJakartaSans.variable}>
-      <body className="min-h-screen antialiased">
+    <html lang="en" className={plusJakartaSans.variable} suppressHydrationWarning>
+      <head>
+        <meta name="color-scheme" content="light dark" />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="min-h-screen antialiased bg-[var(--bg-main)] text-[var(--text-body)] transition-colors duration-200">
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){if(typeof window!=='undefined'){window.console.log=function(){};window.console.info=function(){};window.console.debug=function(){};var w=window.console.warn;window.console.warn=function(){var m=arguments[0];if(typeof m==='string'&&(m.indexOf('Fast Refresh')!==-1||m.indexOf('React DevTools')!==-1||m.indexOf('Image with src')!==-1)){return;}w.apply(window.console,arguments);};}})();`,
           }}
         />
         <ConsoleCleaner />
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

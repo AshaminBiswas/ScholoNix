@@ -38,6 +38,7 @@ import {
 import { AtmosphericBackground } from "@/components/ui/atmospheric-background";
 import { ResourcesDropdown, MobileResourcesMenu } from "./resources-dropdown";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import {
   FAQ_CATEGORIES,
   type DetailedFAQArticle,
@@ -47,9 +48,9 @@ import {
 // 3D Dashboard Illustration matching mockup image
 function FAQDashboardArtwork() {
   return (
-    <div className="relative mx-auto flex w-full items-center justify-center overflow-hidden rounded-2xl border border-[#D5D3F8] bg-gradient-to-b from-[#F2F4FF] via-[#EEF0FE] to-[#E9EAFF] p-4 sm:p-8">
+    <div className="relative mx-auto flex w-full items-center justify-center overflow-hidden rounded-2xl border border-[#D5D3F8] dark:border-[#3A3570] bg-gradient-to-b from-[#F2F4FF] dark:from-[#171B3D] via-[#EEF0FE] dark:via-[#191D42] to-[#E9EAFF] dark:to-[#1E224A] p-4 sm:p-8">
       {/* Soft ambient background glow */}
-      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/30 to-[#93C5FD]/30 blur-2xl filter" />
+      <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-[#C4B5FD]/30 dark:from-[#663CF6]/20 to-[#93C5FD]/30 dark:to-[#0284C7]/20 blur-2xl filter" />
 
       <svg
         viewBox="0 0 620 340"
@@ -307,18 +308,18 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45]">
+    <div className="relative min-h-screen overflow-x-clip text-[#1B1D45] dark:text-[#F3F5FF]">
       <AtmosphericBackground />
 
       {/* Floating Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-[100] flex animate-fade-in items-center gap-2 rounded-xl border border-[#D4C4FE] bg-white px-4 py-3 text-xs font-bold text-[#08093B] shadow-2xl shadow-[#663CF6]/20">
-          <CheckCircle2 className="h-4 w-4 text-[#10B981]" />
+        <div className="fixed top-20 right-6 z-[100] flex animate-fade-in items-center gap-2 rounded-xl border border-[#D4C4FE] dark:border-[#42357D] bg-white dark:bg-[#141731] px-4 py-3 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] shadow-2xl shadow-[#663CF6]/20">
+          <CheckCircle2 className="h-4 w-4 text-[#10B981] dark:text-[#34D399]" />
           <span>{toastMessage}</span>
           <button
             type="button"
             onClick={() => setToastMessage(null)}
-            className="ml-2 text-[#7C829E] hover:text-[#08093B]"
+            className="ml-2 text-[#7C829E] dark:text-[#969CC2] hover:text-[#08093B] dark:hover:text-white"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -328,30 +329,32 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
       {/* =========================================================================
           1. HEADER / NAVBAR
           ========================================================================= */}
-      <header className="sticky top-0 z-50 border-b border-[#E6EAF5]/80 bg-white/90 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-[#E6EAF5]/80 dark:border-[#2A2F56]/90 bg-white/90 dark:bg-[#141731]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           {/* Logo */}
           <BrandLogo className="h-8 sm:h-9" />
 
           {/* Desktop Navigation */}
-          <nav className="hidden items-center gap-7 text-xs font-bold text-[#4D5072] md:flex">
-            <Link href="/features" className="transition-colors hover:text-[#663CF6]">
+          <nav className="hidden items-center gap-7 text-xs font-bold text-[#4D5072] dark:text-[#B4B9DA] md:flex">
+            <Link href="/features" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Features
             </Link>
-            <Link href="/pricing" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/pricing" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               Pricing
             </Link>
-            <Link href="/#for-schools" className="transition-colors hover:text-[#663CF6]">
+            <Link href="/#for-schools" className="transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
               For Schools
             </Link>
             <ResourcesDropdown active={true} />
           </nav>
 
           {/* Desktop Action Buttons */}
-          <div className="hidden items-center gap-3 md:flex">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            <div className="hidden items-center gap-3 md:flex">
             <Link
               href="/login"
-              className="rounded-xl border border-[#D6DBF0] bg-white px-4 py-2 text-xs font-bold text-[#08093B] shadow-sm transition-all hover:border-[#663CF6]/60 hover:text-[#663CF6]"
+              className="rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] px-4 py-2 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] shadow-sm transition-all hover:border-[#663CF6]/60 dark:hover:border-[#9D7CFE]/80 hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
             >
               Sign In
             </Link>
@@ -367,48 +370,49 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D6DBF0] bg-white text-[#08093B] md:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] text-[#08093B] dark:text-[#F3F5FF] md:hidden"
             aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
+          </div>
         </div>
 
         {/* Mobile Dropdown Drawer */}
         {mobileMenuOpen && (
-          <div className="border-b border-[#E6EAF5] bg-white px-4 py-4 md:hidden animate-in slide-in-from-top-2 duration-200">
-            <nav className="flex flex-col gap-3 text-sm font-bold text-[#4D5072]">
+          <div className="border-b border-[#E6EAF5] dark:border-[#2A2F56] bg-white dark:bg-[#141731] px-4 py-4 md:hidden animate-in slide-in-from-top-2 duration-200">
+            <nav className="flex flex-col gap-3 text-sm font-bold text-[#4D5072] dark:text-[#B4B9DA]">
               <Link
                 href="/features"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1.5 transition-colors hover:text-[#663CF6]"
+                className="py-1.5 transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Features
               </Link>
               <Link
                 href="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1.5 transition-colors hover:text-[#663CF6]"
+                className="py-1.5 transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 Pricing
               </Link>
               <Link
                 href="/#for-schools"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1.5 transition-colors hover:text-[#663CF6]"
+                className="py-1.5 transition-colors hover:text-[#663CF6] dark:hover:text-[#C4B5FD]"
               >
                 For Schools
               </Link>
 
-              <div className="border-t border-[#F0F2FA] pt-2">
+              <div className="border-t border-[#F0F2FA] dark:border-[#23284A] pt-2">
                 <MobileResourcesMenu onItemClick={() => setMobileMenuOpen(false)} />
               </div>
 
-              <div className="mt-2 flex flex-col gap-2 border-t border-[#F0F2FA] pt-3">
+              <div className="mt-2 flex flex-col gap-2 border-t border-[#F0F2FA] dark:border-[#23284A] pt-3">
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full rounded-xl border border-[#D6DBF0] py-2.5 text-center text-xs font-bold text-[#08093B]"
+                  className="w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] py-2.5 text-center text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]"
                 >
                   Sign In
                 </Link>
@@ -430,20 +434,20 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
         {/* =========================================================================
             2. BREADCRUMBS BAR
             ========================================================================= */}
-        <nav className="flex items-center gap-2 text-xs font-semibold text-[#5A5E7A] pb-6">
-          <Link href="/" className="hover:text-[#663CF6] flex items-center gap-1">
+        <nav className="flex items-center gap-2 text-xs font-semibold text-[#5A5E7A] dark:text-[#B4B9DA] pb-6">
+          <Link href="/" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD] flex items-center gap-1">
             <Home className="h-3.5 w-3.5" />
           </Link>
-          <ChevronRight className="h-3 w-3 text-[#A0A5BD]" />
-          <Link href="/faqs" className="hover:text-[#663CF6]">
+          <ChevronRight className="h-3 w-3 text-[#A0A5BD] dark:text-[#888EB5]" />
+          <Link href="/faqs" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
             FAQs
           </Link>
-          <ChevronRight className="h-3 w-3 text-[#A0A5BD]" />
-          <Link href={`/faqs#${article.categoryId}`} className="hover:text-[#663CF6]">
+          <ChevronRight className="h-3 w-3 text-[#A0A5BD] dark:text-[#888EB5]" />
+          <Link href={`/faqs#${article.categoryId}`} className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
             {article.category}
           </Link>
-          <ChevronRight className="h-3 w-3 text-[#A0A5BD]" />
-          <span className="text-[#08093B] font-bold truncate max-w-[280px] sm:max-w-md">
+          <ChevronRight className="h-3 w-3 text-[#A0A5BD] dark:text-[#888EB5]" />
+          <span className="text-[#08093B] dark:text-[#F3F5FF] font-bold truncate max-w-[280px] sm:max-w-md">
             {article.question}
           </span>
         </nav>
@@ -459,29 +463,29 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
             {/* Header: Badge, Question Title, Subtitle & Metadata */}
             <header className="space-y-3">
               {/* Category Badge */}
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-[#D4C4FE]/80 bg-[#EDE7FF] px-3.5 py-1 text-xs font-bold text-[#663CF6]">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-[#D4C4FE]/80 dark:border-[#42357D]/90 bg-[#EDE7FF] dark:bg-[#251D4A] px-3.5 py-1 text-xs font-bold text-[#663CF6] dark:text-[#B59CFF]">
                 <span>{article.category}</span>
               </div>
 
               {/* Title */}
-              <h1 className="text-2xl font-extrabold tracking-tight text-[#08093B] sm:text-3xl lg:text-[38px] lg:leading-[1.2]">
+              <h1 className="text-2xl font-extrabold tracking-tight text-[#08093B] dark:text-[#F3F5FF] sm:text-3xl lg:text-[38px] lg:leading-[1.2]">
                 {article.question}
               </h1>
 
               {/* Subtitle */}
-              <p className="text-sm sm:text-base font-medium text-[#5A5E7A] leading-relaxed">
+              <p className="text-sm sm:text-base font-medium text-[#5A5E7A] dark:text-[#B4B9DA] leading-relaxed">
                 {article.subtitle}
               </p>
 
               {/* Metadata Row */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E6EAF5] pb-5 pt-2 text-xs font-medium text-[#7C829E]">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E6EAF5] dark:border-[#2A2F56] pb-5 pt-2 text-xs font-medium text-[#7C829E] dark:text-[#969CC2]">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-[#663CF6]" />
+                    <Calendar className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#B59CFF]" />
                     <span>Last updated: {article.lastUpdated}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-[#663CF6]" />
+                    <Clock className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#B59CFF]" />
                     <span>Reading time: {article.readingTime}</span>
                   </div>
                 </div>
@@ -490,7 +494,7 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="flex items-center gap-1.5 rounded-xl border border-[#D6DBF0] bg-white px-3.5 py-1.5 text-xs font-bold text-[#08093B] shadow-xs hover:border-[#663CF6]/60 hover:text-[#663CF6] transition-colors"
+                  className="flex items-center gap-1.5 rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] px-3.5 py-1.5 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] shadow-xs hover:border-[#663CF6]/60 dark:hover:border-[#9D7CFE]/80 hover:text-[#663CF6] dark:hover:text-[#C4B5FD] transition-colors"
                 >
                   <Share2 className="h-3.5 w-3.5" />
                   <span>Share</span>
@@ -500,8 +504,8 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
 
             {/* Overview Section */}
             <section className="space-y-4">
-              <h2 className="text-lg font-extrabold text-[#08093B]">Overview</h2>
-              <p className="text-xs sm:text-sm font-normal leading-relaxed text-[#5A5E7A]">
+              <h2 className="text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Overview</h2>
+              <p className="text-xs sm:text-sm font-normal leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
                 {article.overview}
               </p>
 
@@ -513,28 +517,28 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
 
             {/* How It Works Section */}
             <section className="space-y-3 pt-2">
-              <h2 className="text-lg font-extrabold text-[#08093B]">How It Works</h2>
-              <p className="text-xs sm:text-sm font-normal leading-relaxed text-[#5A5E7A]">
+              <h2 className="text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">How It Works</h2>
+              <p className="text-xs sm:text-sm font-normal leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA]">
                 {article.howItWorks}
               </p>
             </section>
 
             {/* Key Benefits Grid (4 Cards) */}
             <section className="space-y-4 pt-2">
-              <h2 className="text-lg font-extrabold text-[#08093B]">Key Benefits</h2>
+              <h2 className="text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Key Benefits</h2>
               <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
                 {article.keyBenefits.map((benefit, idx) => (
                   <div
                     key={idx}
-                    className="flex flex-col items-center rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F5F1FE] p-4 text-center shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
+                    className="flex flex-col items-center rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F1FE] dark:to-[#211C47] p-4 text-center shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_12px_28px_rgba(102,60,246,0.12)]"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6] ring-1 ring-[#D4C4FE]/60">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF] ring-1 ring-[#D4C4FE]/60 dark:ring-[#42357D]/60">
                       <BenefitIcon type={benefit.iconType} className="h-5 w-5" />
                     </div>
-                    <h3 className="mt-3 text-xs font-bold text-[#08093B] leading-snug">
+                    <h3 className="mt-3 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] leading-snug">
                       {benefit.title}
                     </h3>
-                    <p className="mt-1 text-[11px] font-medium text-[#7C829E] leading-relaxed">
+                    <p className="mt-1 text-[11px] font-medium text-[#7C829E] dark:text-[#969CC2] leading-relaxed">
                       {benefit.description}
                     </p>
                   </div>
@@ -544,21 +548,21 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
 
             {/* Getting Started in 3 Steps Flow */}
             <section className="space-y-4 pt-2">
-              <h2 className="text-lg font-extrabold text-[#08093B]">
+              <h2 className="text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                 Getting Started in 3 Steps
               </h2>
-              <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F3EEFF]/80 p-5 sm:flex-row shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm">
+              <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F3EEFF]/80 dark:to-[#221C4A]/80 p-5 sm:flex-row shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm">
                 {article.steps.map((step, idx) => (
                   <React.Fragment key={step.stepNumber}>
                     <div className="flex flex-1 items-start gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] text-xs font-extrabold text-[#663CF6]">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-xs font-extrabold text-[#663CF6] dark:text-[#B59CFF]">
                         {step.stepNumber}
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-[#08093B]">
+                        <h4 className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
                           {step.title}
                         </h4>
-                        <p className="mt-0.5 text-[11px] font-medium text-[#7C829E] leading-relaxed">
+                        <p className="mt-0.5 text-[11px] font-medium text-[#7C829E] dark:text-[#969CC2] leading-relaxed">
                           {step.description}
                         </p>
                       </div>
@@ -573,14 +577,14 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
             </section>
 
             {/* Info Callout Box */}
-            <div className="flex items-start gap-3 rounded-2xl border border-[#CDC2F7] bg-gradient-to-r from-white/95 via-[#FAF8FF] to-[#EDE7FF]/70 p-4 text-xs font-medium text-[#5A5E7A] leading-relaxed shadow-xs backdrop-blur-sm">
-              <Info className="h-4 w-4 shrink-0 text-[#663CF6] mt-0.5" />
+            <div className="flex items-start gap-3 rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-r from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#EDE7FF]/70 dark:to-[#251D4A]/75 p-4 text-xs font-medium text-[#5A5E7A] dark:text-[#B4B9DA] leading-relaxed shadow-xs backdrop-blur-sm">
+              <Info className="h-4 w-4 shrink-0 text-[#663CF6] dark:text-[#B59CFF] mt-0.5" />
               <span>{article.callout}</span>
             </div>
 
             {/* Helpfulness Feedback Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4EFFE] p-4 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm">
-              <span className="text-xs font-bold text-[#08093B]">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4EFFE] dark:to-[#211C47] p-4 shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm">
+              <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
                 Was this answer helpful?
               </span>
               <div className="flex items-center gap-2">
@@ -599,10 +603,10 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                 <button
                   type="button"
                   onClick={() => handleFeedback("no")}
-                  className={`flex items-center gap-1.5 rounded-xl border border-[#D6DBF0] bg-white px-4 py-1.5 text-xs font-bold transition-all ${
+                  className={`flex items-center gap-1.5 rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] px-4 py-1.5 text-xs font-bold transition-all ${
                     helpfulFeedback === "no"
-                      ? "bg-rose-50 border-rose-300 text-rose-600"
-                      : "text-[#5A5E7A] hover:bg-slate-50"
+                      ? "bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-700/70 text-rose-600 dark:text-rose-400"
+                      : "text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-slate-50 dark:hover:bg-[#1D2145]"
                   }`}
                 >
                   <ThumbsDown className="h-3.5 w-3.5" />
@@ -615,15 +619,15 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
             {article.relatedFaqs.length > 0 && (
               <section className="space-y-3 pt-2">
                 <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#EDE7FF] text-[#663CF6]">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF]">
                     <Layers className="h-3.5 w-3.5" />
                   </div>
-                  <h3 className="text-base font-extrabold text-[#08093B]">
+                  <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                     Related FAQs
                   </h3>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F8F6FE] shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm divide-y divide-[#F0F2FA]">
+                <div className="overflow-hidden rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F8F6FE] dark:to-[#1E1B42] shadow-[0_6px_20px_rgba(24,18,77,0.06)] backdrop-blur-sm divide-y divide-[#F0F2FA] dark:divide-[#23284A]">
                   {article.relatedFaqs.map((rel: FAQItem) => {
                     const isOpen = !!openRelated[rel.id];
                     return (
@@ -631,25 +635,25 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                         <button
                           type="button"
                           onClick={() => toggleRelated(rel.id)}
-                          className="flex w-full items-center justify-between gap-4 p-4 text-left transition-colors hover:bg-slate-50/70"
+                          className="flex w-full items-center justify-between gap-4 p-4 text-left transition-colors hover:bg-slate-50/70 dark:hover:bg-[#1D2145]/80"
                         >
-                          <span className="text-xs sm:text-sm font-bold text-[#08093B]">
+                          <span className="text-xs sm:text-sm font-bold text-[#08093B] dark:text-[#F3F5FF]">
                             {rel.question}
                           </span>
                           <ChevronDown
-                            className={`h-4 w-4 shrink-0 text-[#8E92BC] transition-transform duration-200 ${
-                              isOpen ? "rotate-180 text-[#663CF6]" : ""
+                            className={`h-4 w-4 shrink-0 text-[#8E92BC] dark:text-[#888EB5] transition-transform duration-200 ${
+                              isOpen ? "rotate-180 text-[#663CF6] dark:text-[#B59CFF]" : ""
                             }`}
                           />
                         </button>
 
                         {isOpen && (
-                          <div className="border-t border-[#F0F2FA] bg-[#FAFBFD]/60 p-4 text-xs font-normal leading-relaxed text-[#5A5E7A] animate-in fade-in duration-150">
+                          <div className="border-t border-[#F0F2FA] dark:border-[#23284A] bg-[#FAFBFD]/60 dark:bg-[#10132C]/70 p-4 text-xs font-normal leading-relaxed text-[#5A5E7A] dark:text-[#B4B9DA] animate-in fade-in duration-150">
                             <p>{rel.answer}</p>
                             <div className="mt-3">
                               <Link
                                 href={`/faqs/${rel.id}`}
-                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#663CF6] hover:underline"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#663CF6] dark:text-[#B59CFF] hover:underline"
                               >
                                 <span>Read full answer guide</span>
                                 <ArrowRight className="h-3 w-3" />
@@ -670,10 +674,10 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
               ========================================== */}
           <aside className="space-y-6 lg:col-span-4 lg:sticky lg:top-24">
             {/* Card 1: Search FAQs */}
-            <div className="rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4F0FE] p-5 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+            <div className="rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4F0FE] dark:to-[#211C47] p-5 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
               <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-[#663CF6]" />
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+                <Search className="h-4 w-4 text-[#663CF6] dark:text-[#B59CFF]" />
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                   Search FAQs
                 </h3>
               </div>
@@ -692,7 +696,7 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                   value={sidebarSearch}
                   onChange={(e) => setSidebarSearch(e.target.value)}
                   placeholder="Search for a question..."
-                  className="w-full rounded-full border border-[#D6DBF0] bg-white py-2.5 pr-11 pl-4 text-xs text-[#08093B] placeholder-[#8E92BC] outline-none focus:border-[#7C3AED]"
+                  className="w-full rounded-full border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] py-2.5 pr-11 pl-4 text-xs text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
                 <button
                   type="submit"
@@ -705,8 +709,8 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
             </div>
 
             {/* Card 2: FAQ Categories */}
-            <div className="rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F4F0FE] p-5 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+            <div className="rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F4F0FE] dark:to-[#211C47] p-5 shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 FAQ Categories
               </h3>
 
@@ -719,8 +723,8 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                       href={`/faqs#${cat.id}`}
                       className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${
                         isActive
-                          ? "bg-[#EDE7FF] text-[#663CF6]"
-                          : "text-[#5A5E7A] hover:bg-slate-50 hover:text-[#08093B]"
+                          ? "bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF]"
+                          : "text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-slate-50 dark:hover:bg-[#1D2145] hover:text-[#08093B] dark:hover:text-white"
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -731,7 +735,7 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                         className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                           isActive
                             ? "bg-[#663CF6] text-white"
-                            : "bg-[#F1F3F9] text-[#7C829E]"
+                            : "bg-[#F1F3F9] dark:bg-[#1B1F40] text-[#7C829E] dark:text-[#969CC2]"
                         }`}
                       >
                         {cat.count}
@@ -743,16 +747,16 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
             </div>
 
             {/* Card 3: Still Need Help? */}
-            <div className="rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white/95 via-[#FAF8FF] to-[#F2ECFE] p-6 text-center shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#EDE7FF] text-[#663CF6]">
+            <div className="rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F2ECFE] dark:to-[#221B48] p-6 text-center shadow-[0_8px_24px_rgba(24,18,77,0.07)] backdrop-blur-sm">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF]">
                 <Headphones className="h-7 w-7" />
               </div>
 
-              <h3 className="mt-4 text-base font-extrabold text-[#08093B]">
+              <h3 className="mt-4 text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                 Still Need Help?
               </h3>
 
-              <p className="mt-2 text-xs font-medium text-[#5A5E7A] leading-relaxed">
+              <p className="mt-2 text-xs font-medium text-[#5A5E7A] dark:text-[#B4B9DA] leading-relaxed">
                 Can&apos;t find the answer you&apos;re looking for? Our support team is here to help.
               </p>
 
@@ -780,16 +784,16 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
               <button
                 type="button"
                 onClick={() => setDemoModalOpen(true)}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2 px-4 text-xs font-bold text-[#08093B] shadow-md transition-all hover:bg-slate-50"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white dark:bg-[#141731] py-2 px-4 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] shadow-md transition-all hover:bg-slate-50 dark:hover:bg-[#1D2145]"
               >
                 <span>Book a Demo</span>
-                <ArrowRight className="h-3.5 w-3.5 text-[#663CF6]" />
+                <ArrowRight className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#B59CFF]" />
               </button>
 
               {/* Mini Laptop graphic with play button inside the card */}
               <div className="mt-5 flex justify-center">
                 <div className="relative flex h-28 w-44 items-center justify-center rounded-xl border border-white/20 bg-white/10 backdrop-blur-md shadow-inner">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#663CF6] shadow-md transition-transform hover:scale-110">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-[#141731] text-[#663CF6] dark:text-[#B59CFF] shadow-md transition-transform hover:scale-110">
                     <Play className="h-5 w-5 fill-current ml-0.5" />
                   </div>
                 </div>
@@ -819,10 +823,10 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
 
             <Link
               href="/faqs"
-              className="flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-[#08093B] shadow-md transition-all hover:bg-slate-50"
+              className="flex shrink-0 items-center gap-2 rounded-xl bg-white dark:bg-[#141731] px-5 py-2.5 text-xs font-bold text-[#08093B] dark:text-[#F3F5FF] shadow-md transition-all hover:bg-slate-50 dark:hover:bg-[#1D2145]"
             >
               <span>View All FAQs</span>
-              <ArrowRight className="h-3.5 w-3.5 text-[#663CF6]" />
+              <ArrowRight className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#B59CFF]" />
             </Link>
           </div>
         </section>
@@ -833,24 +837,24 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
           ========================================================================= */}
       {contactModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white via-[#FAF8FF] to-[#F5F2FE] p-6 shadow-2xl">
+          <div className="relative w-full max-w-lg rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white dark:from-[#141731] via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F2FE] dark:to-[#201C45] p-6 shadow-2xl">
             <button
               type="button"
               onClick={() => setContactModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"
+              className="absolute top-4 right-4 text-slate-400 dark:text-[#888EB5] hover:text-slate-700 dark:hover:text-[#E2E6FF]"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE7FF] text-[#663CF6]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF]">
                 <Headphones className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-[#08093B]">
+                <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                   Contact Support
                 </h3>
-                <p className="text-xs text-[#5A5E7A]">
+                <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                   Ask about &ldquo;{article.question}&rdquo; or any school topic.
                 </p>
               </div>
@@ -868,38 +872,38 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
               className="mt-5 space-y-3.5"
             >
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">Your Name *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Your Name *</label>
                 <input
                   type="text"
                   required
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   placeholder="e.g. Principal Anita Sharma"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">Email Address *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Email Address *</label>
                 <input
                   type="email"
                   required
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
                   placeholder="e.g. principal@greenvalley.edu"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">Message / Inquiry *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Message / Inquiry *</label>
                 <textarea
                   required
                   rows={4}
                   value={contactMsg}
                   onChange={(e) => setContactMsg(e.target.value)}
                   placeholder="Tell us what you'd like more clarification on..."
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
@@ -907,7 +911,7 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                 <button
                   type="button"
                   onClick={() => setContactModalOpen(false)}
-                  className="rounded-xl border border-[#D6DBF0] px-4 py-2 text-xs font-bold text-[#5A5E7A] hover:bg-slate-50"
+                  className="rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-4 py-2 text-xs font-bold text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-slate-50 dark:hover:bg-[#1D2145]"
                 >
                   Cancel
                 </button>
@@ -929,24 +933,24 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
           ========================================================================= */}
       {demoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded-2xl border border-[#CDC2F7] bg-gradient-to-b from-white via-[#FAF8FF] to-[#F5F2FE] p-6 shadow-2xl">
+          <div className="relative w-full max-w-lg rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white dark:from-[#141731] via-[#FAF8FF] dark:via-[#191C3B] to-[#F5F2FE] dark:to-[#201C45] p-6 shadow-2xl">
             <button
               type="button"
               onClick={() => setDemoModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"
+              className="absolute top-4 right-4 text-slate-400 dark:text-[#888EB5] hover:text-slate-700 dark:hover:text-[#E2E6FF]"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE7FF] text-[#663CF6]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EDE7FF] dark:bg-[#251D4A] text-[#663CF6] dark:text-[#B59CFF]">
                 <Calendar className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-[#08093B]">
+                <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                   Schedule a Live Demo
                 </h3>
-                <p className="text-xs text-[#5A5E7A]">
+                <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                   Experience a 20-minute tailored walkthrough of ScholoNix.
                 </p>
               </div>
@@ -964,38 +968,38 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
               className="mt-5 space-y-3.5"
             >
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">Your Name *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Your Name *</label>
                 <input
                   type="text"
                   required
                   value={demoName}
                   onChange={(e) => setDemoName(e.target.value)}
                   placeholder="e.g. Principal Rajesh Mehta"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">School / Institution *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">School / Institution *</label>
                 <input
                   type="text"
                   required
                   value={demoSchool}
                   onChange={(e) => setDemoSchool(e.target.value)}
                   placeholder="e.g. Greenfield Academy"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#08093B]">Official Email *</label>
+                <label className="block text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Official Email *</label>
                 <input
                   type="email"
                   required
                   value={demoEmail}
                   onChange={(e) => setDemoEmail(e.target.value)}
                   placeholder="e.g. admin@greenfield.edu"
-                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] px-3 py-2 text-xs text-[#08093B] outline-none focus:border-[#7C3AED]"
+                  className="mt-1 w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-3 py-2 text-xs text-[#08093B] dark:text-[#F3F5FF] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
               </div>
 
@@ -1003,7 +1007,7 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                 <button
                   type="button"
                   onClick={() => setDemoModalOpen(false)}
-                  className="rounded-xl border border-[#D6DBF0] px-4 py-2 text-xs font-bold text-[#5A5E7A] hover:bg-slate-50"
+                  className="rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] px-4 py-2 text-xs font-bold text-[#5A5E7A] dark:text-[#B4B9DA] hover:bg-slate-50 dark:hover:bg-[#1D2145]"
                 >
                   Cancel
                 </button>
@@ -1023,21 +1027,21 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
       {/* =========================================================================
           7. FOOTER
           ========================================================================= */}
-      <footer className="mt-20 border-t border-[#E6EAF5] bg-white pt-12 pb-8">
+      <footer className="mt-20 border-t border-[#E6EAF5] dark:border-[#2A2F56] bg-white dark:bg-[#141731] pt-12 pb-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-10">
             {/* Brand Column */}
             <div className="space-y-4 sm:col-span-2 md:col-span-4">
               <BrandLogo className="h-8 sm:h-9" />
-              <p className="max-w-sm text-xs text-[#5A5E7A] leading-relaxed">
+              <p className="max-w-sm text-xs text-[#5A5E7A] dark:text-[#B4B9DA] leading-relaxed">
                 A comprehensive, cloud-based school management platform to simplify and streamline your school operations.
               </p>
-              <div className="flex items-center gap-2.5 pt-1 text-[#663CF6]">
+              <div className="flex items-center gap-2.5 pt-1 text-[#663CF6] dark:text-[#B59CFF]">
                 <a
                   href="https://linkedin.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] hover:bg-[#EDE7FF]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] hover:bg-[#EDE7FF] dark:hover:bg-[#2E245E]"
                   aria-label="LinkedIn"
                 >
                   <Linkedin className="h-4 w-4" />
@@ -1046,7 +1050,7 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                   href="https://youtube.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] hover:bg-[#EDE7FF]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] hover:bg-[#EDE7FF] dark:hover:bg-[#2E245E]"
                   aria-label="YouTube"
                 >
                   <Youtube className="h-4 w-4" />
@@ -1055,7 +1059,7 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                   href="https://facebook.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] hover:bg-[#EDE7FF]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] hover:bg-[#EDE7FF] dark:hover:bg-[#2E245E]"
                   aria-label="Facebook"
                 >
                   <Facebook className="h-4 w-4" />
@@ -1064,7 +1068,7 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                   href="https://instagram.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] hover:bg-[#EDE7FF]"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#D6DBF0] dark:border-[#2C3159] hover:bg-[#EDE7FF] dark:hover:bg-[#2E245E]"
                   aria-label="Instagram"
                 >
                   <Instagram className="h-4 w-4" />
@@ -1074,27 +1078,27 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
 
             {/* Product Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Product
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/features" className="hover:text-[#663CF6]">
+                  <Link href="/features" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Features
                   </Link>
                 </li>
                 <li>
-                  <Link href="/pricing" className="hover:text-[#663CF6]">
+                  <Link href="/pricing" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Pricing
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#for-schools" className="hover:text-[#663CF6]">
+                  <Link href="/#for-schools" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     For Schools
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#integrations" className="hover:text-[#663CF6]">
+                  <Link href="/#integrations" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Integrations
                   </Link>
                 </li>
@@ -1103,27 +1107,27 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
 
             {/* Resources Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Resources
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/blog" className="hover:text-[#663CF6]">
+                  <Link href="/blog" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link href="/help" className="hover:text-[#663CF6]">
+                  <Link href="/help" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Help Center
                   </Link>
                 </li>
                 <li>
-                  <Link href="/faqs" className="text-[#663CF6] font-bold">
+                  <Link href="/faqs" className="text-[#663CF6] dark:text-[#B59CFF] font-bold">
                     FAQs
                   </Link>
                 </li>
                 <li>
-                  <Link href="/guides" className="hover:text-[#663CF6]">
+                  <Link href="/guides" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Guides
                   </Link>
                 </li>
@@ -1132,27 +1136,27 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
 
             {/* Company Links */}
             <div className="space-y-3 sm:col-span-1 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Company
               </h4>
-              <ul className="space-y-2 text-xs font-semibold text-[#4D5072]">
+              <ul className="space-y-2 text-xs font-semibold text-[#4D5072] dark:text-[#B4B9DA]">
                 <li>
-                  <Link href="/#about" className="hover:text-[#663CF6]">
+                  <Link href="/#about" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#contact" className="hover:text-[#663CF6]">
+                  <Link href="/#contact" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Contact Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#privacy" className="hover:text-[#663CF6]">
+                  <Link href="/#privacy" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/#terms" className="hover:text-[#663CF6]">
+                  <Link href="/#terms" className="hover:text-[#663CF6] dark:hover:text-[#C4B5FD]">
                     Terms of Service
                   </Link>
                 </li>
@@ -1161,10 +1165,10 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
 
             {/* Stay Updated Newsletter */}
             <div className="space-y-3 sm:col-span-2 md:col-span-2">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B]">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
                 Stay Updated
               </h4>
-              <p className="text-xs text-[#5A5E7A]">
+              <p className="text-xs text-[#5A5E7A] dark:text-[#B4B9DA]">
                 Subscribe to get product updates, tips and school management insights.
               </p>
               <form
@@ -1177,7 +1181,7 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className="w-full rounded-xl border border-[#D6DBF0] bg-white py-2 pr-10 pl-3 text-xs text-[#08093B] placeholder-[#8E92BC] outline-none focus:border-[#7C3AED]"
+                  className="w-full rounded-xl border border-[#D6DBF0] dark:border-[#2C3159] bg-white dark:bg-[#141731] py-2 pr-10 pl-3 text-xs text-[#08093B] dark:text-[#F3F5FF] placeholder-[#8E92BC] dark:placeholder-[#7A81AC] outline-none focus:border-[#7C3AED] dark:focus:border-[#9D7CFE]"
                 />
                 <button
                   type="submit"
@@ -1191,10 +1195,10 @@ export function FaqDetailPage({ article }: FaqDetailPageProps) {
           </div>
 
           {/* Bottom Copyright */}
-          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] pt-6 text-xs text-[#5A5E7A] sm:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-between border-t border-[#F0F2FA] dark:border-[#23284A] pt-6 text-xs text-[#5A5E7A] dark:text-[#B4B9DA] sm:flex-row">
             <p>&copy; 2026 ScholoNix. All rights reserved.</p>
             <p className="mt-2 flex items-center gap-1 sm:mt-0">
-              <span className="text-rose-500">&hearts;</span> Made for Schools
+              <span className="text-rose-500 dark:text-rose-400">&hearts;</span> Made for Schools
             </p>
           </div>
         </div>

@@ -160,4 +160,25 @@ describe("SchoolWorkspaceShell single-tenant & in-portal help links", () => {
     await userActor.click(screen.getByRole("link", { name: "Admission Settings" }));
     expect(onSelectAdmissionsTab).toHaveBeenCalledWith("settings");
   });
+
+  it("renders the header theme toggle button and toggles dark class standalone", async () => {
+    document.documentElement.className = "";
+    localStorage.clear();
+    const userActor = userEvent.setup();
+
+    render(
+      <SchoolWorkspaceShell school={school} user={user} activeNav="dashboard">
+        <div>Workspace Content</div>
+      </SchoolWorkspaceShell>,
+    );
+
+    const toggle = screen.getByTestId("theme-toggle");
+    expect(toggle).toBeInTheDocument();
+
+    await userActor.click(toggle);
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+
+    await userActor.click(toggle);
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+  });
 });

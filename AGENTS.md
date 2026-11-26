@@ -5,6 +5,7 @@
 - Do not overwrite working code or change architecture without explaining the reason.
 - For every feature, define acceptance criteria, authorization rules, data model impact, API contract, tests, and observability.
 - Enforce tenant scope on every tenant-owned read/write, including background jobs, files, exports, caches, and reports.
+- Every UI page, layout, component, modal, table, chart, illustration, loading skeleton, and error view MUST implement full **Light and Dark mode** parity using semantic CSS tokens (`src/app/globals.css`), Tailwind `dark:` variants, and `ThemeToggle` in navigation headers—never hardcode light-only colors without dark-mode equivalents, and verify WCAG 2.2 AA contrast in both themes (see `.agents/skills/light-dark-theme/SKILL.md`).
 - Financial operations must be transactional, idempotent, auditable, and use exact decimal/minor-unit arithmetic.
 - Never use real student/guardian data in development fixtures.
 - Never commit runtime data, local stores, `.data/`, fallback `.json` files, tokens, or temporary files (`*.tmp.*`) to Git.
