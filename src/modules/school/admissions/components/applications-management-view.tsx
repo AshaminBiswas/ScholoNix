@@ -60,6 +60,8 @@ interface ApplicationsManagementViewProps {
   filters: AdmissionsOverviewFilters;
   searchInput: string;
   searchFocusNonce?: number;
+  editingApplication?: AdmissionApplicationRecord | null;
+  onClearEditingApplication?: () => void;
   onSearchChange: (q: string) => void;
   onSearchSubmit: (q: string) => void;
   onApplyFilterUpdate: (patch: Partial<AdmissionsOverviewFilters>) => void;
@@ -138,6 +140,8 @@ export function ApplicationsManagementView({
   filters,
   searchInput,
   searchFocusNonce = 0,
+  editingApplication = null,
+  onClearEditingApplication,
   onSearchChange,
   onSearchSubmit,
   onApplyFilterUpdate,
@@ -150,11 +154,19 @@ export function ApplicationsManagementView({
   onDownloadReport,
   onDownloadImportTemplate,
 }: ApplicationsManagementViewProps) {
-  const [subView, setSubView] = useState<ApplicationsSubViewMode>("applications");
+  const [subView, setSubView] = useState<ApplicationsSubViewMode>(
+    editingApplication ? "form" : "applications",
+  );
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [showAllGrades, setShowAllGrades] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingApplication) {
+      setSubView("form");
+    }
+  }, [editingApplication]);
 
   useEffect(() => {
     if (searchFocusNonce <= 0) return;
@@ -264,6 +276,9 @@ export function ApplicationsManagementView({
   }, [data.activities, data.applications, showAllRecent]);
 
   const handleWorkflowSwitch = (mode: ApplicationsSubViewMode) => {
+    if (mode !== "form") {
+      onClearEditingApplication?.();
+    }
     setSubView(mode);
     if (mode === "applications") {
       onApplyFilterUpdate({ status: "all", verificationStatus: "all", page: 1 });
@@ -415,10 +430,20 @@ export function ApplicationsManagementView({
           availableAcademicYears={data.availableAcademicYears}
           defaultAcademicYear={data.settings.currentAcademicYear}
           drafts={data.drafts || []}
+          editingApplication={editingApplication}
           canWrite={data.permissions.canWrite}
-          onViewApplications={() => setSubView("applications")}
+          onViewApplications={() => {
+            onClearEditingApplication?.();
+            setSubView("applications");
+          }}
           onCreateApplication={onCreateApplication}
-          onUpdateApplication={onUpdateApplication}
+          onUpdateApplication={async (applicationId, payload) => {
+            const updated = await onUpdateApplication(applicationId, payload);
+            if (!payload.isDraft && editingApplication) {
+              onClearEditingApplication?.();
+            }
+            return updated;
+          }}
         />
       ) : (
         <>

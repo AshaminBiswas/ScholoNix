@@ -345,5 +345,19 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     expect(screen.getByText("25%")).toBeTruthy();
     await actor.click(screen.getByRole("button", { name: /View Applications/i }));
     expect(screen.getByText("Filter Applications")).toBeTruthy();
+
+    // Clicking Inspect shows all admission details & only uploaded documents (no checklist rows)
+    await actor.click(screen.getByLabelText("Inspect Synthetic Aarav"));
+    expect(screen.getByText(/1\. Student Details & Residential Address/i)).toBeTruthy();
+    expect(screen.getByText(/2\. Parent \/ Guardian Information/i)).toBeTruthy();
+    expect(screen.getByText(/3\. Academic Details/i)).toBeTruthy();
+    expect(screen.getByText(/Uploaded Documents \(0\)/i)).toBeTruthy();
+    expect(screen.queryByText("Document Checklist")).toBeNull();
+    await actor.click(screen.getByLabelText("Close application details"));
+
+    // Clicking Edit opens the full 4-step admission form pre-filled with Synthetic Aarav
+    await actor.click(screen.getByLabelText("Edit Synthetic Aarav"));
+    expect(screen.getByRole("heading", { name: /Edit Application \(APP2026-0001\)/i, level: 2 })).toBeTruthy();
+    expect((screen.getByLabelText(/Full Name/i) as HTMLInputElement).value).toBe("Synthetic Aarav");
   });
 });

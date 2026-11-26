@@ -139,12 +139,6 @@ function formatDateIst(iso: string | null | undefined, includeTime = false): str
   return sanitizePdfText(new Intl.DateTimeFormat("en-IN", opts).format(parsed));
 }
 
-function formatBytesLabel(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
-
 export function buildPdfFilename(application: AdmissionApplicationRecord): string {
   const code = sanitizePdfText(application.applicationCode, "application")
     .replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -825,39 +819,9 @@ export async function buildApplicationDossierPdf(params: {
   }
 
   // =========================================================================
-  // SECTION 4: DOCUMENTS CHECKLIST & UPLOADED FILES MANIFEST
+  // SECTION 4: DECLARATION, REVIEW NOTES & OFFICIAL SIGNATURES
   // =========================================================================
-  composer.drawSectionTitle("4. Submitted Documents & Verification Status");
-  if (application.documentsChecklist.length > 0) {
-    composer.drawTable(
-      ["Document Requirement", "Submission Status", "Verification Status"],
-      [273.28, 125, 125],
-      application.documentsChecklist.map((item) => [
-        item.label,
-        item.submitted ? "Submitted" : "Pending",
-        item.verified ? "Verified" : "Pending Review",
-      ]),
-    );
-  }
-
-  const uploadedDocs = application.uploadedDocuments ?? [];
-  if (uploadedDocs.length > 0) {
-    composer.drawTable(
-      ["Uploaded Document", "Original Filename", "File Size", "Uploaded At"],
-      [150, 178.28, 70, 125],
-      uploadedDocs.map((doc) => [
-        doc.label,
-        doc.fileName,
-        formatBytesLabel(doc.sizeBytes),
-        formatDateIst(doc.uploadedAt, true),
-      ]),
-    );
-  }
-
-  // =========================================================================
-  // SECTION 5: DECLARATION, REVIEW NOTES & OFFICIAL SIGNATURES
-  // =========================================================================
-  composer.drawSectionTitle("5. Declaration & Official Authorization");
+  composer.drawSectionTitle("4. Declaration & Official Authorization");
   const declLines = wrapTextToLines(
     "I hereby declare that all information provided in this admission application is true, complete, and accurate to the best of my knowledge. I understand that submission of incorrect or falsified records may result in cancellation of admission at any stage.",
     regular,

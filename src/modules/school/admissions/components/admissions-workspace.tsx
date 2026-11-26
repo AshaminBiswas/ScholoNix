@@ -79,10 +79,10 @@ export function AdmissionsWorkspace({
     text: string;
   } | null>(null);
 
-  // Modals state
+  // Modals & full-form edit state
   const [newEnqOpen, setNewEnqOpen] = useState(false);
   const [inspectApp, setInspectApp] = useState<AdmissionApplicationRecord | null>(null);
-  const [inspectAppMode, setInspectAppMode] = useState<"view" | "edit">("view");
+  const [editingApp, setEditingApp] = useState<AdmissionApplicationRecord | null>(null);
   const [searchFocusNonce, setSearchFocusNonce] = useState(0);
 
   // Settings form state synced from server data
@@ -270,12 +270,24 @@ export function AdmissionsWorkspace({
 
   const handleTabSelect = useCallback((tab: AdmissionsTab) => {
     setActiveTab(tab);
+    if (tab !== "applications") {
+      setEditingApp(null);
+    }
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("tab", tab);
       window.history.replaceState(window.history.state, "", url.toString());
     }
   }, []);
+
+  const handleStartEditApplication = useCallback(
+    (app: AdmissionApplicationRecord) => {
+      setInspectApp(null);
+      setEditingApp(app);
+      handleTabSelect("applications");
+    },
+    [handleTabSelect],
+  );
 
   const handleOpenGlobalSearch = useCallback(() => {
     handleTabSelect("applications");
@@ -724,14 +736,8 @@ export function AdmissionsWorkspace({
             }
             onPageChange={(page) => applyFilterUpdate({ page })}
             onPageSizeChange={(pageSize) => applyFilterUpdate({ pageSize, page: 1 })}
-            onInspectApplication={(app) => {
-              setInspectAppMode("view");
-              setInspectApp(app);
-            }}
-            onEditApplication={(app) => {
-              setInspectAppMode("edit");
-              setInspectApp(app);
-            }}
+            onInspectApplication={(app) => setInspectApp(app)}
+            onEditApplication={handleStartEditApplication}
             onQuickUpdateApplication={handleQuickUpdateApplication}
             canWrite={data.permissions.canWrite}
             canVerify={data.permissions.canVerify}
@@ -759,13 +765,18 @@ export function AdmissionsWorkspace({
           filters={filters}
           searchInput={searchInput}
           searchFocusNonce={searchFocusNonce}
+          editingApplication={editingApp}
+          onClearEditingApplication={() => setEditingApp(null)}
           onSearchChange={handleSearchChange}
           onSearchSubmit={handleSearchSubmit}
           onApplyFilterUpdate={applyFilterUpdate}
           onResetFilters={handleResetFilters}
           onInspectApplication={(app, mode = "view") => {
-            setInspectAppMode(mode);
-            setInspectApp(app);
+            if (mode === "edit") {
+              handleStartEditApplication(app);
+            } else {
+              setInspectApp(app);
+            }
           }}
           onQuickUpdateApplication={handleQuickUpdateApplication}
           onBulkUpdateApplications={handleBulkUpdateApplications}
@@ -1102,10 +1113,9 @@ export function AdmissionsWorkspace({
         application={inspectApp}
         schoolSlug={school.slug}
         onClose={() => setInspectApp(null)}
+        onEditApplication={handleStartEditApplication}
         canWrite={data.permissions.canWrite}
         canVerify={data.permissions.canVerify}
-        initialMode={inspectAppMode}
-        availableGrades={data.availableGrades}
         onSave={handleQuickUpdateApplication}
       />
     </SchoolWorkspaceShell>

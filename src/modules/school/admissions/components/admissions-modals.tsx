@@ -1,13 +1,26 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { X, Loader2, CheckCircle2, FileCheck2, UserPlus, Download } from "lucide-react";
+import {
+  X,
+  Loader2,
+  CheckCircle2,
+  FileCheck2,
+  UserPlus,
+  Download,
+  Pencil,
+  ExternalLink,
+  User,
+  Users,
+  GraduationCap,
+  FileText,
+} from "lucide-react";
 import {
   ADMISSION_STATUS_META,
   DOCUMENT_VERIFICATION_META,
   type AdmissionApplicationRecord,
   type AdmissionApplicationStatusType,
-  type AdmissionDocumentChecklistItem,
+  type AdmissionUploadedDocument,
   type DocumentVerificationStatusType,
 } from "@/modules/school/admissions/types";
 
@@ -689,34 +702,46 @@ interface ApplicationDetailModalProps {
   application: AdmissionApplicationRecord | null;
   schoolSlug?: string;
   onClose: () => void;
+  onEditApplication?: (application: AdmissionApplicationRecord) => void;
   canWrite: boolean;
   canVerify: boolean;
-  initialMode?: "view" | "edit";
-  availableGrades?: string[];
   onSave: (
     applicationId: string,
     payload: {
       status?: AdmissionApplicationStatusType;
       verificationStatus?: DocumentVerificationStatusType;
       verificationNotes?: string;
-      documentsChecklist?: AdmissionDocumentChecklistItem[];
-      gradeApplied?: string;
-      guardianName?: string;
-      guardianPhone?: string;
-      guardianEmail?: string;
-      previousSchool?: string;
     },
   ) => Promise<unknown>;
+}
+
+function formatDocSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function formatDetailAddress(addr?: {
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+} | null): string {
+  if (!addr) return "Not provided";
+  const parts = [addr.addressLine1, addr.addressLine2, addr.city, addr.state, addr.postalCode].filter(
+    (p): p is string => Boolean(p && p.trim()),
+  );
+  return parts.length > 0 ? parts.join(", ") : "Not provided";
 }
 
 export function ApplicationDetailModal({
   application,
   schoolSlug,
   onClose,
+  onEditApplication,
   canWrite,
   canVerify,
-  initialMode = "view",
-  availableGrades = [],
   onSave,
 }: ApplicationDetailModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -726,13 +751,6 @@ export function ApplicationDetailModal({
   const [verificationStatus, setVerificationStatus] =
     useState<DocumentVerificationStatusType>("PENDING");
   const [verificationNotes, setVerificationNotes] = useState("");
-  const [checklist, setChecklist] = useState<AdmissionDocumentChecklistItem[]>([]);
-  const [editProfileFields, setEditProfileFields] = useState(initialMode === "edit");
-  const [gradeApplied, setGradeApplied] = useState("");
-  const [guardianName, setGuardianName] = useState("");
-  const [guardianPhone, setGuardianPhone] = useState("");
-  const [guardianEmail, setGuardianEmail] = useState("");
-  const [previousSchool, setPreviousSchool] = useState("");
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -741,35 +759,45 @@ export function ApplicationDetailModal({
       setStatus(application.status);
       setVerificationStatus(application.verificationStatus);
       setVerificationNotes(application.verificationNotes || "");
-      setChecklist(application.documentsChecklist.map((c) => ({ ...c })));
-      setGradeApplied(application.gradeApplied);
-      setGuardianName(application.guardianName);
-      setGuardianPhone(application.guardianPhone);
-      setGuardianEmail(application.guardianEmail || "");
-      setPreviousSchool(application.previousSchool || "");
-      setEditProfileFields(initialMode === "edit");
       setErrorMsg(null);
     }
-  }, [application, initialMode]);
+  }, [application]);
 
   if (!application) return null;
 
   const statusMeta = ADMISSION_STATUS_META[status];
   const verMeta = DOCUMENT_VERIFICATION_META[verificationStatus];
-  const gradeOptions = Array.from(new Set([application.gradeApplied, ...availableGrades]));
+  const sd = application.studentDetails;
+  const gd = application.guardianDetails;
+  const ad = application.academicDetails;
 
-  const handleToggleChecklist = (key: string, field: "submitted" | "verified") => {
-    setChecklist((prev) =>
-      prev.map((item) => {
-        if (item.key !== key) return item;
-        const updated = { ...item, [field]: !item[field] };
-        if (field === "verified" && updated.verified) {
-          updated.submitted = true;
-        }
-        return updated;
-      }),
-    );
-  };
+  const studentPhotoUrl =
+    schoolSlug && application.studentPhotoKey
+      ? `/api/school/admissions/documents/view?schoolSlug=${encodeURIComponent(schoolSlug)}&key=${encodeURIComponent(application.studentPhotoKey)}`
+      : null;
+
+  const uploadedDocs: AdmissionUploadedDocument[] = (() => {
+    const docs = [...(application.uploadedDocuments ?? [])];
+    if (
+      application.studentPhotoKey &&
+      !docs.some(
+        (d) =>
+          d.docType === "student_photo" || d.storageKey === application.studentPhotoKey,
+      )
+    ) {
+      docs.unshift({
+        key: "student_photo",
+        docType: "student_photo",
+        label: "Student Photograph",
+        fileName: "student-photo.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 0,
+        storageKey: application.studentPhotoKey,
+        uploadedAt: application.appliedAt,
+      });
+    }
+    return docs;
+  })();
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -780,16 +808,6 @@ export function ApplicationDetailModal({
         status,
         verificationStatus,
         verificationNotes,
-        documentsChecklist: checklist,
-        ...(editProfileFields && canWrite
-          ? {
-              gradeApplied,
-              guardianName,
-              guardianPhone,
-              guardianEmail,
-              previousSchool,
-            }
-          : {}),
       });
       onClose();
     } catch (err: unknown) {
@@ -803,16 +821,28 @@ export function ApplicationDetailModal({
     <dialog
       ref={dialogRef}
       aria-labelledby="app-detail-dialog-title"
-      className="m-auto w-[min(95vw,680px)] max-h-[90vh] overflow-y-auto school-menu-scrollbar rounded-[22px] border border-[#D6DBF0] bg-white p-0 text-[#1B1D45] shadow-2xl dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#DCE1F9]"
+      className="m-auto w-[min(96vw,840px)] max-h-[92vh] overflow-y-auto school-menu-scrollbar rounded-[22px] border border-[#D6DBF0] bg-white p-0 text-[#1B1D45] shadow-2xl dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#DCE1F9]"
     >
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#DFE3F5] bg-white px-6 py-4 dark:border-[#232746] dark:bg-[#141731]">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
-            <FileCheck2 className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div>
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[#DFE3F5] bg-white px-6 py-4 dark:border-[#232746] dark:bg-[#141731]">
+        <div className="flex items-center gap-3 min-w-0">
+          {studentPhotoUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={studentPhotoUrl}
+              alt={application.studentName}
+              className="h-11 w-11 shrink-0 rounded-[12px] border border-[#D6DBF0] object-cover dark:border-[#2E345B]"
+            />
+          ) : (
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
+              <FileCheck2 className="h-5 w-5" aria-hidden="true" />
+            </span>
+          )}
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 id="app-detail-dialog-title" className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+              <h1
+                id="app-detail-dialog-title"
+                className="text-base font-extrabold text-[#08093B] truncate dark:text-[#F3F5FF]"
+              >
                 {application.studentName} · {application.applicationCode}
               </h1>
               {application.studentIdNumber && (
@@ -822,22 +852,36 @@ export function ApplicationDetailModal({
               )}
             </div>
             <p className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
-              {application.gradeApplied} · {application.academicYear}
+              {application.gradeApplied} · {application.academicYear} ·{" "}
+              {application.admissionType === "TRANSFER" ? "Transfer Admission" : "Fresh Admission"}
               {application.admissionNumber ? ` · Admission No: ${application.admissionNumber}` : ""}
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close application details"
-          className="rounded-full p-1.5 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer dark:text-[#9DA6CC] dark:hover:bg-[#1E2245] dark:hover:text-[#F3F5FF]"
-        >
-          <X className="h-5 w-5" aria-hidden="true" />
-        </button>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {canWrite && onEditApplication && (
+            <button
+              type="button"
+              onClick={() => onEditApplication(application)}
+              className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3 py-1.5 text-xs font-bold text-[#663CF6] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#C4B5FD]"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Edit Application</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close application details"
+            className="rounded-full p-1.5 text-[#76799C] hover:bg-[#FAF8FE] hover:text-[#08093B] cursor-pointer dark:text-[#9DA6CC] dark:hover:bg-[#1E2245] dark:hover:text-[#F3F5FF]"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
-      <form onSubmit={handleSave} className="p-6 space-y-4">
+      <form onSubmit={handleSave} className="p-6 space-y-5">
         {errorMsg && (
           <div
             role="alert"
@@ -847,231 +891,327 @@ export function ApplicationDetailModal({
           </div>
         )}
 
-        {/* Applicant & Guardian Summary (Editable when Edit mode toggled) */}
-        <div className="rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-3.5 text-xs dark:border-[#272B4D] dark:bg-[#10142C] space-y-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#76799C] dark:text-[#9DA6CC]">
-              Applicant &amp; Guardian Details
-            </span>
-            {canWrite && (
-              <button
-                type="button"
-                onClick={() => setEditProfileFields((prev) => !prev)}
-                className="text-[11px] font-bold text-[#663CF6] hover:underline cursor-pointer dark:text-[#A78BFA]"
-              >
-                {editProfileFields ? "Done Editing Fields" : "Edit Contact & Grade"}
-              </button>
-            )}
+        {/* Section 1: Complete Student Details & Residential Address */}
+        <section className="rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 text-xs dark:border-[#272B4D] dark:bg-[#10142C] space-y-3">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
+            <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
+              1. Student Details &amp; Residential Address
+            </h2>
           </div>
 
-          {editProfileFields && canWrite ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div>
-                <label htmlFor="detail-grade" className="block text-[11px] font-bold text-[#4D5072] mb-1 dark:text-[#B4BDD9]">
-                  Grade Applied
-                </label>
-                <select
-                  id="detail-grade"
-                  value={gradeApplied}
-                  onChange={(e) => setGradeApplied(e.target.value)}
-                  className="w-full rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
-                >
-                  {gradeOptions.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="detail-guardian-name" className="block text-[11px] font-bold text-[#4D5072] mb-1 dark:text-[#B4BDD9]">
-                  Guardian Name
-                </label>
-                <input
-                  id="detail-guardian-name"
-                  type="text"
-                  required
-                  value={guardianName}
-                  onChange={(e) => setGuardianName(e.target.value)}
-                  className="w-full rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs text-[#08093B] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
-                />
-              </div>
-              <div>
-                <label htmlFor="detail-guardian-phone" className="block text-[11px] font-bold text-[#4D5072] mb-1 dark:text-[#B4BDD9]">
-                  Guardian Phone
-                </label>
-                <input
-                  id="detail-guardian-phone"
-                  type="tel"
-                  required
-                  value={guardianPhone}
-                  onChange={(e) => setGuardianPhone(e.target.value)}
-                  className="w-full rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs text-[#08093B] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
-                />
-              </div>
-              <div>
-                <label htmlFor="detail-guardian-email" className="block text-[11px] font-bold text-[#4D5072] mb-1 dark:text-[#B4BDD9]">
-                  Guardian Email
-                </label>
-                <input
-                  id="detail-guardian-email"
-                  type="email"
-                  value={guardianEmail}
-                  onChange={(e) => setGuardianEmail(e.target.value)}
-                  className="w-full rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs text-[#08093B] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label htmlFor="detail-prev-school" className="block text-[11px] font-bold text-[#4D5072] mb-1 dark:text-[#B4BDD9]">
-                  Previous School
-                </label>
-                <input
-                  id="detail-prev-school"
-                  type="text"
-                  value={previousSchool}
-                  onChange={(e) => setPreviousSchool(e.target.value)}
-                  className="w-full rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs text-[#08093B] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
-                />
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2.5">
+            <div>
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Full Name:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.studentName}</strong>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {application.studentIdNumber && (
-                <div>
-                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Student ID:</span>{" "}
-                  <strong className="font-mono text-[#663CF6] dark:text-[#C4B5FD]">
-                    {application.studentIdNumber}
-                  </strong>
-                </div>
-              )}
-              {(application.dateOfBirth || application.gender) && (
-                <div>
-                  <span className="text-[#76799C] dark:text-[#9DA6CC]">DOB / Gender:</span>{" "}
-                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
-                    {[application.dateOfBirth, application.gender].filter(Boolean).join(" · ")}
-                  </strong>
-                </div>
-              )}
-              {(application.nationality || application.bloodGroup) && (
-                <div>
-                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Nationality / Blood:</span>{" "}
-                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
-                    {[application.nationality, application.bloodGroup].filter(Boolean).join(" · ")}
-                  </strong>
-                </div>
-              )}
-              {(application.studentDetails?.email || application.studentDetails?.phone) && (
-                <div>
-                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Student Contact:</span>{" "}
-                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
-                    {[application.studentDetails.email, application.studentDetails.phone]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </strong>
-                </div>
-              )}
+            <div>
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Date of Birth:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                {application.dateOfBirth || "Not provided"}
+              </strong>
+            </div>
+            <div>
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Gender:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                {application.gender || "Not provided"}
+              </strong>
+            </div>
+            <div>
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Nationality:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                {application.nationality || "Not provided"}
+              </strong>
+            </div>
+            <div>
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Grade Applying For:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.gradeApplied}</strong>
+            </div>
+            <div>
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Blood Group:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                {application.bloodGroup || "Not provided"}
+              </strong>
+            </div>
+            <div>
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Student ID:</span>{" "}
+              <strong className="font-mono text-[#663CF6] dark:text-[#C4B5FD]">
+                {application.studentIdNumber || "Pending"}
+              </strong>
+            </div>
+            <div>
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Student Email:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                {sd?.email || "Not provided"}
+              </strong>
+            </div>
+            <div>
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Student Phone:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                {sd?.phone || "Not provided"}
+              </strong>
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3">
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Residential Address:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                {formatDetailAddress(sd?.address)}
+              </strong>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 2: Complete Parent / Guardian Information */}
+        <section className="rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 text-xs dark:border-[#272B4D] dark:bg-[#10142C] space-y-3">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
+            <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
+              2. Parent / Guardian Information
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-[12px] border border-[#DFE3F5] bg-white p-3 space-y-1.5 dark:border-[#272B4D] dark:bg-[#141731]">
+              <p className="text-[11px] font-extrabold text-[#663CF6] dark:text-[#CBB8FF]">
+                Primary Parent / Guardian
+              </p>
               <div>
-                <span className="text-[#76799C] dark:text-[#9DA6CC]">Guardian:</span>{" "}
-                <strong className="text-[#08093B] dark:text-[#F3F5FF]">
-                  {application.guardianName} ({application.guardianRelation})
-                </strong>
+                <span className="text-[#76799C] dark:text-[#9DA6CC]">Name:</span>{" "}
+                <strong>{gd?.primary?.fullName || application.guardianName}</strong>
               </div>
               <div>
-                <span className="text-[#76799C] dark:text-[#9DA6CC]">Phone:</span>{" "}
-                <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.guardianPhone}</strong>
+                <span className="text-[#76799C] dark:text-[#9DA6CC]">Relationship:</span>{" "}
+                <strong>{gd?.primary?.relationship || application.guardianRelation}</strong>
+              </div>
+              <div>
+                <span className="text-[#76799C] dark:text-[#9DA6CC]">Occupation:</span>{" "}
+                <strong>{gd?.primary?.occupation || "Not provided"}</strong>
+              </div>
+              <div>
+                <span className="text-[#76799C] dark:text-[#9DA6CC]">Annual Income:</span>{" "}
+                <strong>{gd?.primary?.annualIncome || "Not provided"}</strong>
               </div>
               <div>
                 <span className="text-[#76799C] dark:text-[#9DA6CC]">Email:</span>{" "}
-                <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.guardianEmail || "Not provided"}</strong>
+                <strong>{gd?.primary?.email || application.guardianEmail || "Not provided"}</strong>
               </div>
               <div>
-                <span className="text-[#76799C] dark:text-[#9DA6CC]">Previous School:</span>{" "}
-                <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.previousSchool || "Not provided"}</strong>
+                <span className="text-[#76799C] dark:text-[#9DA6CC]">Phone:</span>{" "}
+                <strong>{gd?.primary?.phone || application.guardianPhone}</strong>
               </div>
-              {application.admissionType && (
-                <div>
-                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Admission Type:</span>{" "}
-                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
-                    {application.admissionType === "TRANSFER" ? "Transfer" : "Fresh Admission"}
-                  </strong>
-                </div>
-              )}
-              {application.guardianDetails?.emergencyContactNumber && (
-                <div>
-                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Emergency Contact:</span>{" "}
-                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
-                    {application.guardianDetails.emergencyContactNumber} (
-                    {application.guardianDetails.preferredCommunicationMode})
-                  </strong>
-                </div>
-              )}
-              {application.studentDetails?.address?.addressLine1 && (
-                <div className="sm:col-span-2">
-                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Address:</span>{" "}
-                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
-                    {[
-                      application.studentDetails.address.addressLine1,
-                      application.studentDetails.address.addressLine2,
-                      application.studentDetails.address.city,
-                      application.studentDetails.address.state,
-                      application.studentDetails.address.postalCode,
-                    ]
-                      .filter(Boolean)
-                      .join(", ")}
-                  </strong>
-                </div>
-              )}
-              {application.academicDetails && application.admissionType === "TRANSFER" && (
-                <div className="sm:col-span-2">
-                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Previous Academics:</span>{" "}
-                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
-                    {[
-                      application.academicDetails.boardCurriculum,
-                      application.academicDetails.lastStandardStudied,
-                      application.academicDetails.yearOfCompletion,
-                      application.academicDetails.percentage !== null &&
-                      application.academicDetails.percentage !== undefined
-                        ? `${application.academicDetails.percentage}%`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </strong>
-                </div>
-              )}
             </div>
-          )}
-        </div>
 
-        {/* Uploaded Documents (when submitted via wizard) */}
-        {application.uploadedDocuments && application.uploadedDocuments.length > 0 && schoolSlug && (
-          <div className="space-y-2">
-            <p className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
-              Uploaded Files ({application.uploadedDocuments.length})
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {application.uploadedDocuments.map((doc) => (
-                <a
-                  key={doc.key}
-                  href={`/api/school/admissions/documents/view?schoolSlug=${encodeURIComponent(schoolSlug)}&key=${encodeURIComponent(doc.storageKey)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between gap-2 rounded-[10px] border border-[#DFE3F5] bg-[#FAF8FE] px-3 py-2 text-xs hover:border-[#663CF6] dark:border-[#272B4D] dark:bg-[#10142C]"
-                >
-                  <span className="font-bold text-[#08093B] truncate dark:text-[#F3F5FF]">
-                    {doc.label}
-                  </span>
-                  <span className="shrink-0 font-bold text-[#663CF6] dark:text-[#A78BFA]">
-                    View
-                  </span>
-                </a>
-              ))}
+            {gd?.secondary?.fullName ? (
+              <div className="rounded-[12px] border border-[#DFE3F5] bg-white p-3 space-y-1.5 dark:border-[#272B4D] dark:bg-[#141731]">
+                <p className="text-[11px] font-extrabold text-[#663CF6] dark:text-[#CBB8FF]">
+                  Secondary Parent / Guardian
+                </p>
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Name:</span>{" "}
+                  <strong>{gd.secondary.fullName}</strong>
+                </div>
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Relationship:</span>{" "}
+                  <strong>{gd.secondary.relationship || "Mother"}</strong>
+                </div>
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Occupation:</span>{" "}
+                  <strong>{gd.secondary.occupation || "Not provided"}</strong>
+                </div>
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Annual Income:</span>{" "}
+                  <strong>{gd.secondary.annualIncome || "Not provided"}</strong>
+                </div>
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Email:</span>{" "}
+                  <strong>{gd.secondary.email || "Not provided"}</strong>
+                </div>
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Phone:</span>{" "}
+                  <strong>{gd.secondary.phone || "Not provided"}</strong>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-[12px] border border-dashed border-[#DFE3F5] bg-white/70 p-3 flex items-center justify-center text-center text-[#76799C] dark:border-[#272B4D] dark:bg-[#141731]/60 dark:text-[#9DA6CC]">
+                No secondary parent/guardian details added.
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div>
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Emergency Contact:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                {gd?.emergencyContactNumber || application.guardianPhone}
+              </strong>
+            </div>
+            <div>
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Preferred Communication:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                {gd?.preferredCommunicationMode || "Phone"}
+              </strong>
+            </div>
+            <div className="sm:col-span-2">
+              <span className="text-[#76799C] dark:text-[#9DA6CC]">Guardian Address:</span>{" "}
+              <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                {gd?.sameAsStudentAddress
+                  ? `${formatDetailAddress(sd?.address)} (Same as Student Address)`
+                  : formatDetailAddress(gd?.address)}
+              </strong>
             </div>
           </div>
-        )}
+        </section>
+
+        {/* Section 3: Academic Details & Previous Performance */}
+        <section className="rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 text-xs dark:border-[#272B4D] dark:bg-[#10142C] space-y-3">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
+            <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-[#08093B] dark:text-[#F3F5FF]">
+              3. Academic Details (
+              {application.admissionType === "TRANSFER" ? "Transfer Admission" : "Fresh Admission"})
+            </h2>
+          </div>
+
+          {application.admissionType === "TRANSFER" && ad ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2.5">
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Previous School:</span>{" "}
+                  <strong>{ad.previousSchoolName || application.previousSchool || "Not provided"}</strong>
+                </div>
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Board / Curriculum:</span>{" "}
+                  <strong>{ad.boardCurriculum || "Not provided"}</strong>
+                </div>
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Last Standard Studied:</span>{" "}
+                  <strong>{ad.lastStandardStudied || "Not provided"}</strong>
+                </div>
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Year of Completion:</span>{" "}
+                  <strong>{ad.yearOfCompletion || "Not provided"}</strong>
+                </div>
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Last Standard Marks:</span>{" "}
+                  <strong>
+                    {ad.marksObtained != null
+                      ? `${ad.marksObtained} / ${ad.totalMarks ?? "—"}`
+                      : "Not provided"}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Percentage:</span>{" "}
+                  <strong className="text-[#663CF6] dark:text-[#C4B5FD]">
+                    {ad.percentage != null ? `${ad.percentage.toFixed(1)}%` : "Not provided"}
+                  </strong>
+                </div>
+                {ad.schoolAddress && (
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <span className="text-[#76799C] dark:text-[#9DA6CC]">Previous School Address:</span>{" "}
+                    <strong>{ad.schoolAddress}</strong>
+                  </div>
+                )}
+              </div>
+
+              {ad.previousAcademics && ad.previousAcademics.length > 0 && (
+                <div className="overflow-x-auto rounded-[10px] border border-[#DFE3F5] bg-white dark:border-[#272B4D] dark:bg-[#141731]">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase tracking-wider text-[#4D5072] dark:bg-[#1B1F3F] dark:text-[#B4BDD9]">
+                      <tr>
+                        <th className="px-3 py-2">Academic Year</th>
+                        <th className="px-3 py-2">Standard / Class</th>
+                        <th className="px-3 py-2">Marks Obtained</th>
+                        <th className="px-3 py-2">Total Marks</th>
+                        <th className="px-3 py-2">Percentage</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
+                      {ad.previousAcademics.map((row) => (
+                        <tr key={row.id}>
+                          <td className="px-3 py-2 font-semibold">{row.academicYear}</td>
+                          <td className="px-3 py-2">{row.standard}</td>
+                          <td className="px-3 py-2 tabular-nums">{row.marksObtained}</td>
+                          <td className="px-3 py-2 tabular-nums">{row.totalMarks}</td>
+                          <td className="px-3 py-2 font-bold text-[#663CF6] tabular-nums dark:text-[#C4B5FD]">
+                            {row.percentage.toFixed(1)}%
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-[#4D5072] dark:text-[#9DA6CC]">
+              Fresh Admission — prior academic mark sheets are not required.
+              {application.previousSchool ? ` Previous School: ${application.previousSchool}` : ""}
+            </p>
+          )}
+        </section>
+
+        {/* Section 4: Uploaded Documents ONLY */}
+        <section className="space-y-2">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
+            <h2 className="text-xs font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+              Uploaded Documents ({uploadedDocs.length})
+            </h2>
+          </div>
+
+          {uploadedDocs.length === 0 ? (
+            <div className="rounded-[12px] border border-dashed border-[#DFE3F5] bg-[#FAF8FE]/70 px-4 py-4 text-xs text-[#76799C] dark:border-[#272B4D] dark:bg-[#10142C]/60 dark:text-[#9DA6CC]">
+              No documents have been uploaded for this application.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {uploadedDocs.map((doc) => {
+                const viewHref = schoolSlug
+                  ? `/api/school/admissions/documents/view?schoolSlug=${encodeURIComponent(schoolSlug)}&key=${encodeURIComponent(doc.storageKey)}`
+                  : null;
+                return (
+                  <div
+                    key={`${doc.key}-${doc.storageKey}`}
+                    className="flex items-center justify-between gap-2 rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] px-3 py-2.5 text-xs dark:border-[#272B4D] dark:bg-[#10142C]"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-bold text-[#08093B] truncate dark:text-[#F3F5FF]">
+                        {doc.label}
+                      </p>
+                      <p className="text-[11px] text-[#76799C] truncate dark:text-[#9DA6CC]">
+                        {doc.fileName}
+                        {doc.sizeBytes > 0 ? ` · ${formatDocSize(doc.sizeBytes)}` : ""}
+                      </p>
+                    </div>
+                    {viewHref && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <a
+                          href={viewHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1 text-[11px] font-bold text-[#663CF6] hover:border-[#663CF6] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#C4B5FD]"
+                        >
+                          <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                          <span>View</span>
+                        </a>
+                        <a
+                          href={viewHref}
+                          download={doc.fileName}
+                          aria-label={`Download ${doc.label}`}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-[8px] border border-[#CAD0EB] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#C5CCF0]"
+                        >
+                          <Download className="h-3 w-3" aria-hidden="true" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {/* Status & Verification Controls */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-[#DFE3F5] dark:border-[#232746]">
           <div>
             <label htmlFor="detail-status" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
               Application Stage
@@ -1124,43 +1264,6 @@ export function ApplicationDetailModal({
           </div>
         </div>
 
-        {/* Checklist */}
-        <div className="space-y-2">
-          <p className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">Document Checklist</p>
-          <div className="divide-y divide-[#F1F5F9] rounded-[12px] border border-[#DFE3F5] dark:divide-[#232746] dark:border-[#272B4D]">
-            {checklist.map((doc) => (
-              <div
-                key={doc.key}
-                className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs"
-              >
-                <span className="font-semibold text-[#08093B] dark:text-[#F3F5FF]">{doc.label}</span>
-                <div className="flex items-center gap-4">
-                  <label className="inline-flex items-center gap-1.5 text-[#4D5072] cursor-pointer dark:text-[#B4BDD9]">
-                    <input
-                      type="checkbox"
-                      disabled={!canVerify}
-                      checked={doc.submitted}
-                      onChange={() => handleToggleChecklist(doc.key, "submitted")}
-                      className="h-3.5 w-3.5 accent-[#663CF6]"
-                    />
-                    <span>Submitted</span>
-                  </label>
-                  <label className="inline-flex items-center gap-1.5 text-emerald-700 font-semibold cursor-pointer dark:text-emerald-400">
-                    <input
-                      type="checkbox"
-                      disabled={!canVerify}
-                      checked={doc.verified}
-                      onChange={() => handleToggleChecklist(doc.key, "verified")}
-                      className="h-3.5 w-3.5 accent-emerald-600"
-                    />
-                    <span>Verified</span>
-                  </label>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div>
           <label
             htmlFor="detail-verification-notes"
@@ -1179,7 +1282,7 @@ export function ApplicationDetailModal({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#DFE3F5] dark:border-[#232746]">
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             {schoolSlug && !application.isDraft && (
               <a
                 href={`/api/school/admissions/applications/${encodeURIComponent(application.id)}/pdf?schoolSlug=${encodeURIComponent(schoolSlug)}`}
@@ -1188,6 +1291,16 @@ export function ApplicationDetailModal({
                 <Download className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>Download A4 PDF</span>
               </a>
+            )}
+            {canWrite && onEditApplication && (
+              <button
+                type="button"
+                onClick={() => onEditApplication(application)}
+                className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-white px-3.5 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#30365C] dark:bg-[#10142C] dark:text-[#F3F5FF]"
+              >
+                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Edit Full Form</span>
+              </button>
             )}
           </div>
           <div className="flex justify-end gap-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -40,6 +40,7 @@ interface ApplicationFormWizardProps {
   availableAcademicYears: string[];
   defaultAcademicYear: string;
   drafts: AdmissionApplicationRecord[];
+  editingApplication?: AdmissionApplicationRecord | null;
   canWrite: boolean;
   onViewApplications: () => void;
   onCreateApplication: (payload: CreateApplicationInput) => Promise<AdmissionApplicationRecord>;
@@ -65,6 +66,7 @@ export function ApplicationFormWizard({
   availableAcademicYears,
   defaultAcademicYear,
   drafts,
+  editingApplication = null,
   canWrite,
   onViewApplications,
   onCreateApplication,
@@ -75,8 +77,32 @@ export function ApplicationFormWizard({
   const [submittedApplication, setSubmittedApplication] =
     useState<AdmissionApplicationRecord | null>(null);
   const [state, setState] = useState<ApplicationWizardFormState>(() =>
-    buildInitialWizardState({ defaultGrade, defaultAcademicYear }),
+    buildInitialWizardState({
+      defaultGrade,
+      defaultAcademicYear,
+      draft: editingApplication,
+    }),
   );
+
+  useEffect(() => {
+    if (!editingApplication) return;
+    setSubmittedApplication(null);
+    setErrorMsg(null);
+    setDraftNotice(null);
+    setState(
+      buildInitialWizardState({
+        defaultGrade,
+        defaultAcademicYear,
+        draft: editingApplication,
+      }),
+    );
+    if (editingApplication.isDraft) {
+      const s = editingApplication.currentStep;
+      setCurrentStep(s === 2 || s === 3 || s === 4 ? s : 1);
+    } else {
+      setCurrentStep(1);
+    }
+  }, [editingApplication, defaultGrade, defaultAcademicYear]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -214,7 +240,6 @@ export function ApplicationFormWizard({
       guardianEmail: state.primaryEmail.trim(),
       previousSchool:
         state.admissionType === "TRANSFER" ? state.previousSchoolName.trim() : "",
-      status: "UNDER_REVIEW" as const,
       notes: "",
       admissionType: state.admissionType,
       isDraft,
@@ -301,12 +326,18 @@ export function ApplicationFormWizard({
     setDraftNotice(null);
     setSavingDraft(true);
     try {
-      const payload = buildPayload(true);
+      const basePayload = buildPayload(true);
       if (state.draftId) {
-        await onUpdateApplication(state.draftId, payload);
+        await onUpdateApplication(state.draftId, {
+          ...basePayload,
+          status: editingApplication?.status ?? "UNDER_REVIEW",
+        });
         setDraftNotice("Draft updated.");
       } else {
-        const created = await onCreateApplication(payload);
+        const created = await onCreateApplication({
+          ...basePayload,
+          status: "UNDER_REVIEW",
+        });
         setState((prev) => ({ ...prev, draftId: created.id }));
         setDraftNotice(`Saved as draft (${created.applicationCode}).`);
       }
@@ -331,10 +362,19 @@ export function ApplicationFormWizard({
     setErrorMsg(null);
     setSubmitting(true);
     try {
-      const payload = buildPayload(false);
+      const basePayload = buildPayload(false);
       const saved = state.draftId
-        ? await onUpdateApplication(state.draftId, payload)
-        : await onCreateApplication(payload);
+        ? await onUpdateApplication(state.draftId, {
+            ...basePayload,
+            status:
+              editingApplication && !editingApplication.isDraft
+                ? editingApplication.status
+                : "UNDER_REVIEW",
+          })
+        : await onCreateApplication({
+            ...basePayload,
+            status: "UNDER_REVIEW",
+          });
       setState(buildInitialWizardState({ defaultGrade, defaultAcademicYear }));
       setCurrentStep(1);
       setSubmittedApplication(saved);
@@ -393,15 +433,19 @@ export function ApplicationFormWizard({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-              Application Form
+              {editingApplication && !editingApplication.isDraft
+                ? `Edit Application (${editingApplication.applicationCode})`
+                : "Application Form"}
             </h2>
             <p className="text-xs text-[#76799C] dark:text-[#9DA6CC]">
-              Complete the application form to apply for admission at {schoolName}.
+              {editingApplication && !editingApplication.isDraft
+                ? `Updating submitted admission record for ${editingApplication.studentName}${editingApplication.studentIdNumber ? ` (${editingApplication.studentIdNumber})` : ""} at ${schoolName}.`
+                : `Complete the application form to apply for admission at ${schoolName}.`}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {drafts.length > 0 && (
+            {drafts.length > 0 && !(editingApplication && !editingApplication.isDraft) && (
               <select
                 aria-label="Resume saved draft"
                 value={state.draftId || ""}
@@ -422,7 +466,7 @@ export function ApplicationFormWizard({
               onClick={onViewApplications}
               className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-white px-3.5 py-1.5 text-xs font-bold text-[#08093B] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
             >
-              <span>View Applications</span>
+              <span>{editingApplication ? "Back to Applications" : "View Applications"}</span>
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
@@ -434,13 +478,14 @@ export function ApplicationFormWizard({
             {WIZARD_STEPS.map(({ step, label }) => {
               const isCompleted = currentStep > step;
               const isCurrent = currentStep === step;
+              const canJump = Boolean(editingApplication && !editingApplication.isDraft) || step <= currentStep;
               return (
                 <li key={step} className="flex flex-col items-center text-center gap-1.5">
                   <button
                     type="button"
                     aria-current={isCurrent ? "step" : undefined}
                     onClick={() => {
-                      if (step <= currentStep) {
+                      if (canJump) {
                         setErrorMsg(null);
                         setCurrentStep(step);
                       }
@@ -450,7 +495,9 @@ export function ApplicationFormWizard({
                         ? "bg-[#663CF6] text-white shadow-sm cursor-pointer"
                         : isCurrent
                           ? "bg-gradient-to-br from-[#663CF6] to-[#4F27E8] text-white ring-4 ring-[#EDE7FF] dark:ring-[#251D4A]"
-                          : "border border-[#CAD0EB] bg-white text-[#76799C] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#9DA6CC]"
+                          : canJump
+                            ? "border border-[#663CF6]/40 bg-[#FAF8FE] text-[#663CF6] hover:border-[#663CF6] cursor-pointer dark:border-[#5D45B3] dark:bg-[#1A1636] dark:text-[#C4B5FD]"
+                            : "border border-[#CAD0EB] bg-white text-[#76799C] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#9DA6CC]"
                     }`}
                   >
                     {isCompleted ? <Check className="h-4 w-4" /> : step}
@@ -547,19 +594,21 @@ export function ApplicationFormWizard({
                 </button>
               )}
 
-              <button
-                type="button"
-                disabled={savingDraft || submitting}
-                onClick={handleSaveDraft}
-                className="inline-flex items-center gap-1.5 rounded-[12px] border border-[#CAD0EB] bg-white px-4 py-2.5 text-xs font-bold text-[#4F27E8] shadow-2xs transition hover:border-[#663CF6] disabled:opacity-60 cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#C4B5FD]"
-              >
-                {savingDraft ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Save className="h-3.5 w-3.5" aria-hidden="true" />
-                )}
-                <span>{savingDraft ? "Saving Draft..." : "Save as Draft"}</span>
-              </button>
+              {!(editingApplication && !editingApplication.isDraft) && (
+                <button
+                  type="button"
+                  disabled={savingDraft || submitting}
+                  onClick={handleSaveDraft}
+                  className="inline-flex items-center gap-1.5 rounded-[12px] border border-[#CAD0EB] bg-white px-4 py-2.5 text-xs font-bold text-[#4F27E8] shadow-2xs transition hover:border-[#663CF6] disabled:opacity-60 cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#C4B5FD]"
+                >
+                  {savingDraft ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Save className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  <span>{savingDraft ? "Saving Draft..." : "Save as Draft"}</span>
+                </button>
+              )}
             </div>
 
             {currentStep < 4 ? (
@@ -582,7 +631,15 @@ export function ApplicationFormWizard({
                 ) : (
                   <Send className="h-3.5 w-3.5" aria-hidden="true" />
                 )}
-                <span>{submitting ? "Submitting..." : "Submit Application"}</span>
+                <span>
+                  {submitting
+                    ? editingApplication && !editingApplication.isDraft
+                      ? "Updating..."
+                      : "Submitting..."
+                    : editingApplication && !editingApplication.isDraft
+                      ? "Update Application"
+                      : "Submit Application"}
+                </span>
               </button>
             )}
           </div>
