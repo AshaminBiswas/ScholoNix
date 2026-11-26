@@ -1,17 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Check,
   Copy,
+  Download,
+  ExternalLink,
   FileText,
   Headphones,
   Home,
   Info,
+  Loader2,
   Mail,
   Phone,
-  Printer,
   ArrowRight,
   RotateCcw,
 } from "lucide-react";
@@ -54,12 +56,22 @@ export function ApplicationSubmittedView({
   onSubmitAnother,
 }: ApplicationSubmittedViewProps) {
   const [copiedField, setCopiedField] = useState<"appId" | "studentId" | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [pdfNotice, setPdfNotice] = useState<string | null>(null);
+  const autoDownloadedIdRef = useRef<string | null>(null);
 
   const statusMeta = ADMISSION_STATUS_META[application.status] ?? ADMISSION_STATUS_META.UNDER_REVIEW;
   const dashboardHref = buildSchoolRoute(schoolSlug);
   const helpHref = buildSchoolRoute(schoolSlug, "help");
   const admissionTypeLabel =
     application.admissionType === "TRANSFER" ? "Admission (Transfer)" : "Fresh Admission";
+  const pdfBaseUrl =
+    application.generatedPdfUrl ||
+    `/api/school/admissions/applications/${encodeURIComponent(application.id)}/pdf?schoolSlug=${encodeURIComponent(schoolSlug)}`;
+  const pdfInlineUrl = `${pdfBaseUrl}${pdfBaseUrl.includes("?") ? "&" : "?"}disposition=inline`;
+  const pdfFilename = `${application.applicationCode}${
+    application.studentIdNumber ? `_${application.studentIdNumber}` : ""
+  }_Application.pdf`;
 
   const handleCopy = async (field: "appId" | "studentId", value: string) => {
     try {
@@ -73,10 +85,55 @@ export function ApplicationSubmittedView({
     }
   };
 
+  const triggerPdfDownload = useCallback(
+    async (isAutoTrigger: boolean) => {
+      if (
+        typeof window === "undefined" ||
+        typeof URL.createObjectURL !== "function" ||
+        typeof fetch !== "function"
+      ) {
+        return;
+      }
+
+      setDownloadingPdf(true);
+      try {
+        const res = await fetch(pdfBaseUrl, { method: "GET" });
+        if (!res || !res.ok) {
+          throw new Error(`Unable to generate PDF (HTTP ${res?.status ?? 500}).`);
+        }
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = pdfFilename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+        setPdfNotice(
+          isAutoTrigger
+            ? `A4 PDF (${pdfFilename}) auto-generated & downloaded.`
+            : `Downloaded ${pdfFilename}.`,
+        );
+      } catch (err: unknown) {
+        if (!isAutoTrigger) {
+          setPdfNotice(err instanceof Error ? err.message : "Failed to download PDF.");
+        }
+      } finally {
+        setDownloadingPdf(false);
+      }
+    },
+    [pdfBaseUrl, pdfFilename],
+  );
+
+  useEffect(() => {
+    if (autoDownloadedIdRef.current === application.id) return;
+    autoDownloadedIdRef.current = application.id;
+    void triggerPdfDownload(true);
+  }, [application.id, triggerPdfDownload]);
+
   const handleDownloadApplication = () => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
+    void triggerPdfDownload(false);
   };
 
   return (
@@ -279,12 +336,27 @@ export function ApplicationSubmittedView({
 
           <button
             type="button"
+            disabled={downloadingPdf}
             onClick={handleDownloadApplication}
-            className="inline-flex items-center gap-2 rounded-[12px] border border-[#B9C1E8] bg-white px-5 py-2.5 text-xs font-bold text-[#4F27E8] shadow-2xs transition hover:border-[#663CF6] hover:bg-[#FAF8FE] cursor-pointer dark:border-[#3A4173] dark:bg-[#10142C] dark:text-[#C4B5FD] dark:hover:border-[#8B5CF6]"
+            className="inline-flex items-center gap-2 rounded-[12px] border border-[#B9C1E8] bg-white px-5 py-2.5 text-xs font-bold text-[#4F27E8] shadow-2xs transition hover:border-[#663CF6] hover:bg-[#FAF8FE] disabled:opacity-60 cursor-pointer dark:border-[#3A4173] dark:bg-[#10142C] dark:text-[#C4B5FD] dark:hover:border-[#8B5CF6]"
           >
-            <Printer className="h-4 w-4" aria-hidden="true" />
-            <span>Download Application</span>
+            {downloadingPdf ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Download className="h-4 w-4" aria-hidden="true" />
+            )}
+            <span>{downloadingPdf ? "Generating PDF..." : "Download Application"}</span>
           </button>
+
+          <a
+            href={pdfInlineUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-[12px] border border-[#D6DBF0] bg-white px-4 py-2.5 text-xs font-bold text-[#08093B] transition hover:border-[#663CF6] hover:text-[#663CF6] dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#F3F5FF] dark:hover:border-[#8B5CF6]"
+          >
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Preview A4 PDF</span>
+          </a>
 
           <button
             type="button"
@@ -295,6 +367,12 @@ export function ApplicationSubmittedView({
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         </div>
+
+        {pdfNotice && (
+          <p className="mt-3 text-center text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+            {pdfNotice}
+          </p>
+        )}
       </section>
 
       {/* Bottom Support / Need Further Assistance Card */}

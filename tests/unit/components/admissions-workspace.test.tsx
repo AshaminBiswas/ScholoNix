@@ -316,9 +316,25 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     expect(screen.getByLabelText("Inspect Synthetic Aarav")).toBeTruthy();
     expect(screen.getByLabelText("Edit Synthetic Aarav")).toBeTruthy();
 
-    // Toggle Card grid view and back to Table list view
+    // Open three-dot action menu -> must portal cleanly outside table region div
+    const tableRegion = screen.getByRole("region", { name: /All Applications/i });
+    const moreActionsBtn = screen.getByLabelText("More actions for Synthetic Aarav");
+    await actor.click(moreActionsBtn);
+    const portalMenu = screen.getByRole("menu", { name: "Actions for Synthetic Aarav" });
+    expect(portalMenu).toBeTruthy();
+    expect(tableRegion.contains(portalMenu)).toBe(false);
+    expect(portalMenu.style.position).toBe("fixed");
+    expect(screen.getByRole("menuitem", { name: /Download A4 PDF/i })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /Shortlist Applicant/i })).toBeTruthy();
+
+    // Pressing Escape dismisses the floating menu cleanly
+    await actor.keyboard("{Escape}");
+    expect(screen.queryByRole("menu", { name: "Actions for Synthetic Aarav" })).toBeNull();
+
+    // Toggle Card grid view (also has three-dot menu) and back to Table list view
     await actor.click(screen.getByRole("button", { name: "Card grid view" }));
     expect(screen.getAllByText("Synthetic Aarav").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByLabelText("More actions for Synthetic Aarav")).toBeTruthy();
     await actor.click(screen.getByRole("button", { name: "Table list view" }));
     expect(screen.getByRole("table")).toBeTruthy();
 

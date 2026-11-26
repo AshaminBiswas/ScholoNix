@@ -137,6 +137,7 @@ export interface AdmissionApplicationRecord {
   academicDetails?: AdmissionAcademicDetailsPayload | null;
   uploadedDocuments?: AdmissionUploadedDocument[];
   declarationAccepted?: boolean;
+  generatedPdfUrl?: string | null;
   appliedAt: string;
   shortlistedAt: string | null;
   admittedAt: string | null;

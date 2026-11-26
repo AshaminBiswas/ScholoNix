@@ -713,6 +713,7 @@ export function AdmissionsWorkspace({
           />
 
           <AdmissionsTable
+            schoolSlug={school.slug}
             applications={data.applications}
             pagination={data.pagination}
             searchQuery={searchInput}
@@ -723,7 +724,14 @@ export function AdmissionsWorkspace({
             }
             onPageChange={(page) => applyFilterUpdate({ page })}
             onPageSizeChange={(pageSize) => applyFilterUpdate({ pageSize, page: 1 })}
-            onInspectApplication={(app) => setInspectApp(app)}
+            onInspectApplication={(app) => {
+              setInspectAppMode("view");
+              setInspectApp(app);
+            }}
+            onEditApplication={(app) => {
+              setInspectAppMode("edit");
+              setInspectApp(app);
+            }}
             onQuickUpdateApplication={handleQuickUpdateApplication}
             canWrite={data.permissions.canWrite}
             canVerify={data.permissions.canVerify}

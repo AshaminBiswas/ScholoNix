@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Users,
   Search,
@@ -18,6 +19,8 @@ import {
   LayoutList,
   LayoutGrid,
   X,
+  FileDown,
+  ExternalLink,
 } from "lucide-react";
 import {
   ADMISSION_STATUS_META,
@@ -28,6 +31,7 @@ import {
 } from "@/modules/school/admissions/types";
 
 interface AdmissionsTableProps {
+  schoolSlug?: string;
   applications: AdmissionApplicationRecord[];
   pagination: {
     total: number;
@@ -66,6 +70,50 @@ interface AdmissionsTableProps {
 
 type SortKey = "applicationCode" | "studentName" | "gradeApplied" | "appliedAt";
 
+interface FloatingMenuState {
+  app: AdmissionApplicationRecord;
+  triggerEl: HTMLElement;
+  top: number;
+  left: number;
+  openUpward: boolean;
+}
+
+const ROW_MENU_WIDTH = 224;
+const ROW_MENU_ESTIMATED_HEIGHT = 276;
+
+function computeRowMenuCoords(triggerEl: HTMLElement): {
+  top: number;
+  left: number;
+  openUpward: boolean;
+} {
+  const rect = triggerEl.getBoundingClientRect();
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+
+  const spaceBelow = vh - rect.bottom;
+  const spaceAbove = rect.top;
+  const openUpward = spaceBelow < ROW_MENU_ESTIMATED_HEIGHT && spaceAbove > spaceBelow;
+
+  const top = openUpward
+    ? Math.max(12, rect.top - ROW_MENU_ESTIMATED_HEIGHT - 6)
+    : Math.min(vh - ROW_MENU_ESTIMATED_HEIGHT - 12, rect.bottom + 6);
+
+  const preferredLeft = rect.right - ROW_MENU_WIDTH;
+  const left = Math.max(12, Math.min(vw - ROW_MENU_WIDTH - 12, preferredLeft));
+
+  return { top, left, openUpward };
+}
+
+function resolveApplicationPdfUrl(
+  app: AdmissionApplicationRecord,
+  schoolSlug?: string,
+): string | null {
+  if (app.isDraft) return null;
+  if (app.generatedPdfUrl) return app.generatedPdfUrl;
+  if (!schoolSlug) return null;
+  return `/api/school/admissions/applications/${encodeURIComponent(app.id)}/pdf?schoolSlug=${encodeURIComponent(schoolSlug)}`;
+}
+
 const AVATAR_TONES = [
   "bg-[#EDE7FF] text-[#5B21B6] dark:bg-[#2A2056] dark:text-[#CBB8FF]",
   "bg-[#E0F2FE] text-[#0369A1] dark:bg-[#133252] dark:text-[#7DD3FC]",
@@ -82,6 +130,7 @@ function getStudentInitials(name: string): string {
 }
 
 export function AdmissionsTable({
+  schoolSlug,
   applications,
   pagination,
   searchQuery,
@@ -103,11 +152,98 @@ export function AdmissionsTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<SortKey>("appliedAt");
   const [sortDir, setSortDir] = useState<"ascending" | "descending">("descending");
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [floatingMenu, setFloatingMenu] = useState<FloatingMenuState | null>(null);
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
   const [busyRowId, setBusyRowId] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+
+  const menuPanelRef = useRef<HTMLDivElement | null>(null);
+  const bulkContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const closeRowMenu = useCallback((restoreFocus = false) => {
+    setFloatingMenu((prev) => {
+      if (restoreFocus && prev?.triggerEl && typeof prev.triggerEl.focus === "function") {
+        requestAnimationFrame(() => prev.triggerEl.focus());
+      }
+      return null;
+    });
+  }, []);
+
+  const toggleRowMenu = useCallback(
+    (app: AdmissionApplicationRecord, triggerEl: HTMLElement) => {
+      setBulkMenuOpen(false);
+      setFloatingMenu((prev) => {
+        if (prev?.app.id === app.id) return null;
+        const coords = computeRowMenuCoords(triggerEl);
+        return {
+          app,
+          triggerEl,
+          ...coords,
+        };
+      });
+    },
+    [],
+  );
+
+  // Dismiss or reposition menus cleanly on click outside, Escape, resize, or scroll
+  useEffect(() => {
+    if (!floatingMenu && !bulkMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+
+      if (floatingMenu) {
+        const insidePanel = menuPanelRef.current?.contains(target);
+        const insideTrigger = floatingMenu.triggerEl.contains(target);
+        if (!insidePanel && !insideTrigger) {
+          setFloatingMenu(null);
+        }
+      }
+
+      if (bulkMenuOpen && !bulkContainerRef.current?.contains(target)) {
+        setBulkMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        if (floatingMenu) {
+          closeRowMenu(true);
+        }
+        if (bulkMenuOpen) {
+          setBulkMenuOpen(false);
+        }
+      }
+    };
+
+    const handleScrollOrResize = () => {
+      if (!floatingMenu) return;
+      if (!document.body.contains(floatingMenu.triggerEl)) {
+        setFloatingMenu(null);
+        return;
+      }
+      const rect = floatingMenu.triggerEl.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        setFloatingMenu(null);
+        return;
+      }
+      const coords = computeRowMenuCoords(floatingMenu.triggerEl);
+      setFloatingMenu((prev) => (prev ? { ...prev, ...coords } : null));
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [floatingMenu, bulkMenuOpen, closeRowMenu]);
 
   const collator = useMemo(
     () => new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }),
@@ -162,7 +298,7 @@ export function AdmissionsTable({
       verificationStatus?: DocumentVerificationStatusType;
     },
   ) => {
-    setOpenMenuId(null);
+    setFloatingMenu(null);
     setBusyRowId(appId);
     try {
       await onQuickUpdateApplication(appId, payload);
@@ -236,11 +372,14 @@ export function AdmissionsTable({
             </label>
 
             {(canWrite || canVerify) && (
-              <div className="relative">
+              <div ref={bulkContainerRef} className="relative">
                 <button
                   type="button"
                   disabled={selectedIds.size === 0 || bulkBusy}
-                  onClick={() => setBulkMenuOpen((prev) => !prev)}
+                  onClick={() => {
+                    setFloatingMenu(null);
+                    setBulkMenuOpen((prev) => !prev);
+                  }}
                   aria-expanded={bulkMenuOpen}
                   aria-haspopup="menu"
                   className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#D6DBF0] bg-white px-3 py-1.5 text-xs font-bold text-[#08093B] shadow-2xs transition hover:border-[#663CF6] hover:text-[#663CF6] disabled:opacity-50 cursor-pointer dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:hover:border-[#8B5CF6]"
@@ -431,6 +570,39 @@ export function AdmissionsTable({
                   <option value="REJECTED">Rejected</option>
                 </select>
               </div>
+
+              <div
+                role="group"
+                aria-label="View mode"
+                className="inline-flex items-center rounded-[10px] border border-[#D6DBF0] bg-[#FAF8FE] p-0.5 dark:border-[#2E345B] dark:bg-[#10142C]"
+              >
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  aria-label="Table list view"
+                  aria-pressed={viewMode === "list"}
+                  className={`inline-flex h-7 w-8 items-center justify-center rounded-[8px] transition cursor-pointer ${
+                    viewMode === "list"
+                      ? "bg-[#663CF6] text-white shadow-2xs"
+                      : "text-[#4D5072] hover:text-[#663CF6] dark:text-[#9DA6CC] dark:hover:text-[#C4B5FD]"
+                  }`}
+                >
+                  <LayoutList className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  aria-label="Card grid view"
+                  aria-pressed={viewMode === "grid"}
+                  className={`inline-flex h-7 w-8 items-center justify-center rounded-[8px] transition cursor-pointer ${
+                    viewMode === "grid"
+                      ? "bg-[#663CF6] text-white shadow-2xs"
+                      : "text-[#4D5072] hover:text-[#663CF6] dark:text-[#9DA6CC] dark:hover:text-[#C4B5FD]"
+                  }`}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -586,7 +758,8 @@ export function AdmissionsTable({
                         type="button"
                         onClick={() => onInspectApplication(app)}
                         aria-label={`Inspect ${app.studentName}`}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#C5CCF0]"
+                        title="Inspect & Verify"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6] dark:hover:text-[#D9CEFF]"
                       >
                         <Eye className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
@@ -595,9 +768,28 @@ export function AdmissionsTable({
                           type="button"
                           onClick={() => handleEditTrigger(app)}
                           aria-label={`Edit ${app.studentName}`}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#C5CCF0]"
+                          title="Edit Application"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6] dark:hover:text-[#D9CEFF]"
                         >
                           <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      )}
+                      {(canWrite || canVerify) && (
+                        <button
+                          type="button"
+                          disabled={busyRowId === app.id}
+                          onClick={(e) => toggleRowMenu(app, e.currentTarget)}
+                          aria-label={`More actions for ${app.studentName}`}
+                          aria-haspopup="menu"
+                          aria-expanded={floatingMenu?.app.id === app.id}
+                          title="More actions"
+                          className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border bg-white transition cursor-pointer disabled:opacity-50 dark:bg-[#141731] ${
+                            floatingMenu?.app.id === app.id
+                              ? "border-[#663CF6] text-[#663CF6] ring-2 ring-[#663CF6]/20 dark:border-[#8B5CF6] dark:text-[#D9CEFF]"
+                              : "border-[#E2E8F0] text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] dark:border-[#2E345B] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6] dark:hover:text-[#D9CEFF]"
+                          }`}
+                        >
+                          <MoreVertical className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
                       )}
                     </div>
@@ -608,18 +800,18 @@ export function AdmissionsTable({
           </div>
         )
       ) : (
-        /* Semantic Scrollable Data Table */
+        /* Flexible Semantic Data Table (no trapped popovers or forced wide clip box) */
         <div
           tabIndex={0}
           role="region"
           aria-labelledby="admissions-table-heading"
-          className="overflow-x-auto school-menu-scrollbar rounded-[14px] border border-[#DFE3F5] dark:border-[#272B4D]"
+          className="w-full overflow-x-auto lg:overflow-visible school-menu-scrollbar rounded-[14px] border border-[#DFE3F5] dark:border-[#272B4D]"
         >
-          <table className="w-full min-w-[780px] text-left text-xs border-collapse">
+          <table className="w-full text-left text-xs border-collapse">
             <caption className="sr-only">School admission applications directory</caption>
             <thead className="bg-[#F6F5FD] text-[11px] font-bold uppercase tracking-wider text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
               <tr>
-                <th scope="col" className="w-10 px-3 py-3 text-center">
+                <th scope="col" className="w-10 px-2.5 sm:px-3 py-3 text-center">
                   <input
                     type="checkbox"
                     checked={allOnPageSelected}
@@ -631,12 +823,12 @@ export function AdmissionsTable({
                 <th
                   scope="col"
                   aria-sort={sortKey === "applicationCode" ? sortDir : undefined}
-                  className="p-0"
+                  className="p-0 whitespace-nowrap"
                 >
                   <button
                     type="button"
                     onClick={() => handleSort("applicationCode")}
-                    className="flex w-full items-center gap-1 px-3 py-3 text-left font-bold uppercase tracking-wider hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer"
+                    className="flex w-full items-center gap-1 px-2.5 sm:px-3 py-3 text-left font-bold uppercase tracking-wider hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer"
                   >
                     <span>Application ID</span>
                     <ArrowUpDown className="h-3 w-3 opacity-60" aria-hidden="true" />
@@ -650,7 +842,7 @@ export function AdmissionsTable({
                   <button
                     type="button"
                     onClick={() => handleSort("studentName")}
-                    className="flex w-full items-center gap-1 px-3 py-3 text-left font-bold uppercase tracking-wider hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer"
+                    className="flex w-full items-center gap-1 px-2.5 sm:px-3 py-3 text-left font-bold uppercase tracking-wider hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer"
                   >
                     <span>Student Name</span>
                     <ArrowUpDown className="h-3 w-3 opacity-60" aria-hidden="true" />
@@ -659,12 +851,12 @@ export function AdmissionsTable({
                 <th
                   scope="col"
                   aria-sort={sortKey === "gradeApplied" ? sortDir : undefined}
-                  className="p-0"
+                  className="p-0 whitespace-nowrap"
                 >
                   <button
                     type="button"
                     onClick={() => handleSort("gradeApplied")}
-                    className="flex w-full items-center gap-1 px-3 py-3 text-left font-bold uppercase tracking-wider hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer"
+                    className="flex w-full items-center gap-1 px-2.5 sm:px-3 py-3 text-left font-bold uppercase tracking-wider hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer"
                   >
                     <span>Grade Applied</span>
                     <ArrowUpDown className="h-3 w-3 opacity-60" aria-hidden="true" />
@@ -673,24 +865,24 @@ export function AdmissionsTable({
                 <th
                   scope="col"
                   aria-sort={sortKey === "appliedAt" ? sortDir : undefined}
-                  className="p-0"
+                  className="hidden lg:table-cell p-0 whitespace-nowrap"
                 >
                   <button
                     type="button"
                     onClick={() => handleSort("appliedAt")}
-                    className="flex w-full items-center gap-1 px-3 py-3 text-left font-bold uppercase tracking-wider hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer"
+                    className="flex w-full items-center gap-1 px-2.5 sm:px-3 py-3 text-left font-bold uppercase tracking-wider hover:text-[#663CF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] cursor-pointer"
                   >
                     <span>Application Date</span>
                     <ArrowUpDown className="h-3 w-3 opacity-60" aria-hidden="true" />
                   </button>
                 </th>
-                <th scope="col" className="px-3 py-3">
+                <th scope="col" className="px-2.5 sm:px-3 py-3 whitespace-nowrap">
                   Status
                 </th>
-                <th scope="col" className="px-3 py-3">
+                <th scope="col" className="px-2.5 sm:px-3 py-3 whitespace-nowrap">
                   Verification
                 </th>
-                <th scope="col" className="px-3 py-3 text-right">
+                <th scope="col" className="px-2.5 sm:px-3 py-3 text-right whitespace-nowrap">
                   Actions
                 </th>
               </tr>
@@ -724,13 +916,14 @@ export function AdmissionsTable({
                   const statusMeta = ADMISSION_STATUS_META[app.status];
                   const verMeta = DOCUMENT_VERIFICATION_META[app.verificationStatus];
                   const isBusy = busyRowId === app.id;
+                  const isMenuOpen = floatingMenu?.app.id === app.id;
                   const avatarTone = AVATAR_TONES[index % AVATAR_TONES.length]!;
                   return (
                     <tr
                       key={app.id}
                       className="hover:bg-[#FAF8FE] transition dark:hover:bg-[#1B2042]"
                     >
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-2.5 sm:px-3 py-3.5 text-center align-middle">
                         <input
                           type="checkbox"
                           checked={selectedIds.has(app.id)}
@@ -739,8 +932,8 @@ export function AdmissionsTable({
                           className="h-4 w-4 rounded border-[#CAD0EB] accent-[#663CF6] cursor-pointer"
                         />
                       </td>
-                      <td className="px-3 py-3 font-bold">
-                        <div className="flex items-center gap-2.5">
+                      <td className="px-2.5 sm:px-3 py-3.5 font-bold whitespace-nowrap align-middle">
+                        <div className="flex items-center gap-2">
                           <span
                             className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold ${avatarTone}`}
                             aria-hidden="true"
@@ -756,9 +949,9 @@ export function AdmissionsTable({
                           </button>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-2.5 sm:px-3 py-3.5 min-w-[155px] align-middle">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
+                          <span className="font-bold text-[#08093B] break-words dark:text-[#F3F5FF]">
                             {app.studentName}
                           </span>
                           {app.studentIdNumber && (
@@ -772,14 +965,14 @@ export function AdmissionsTable({
                             </button>
                           )}
                         </div>
-                        <div className="text-[11px] text-[#76799C] truncate max-w-[200px] dark:text-[#9DA6CC]">
+                        <div className="text-[11px] text-[#76799C] truncate max-w-[220px] dark:text-[#9DA6CC]">
                           Guardian: {app.guardianName}
                         </div>
                       </td>
-                      <td className="px-3 py-3 font-semibold text-[#4D5072] dark:text-[#C5CCF0]">
+                      <td className="px-2.5 sm:px-3 py-3.5 font-semibold text-[#4D5072] whitespace-nowrap align-middle dark:text-[#C5CCF0]">
                         {app.gradeApplied}
                       </td>
-                      <td className="px-3 py-3 text-[#4D5072] dark:text-[#9DA6CC]">
+                      <td className="hidden lg:table-cell px-2.5 sm:px-3 py-3.5 text-[#4D5072] whitespace-nowrap align-middle dark:text-[#9DA6CC]">
                         <time dateTime={app.appliedAt}>
                           {new Intl.DateTimeFormat("en-IN", {
                             day: "2-digit",
@@ -789,14 +982,14 @@ export function AdmissionsTable({
                           }).format(new Date(app.appliedAt))}
                         </time>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-2.5 sm:px-3 py-3.5 whitespace-nowrap align-middle">
                         <span
                           className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${statusMeta.bgClass} ${statusMeta.textClass} ${statusMeta.borderClass}`}
                         >
                           {statusMeta.label}
                         </span>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-2.5 sm:px-3 py-3.5 whitespace-nowrap align-middle">
                         <span
                           className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${verMeta.bgClass} ${verMeta.textClass} ${verMeta.borderClass}`}
                         >
@@ -810,8 +1003,8 @@ export function AdmissionsTable({
                           <span>{verMeta.label}</span>
                         </span>
                       </td>
-                      <td className="px-3 py-3 text-right">
-                        <div className="relative inline-flex items-center gap-1">
+                      <td className="px-2.5 sm:px-3 py-3.5 text-right whitespace-nowrap align-middle">
+                        <div className="inline-flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => onInspectApplication(app)}
@@ -838,75 +1031,19 @@ export function AdmissionsTable({
                             <button
                               type="button"
                               disabled={isBusy}
-                              onClick={() =>
-                                setOpenMenuId((prev) => (prev === app.id ? null : app.id))
-                              }
+                              onClick={(e) => toggleRowMenu(app, e.currentTarget)}
                               aria-label={`More actions for ${app.studentName}`}
-                              aria-expanded={openMenuId === app.id}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer disabled:opacity-50 dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6] dark:hover:text-[#D9CEFF]"
+                              aria-haspopup="menu"
+                              aria-expanded={isMenuOpen}
+                              title="More actions"
+                              className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white transition cursor-pointer disabled:opacity-50 dark:bg-[#10142C] ${
+                                isMenuOpen
+                                  ? "border-[#663CF6] text-[#663CF6] ring-2 ring-[#663CF6]/20 dark:border-[#8B5CF6] dark:text-[#D9CEFF]"
+                                  : "border-[#E2E8F0] text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] dark:border-[#2E345B] dark:text-[#C5CCF0] dark:hover:border-[#8B5CF6] dark:hover:text-[#D9CEFF]"
+                              }`}
                             >
                               <MoreVertical className="h-3.5 w-3.5" aria-hidden="true" />
                             </button>
-                          )}
-
-                          {openMenuId === app.id && (
-                            <div className="absolute right-0 top-9 z-30 w-44 rounded-[12px] border border-[#D6DBF0] bg-white p-1.5 text-left shadow-xl dark:border-[#2E345B] dark:bg-[#141731] dark:shadow-black/60">
-                              {canVerify && app.verificationStatus !== "VERIFIED" && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleQuickAction(app.id, { verificationStatus: "VERIFIED" })
-                                  }
-                                  className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer dark:text-emerald-300 dark:hover:bg-emerald-950/50"
-                                >
-                                  Mark Docs Verified
-                                </button>
-                              )}
-                              {canWrite && app.status !== "SHORTLISTED" && app.status !== "ADMITTED" && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleQuickAction(app.id, { status: "SHORTLISTED" })
-                                  }
-                                  className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-[#5B21B6] hover:bg-[#FAF8FE] cursor-pointer dark:text-[#CBB8FF] dark:hover:bg-[#231D4B]"
-                                >
-                                  Shortlist Applicant
-                                </button>
-                              )}
-                              {canWrite && app.status !== "ADMITTED" && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleQuickAction(app.id, { status: "ADMITTED" })
-                                  }
-                                  className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer dark:text-emerald-300 dark:hover:bg-emerald-950/50"
-                                >
-                                  Mark Admitted
-                                </button>
-                              )}
-                              {canWrite && app.status !== "DOCUMENTS_PENDING" && app.status !== "ADMITTED" && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleQuickAction(app.id, { status: "DOCUMENTS_PENDING" })
-                                  }
-                                  className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 cursor-pointer dark:text-sky-300 dark:hover:bg-sky-950/50"
-                                >
-                                  Mark Docs Pending
-                                </button>
-                              )}
-                              {canWrite && app.status !== "REJECTED" && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleQuickAction(app.id, { status: "REJECTED" })
-                                  }
-                                  className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 cursor-pointer dark:text-rose-300 dark:hover:bg-rose-950/50"
-                                >
-                                  Reject Application
-                                </button>
-                              )}
-                            </div>
                           )}
                         </div>
                       </td>
@@ -988,6 +1125,170 @@ export function AdmissionsTable({
           </div>
         </div>
       </div>
+
+      {/* Portal-mounted Floating Three-Dot Menu (never clipped by overflow containers or overlapping rows) */}
+      {typeof document !== "undefined" &&
+        floatingMenu &&
+        createPortal(
+          <div
+            ref={menuPanelRef}
+            role="menu"
+            data-placement={floatingMenu.openUpward ? "top" : "bottom"}
+            aria-label={`Actions for ${floatingMenu.app.studentName}`}
+            style={{
+              position: "fixed",
+              top: `${floatingMenu.top}px`,
+              left: `${floatingMenu.left}px`,
+              width: `${ROW_MENU_WIDTH}px`,
+            }}
+            className="z-[80] rounded-[14px] border border-[#D6DBF0] bg-white p-1.5 text-left shadow-2xl ring-1 ring-black/5 dark:border-[#2E345B] dark:bg-[#141731] dark:ring-white/10 dark:shadow-black/75"
+          >
+            <div className="mb-1 border-b border-[#EEF1FA] px-2.5 py-1.5 dark:border-[#232746]">
+              <p className="truncate text-[11px] font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                {floatingMenu.app.studentName}
+              </p>
+              <p className="truncate text-[10px] font-semibold text-[#76799C] dark:text-[#9DA6CC]">
+                {floatingMenu.app.applicationCode}
+                {floatingMenu.app.studentIdNumber
+                  ? ` · ${floatingMenu.app.studentIdNumber}`
+                  : ""}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                const target = floatingMenu.app;
+                closeRowMenu();
+                onInspectApplication(target);
+              }}
+              className="flex w-full items-center gap-2 rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-[#1B1D45] hover:bg-[#FAF8FE] cursor-pointer dark:text-[#DCE1F9] dark:hover:bg-[#1E2346]"
+            >
+              <Eye className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
+              <span>Inspect & Verify</span>
+            </button>
+
+            {canWrite && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  const target = floatingMenu.app;
+                  closeRowMenu();
+                  handleEditTrigger(target);
+                }}
+                className="flex w-full items-center gap-2 rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-[#1B1D45] hover:bg-[#FAF8FE] cursor-pointer dark:text-[#DCE1F9] dark:hover:bg-[#1E2346]"
+              >
+                <Pencil className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
+                <span>Edit Application</span>
+              </button>
+            )}
+
+            {(() => {
+              const pdfUrl = resolveApplicationPdfUrl(floatingMenu.app, schoolSlug);
+              if (!pdfUrl) return null;
+              const previewUrl = pdfUrl.includes("?")
+                ? `${pdfUrl}&disposition=inline`
+                : `${pdfUrl}?disposition=inline`;
+              return (
+                <>
+                  <a
+                    href={pdfUrl}
+                    download
+                    role="menuitem"
+                    onClick={() => closeRowMenu()}
+                    className="flex w-full items-center gap-2 rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-[#1B1D45] hover:bg-[#FAF8FE] cursor-pointer dark:text-[#DCE1F9] dark:hover:bg-[#1E2346]"
+                  >
+                    <FileDown className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
+                    <span>Download A4 PDF</span>
+                  </a>
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    role="menuitem"
+                    onClick={() => closeRowMenu()}
+                    className="flex w-full items-center gap-2 rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-[#1B1D45] hover:bg-[#FAF8FE] cursor-pointer dark:text-[#DCE1F9] dark:hover:bg-[#1E2346]"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
+                    <span>Preview A4 PDF</span>
+                  </a>
+                </>
+              );
+            })()}
+
+            {(canVerify || canWrite) && (
+              <div className="my-1 border-t border-[#EEF1FA] dark:border-[#232746]" />
+            )}
+
+            {canVerify && floatingMenu.app.verificationStatus !== "VERIFIED" && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() =>
+                  handleQuickAction(floatingMenu.app.id, { verificationStatus: "VERIFIED" })
+                }
+                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+              >
+                Mark Docs Verified
+              </button>
+            )}
+            {canWrite &&
+              floatingMenu.app.status !== "SHORTLISTED" &&
+              floatingMenu.app.status !== "ADMITTED" && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() =>
+                    handleQuickAction(floatingMenu.app.id, { status: "SHORTLISTED" })
+                  }
+                  className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-[#5B21B6] hover:bg-[#FAF8FE] cursor-pointer dark:text-[#CBB8FF] dark:hover:bg-[#231D4B]"
+                >
+                  Shortlist Applicant
+                </button>
+              )}
+            {canWrite && floatingMenu.app.status !== "ADMITTED" && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() =>
+                  handleQuickAction(floatingMenu.app.id, { status: "ADMITTED" })
+                }
+                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+              >
+                Mark Admitted
+              </button>
+            )}
+            {canWrite &&
+              floatingMenu.app.status !== "DOCUMENTS_PENDING" &&
+              floatingMenu.app.status !== "ADMITTED" && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() =>
+                    handleQuickAction(floatingMenu.app.id, { status: "DOCUMENTS_PENDING" })
+                  }
+                  className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 cursor-pointer dark:text-sky-300 dark:hover:bg-sky-950/50"
+                >
+                  Mark Docs Pending
+                </button>
+              )}
+            {canWrite && floatingMenu.app.status !== "REJECTED" && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() =>
+                  handleQuickAction(floatingMenu.app.id, { status: "REJECTED" })
+                }
+                className="flex w-full items-center rounded-[8px] px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 cursor-pointer dark:text-rose-300 dark:hover:bg-rose-950/50"
+              >
+                Reject Application
+              </button>
+            )}
+          </div>,
+          document.body,
+        )}
     </section>
   );
 }

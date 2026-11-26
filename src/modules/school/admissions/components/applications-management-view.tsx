@@ -738,6 +738,7 @@ export function ApplicationsManagementView({
               APPLICATIONS DATA TABLE / GRID
               ================================================================= */}
           <AdmissionsTable
+            schoolSlug={schoolSlug}
             applications={data.applications}
             pagination={data.pagination}
             searchQuery={searchInput}

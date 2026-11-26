@@ -28,6 +28,8 @@ import {
   computeAdmissionsOverviewAnalytics,
 } from "./admissions-analytics";
 import { admissionsRepository } from "./admissions-repository";
+import { admissionsPdfService, type PdfSchoolProfile } from "./admissions-pdf-generator";
+import { authRepository } from "@/server/auth/auth-repository";
 
 export interface AdmissionsActorContext {
   userId: string;
@@ -131,6 +133,25 @@ async function invalidateTenantCaches(schoolId: string, actorId: string): Promis
   ]);
 }
 
+function buildPdfDownloadUrl(applicationId: string, schoolSlug: string): string {
+  return `/api/school/admissions/applications/${encodeURIComponent(applicationId)}/pdf?schoolSlug=${encodeURIComponent(schoolSlug)}`;
+}
+
+async function resolvePdfSchoolProfile(ctx: AdmissionsActorContext): Promise<PdfSchoolProfile> {
+  const school = await authRepository.findSchoolById(ctx.schoolId).catch(() => null);
+  return {
+    id: ctx.schoolId,
+    name: school?.name || ctx.schoolName,
+    slug: school?.slug || ctx.schoolSlug,
+    uniqueId: school?.uniqueId ?? null,
+    affiliationBoard: school?.affiliationBoard ?? null,
+    city: school?.city ?? null,
+    state: school?.state ?? null,
+    contactEmail: school?.contactEmail ?? null,
+    contactPhone: school?.contactPhone ?? null,
+  };
+}
+
 function runScoped<T>(
   ctx: AdmissionsActorContext,
   fn: () => Promise<T>,
@@ -223,6 +244,28 @@ export const admissionsService = {
       );
 
       await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      let generatedPdfUrl: string | null = null;
+      if (!created.isDraft) {
+        try {
+          const schoolProfile = await resolvePdfSchoolProfile(ctx);
+          await admissionsPdfService.generateAndStoreApplicationPdf({
+            school: schoolProfile,
+            application: created,
+          });
+          generatedPdfUrl = buildPdfDownloadUrl(created.id, ctx.schoolSlug);
+        } catch (pdfErr) {
+          logger.warn(
+            {
+              event: "ADMISSION_AUTO_PDF_FAILED",
+              schoolId: ctx.schoolId,
+              applicationId: created.id,
+              error: pdfErr instanceof Error ? pdfErr.message : String(pdfErr),
+            },
+            "[AdmissionsService] Auto-PDF generation failed on create; on-demand PDF remains available",
+          );
+        }
+      }
+
       await logAuditEvent({
         schoolId: ctx.schoolId,
         actorId: ctx.userId,
@@ -231,17 +274,19 @@ export const admissionsService = {
         entityId: created.id,
         details: {
           applicationCode: created.applicationCode,
+          studentIdNumber: created.studentIdNumber ?? null,
           gradeApplied: created.gradeApplied,
           academicYear: created.academicYear,
           admissionType: created.admissionType ?? "FRESH",
           isDraft: Boolean(created.isDraft),
           enquiryId: created.enquiryId,
+          generatedPdfReady: Boolean(generatedPdfUrl),
         },
         ipAddress: ctx.ipAddress,
         userAgent: ctx.userAgent,
       });
 
-      return created;
+      return generatedPdfUrl ? { ...created, generatedPdfUrl } : created;
     });
   },
 
@@ -251,6 +296,40 @@ export const admissionsService = {
   ): Promise<AdmissionApplicationRecord> {
     authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:read");
     return runScoped(ctx, () => admissionsRepository.getApplicationById(ctx.schoolId, applicationId));
+  },
+
+  async getApplicationPdf(
+    ctx: AdmissionsActorContext,
+    applicationId: string,
+  ): Promise<{ buffer: Buffer; pageCount: number; filename: string }> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:read");
+
+    return runScoped(ctx, async () => {
+      const application = await admissionsRepository.getApplicationById(ctx.schoolId, applicationId);
+      const schoolProfile = await resolvePdfSchoolProfile(ctx);
+      const result = await admissionsPdfService.getOrGenerateApplicationPdf({
+        school: schoolProfile,
+        application,
+      });
+
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMISSION_APPLICATION_PDF_GENERATED",
+        entityType: "AdmissionApplication",
+        entityId: application.id,
+        details: {
+          applicationCode: application.applicationCode,
+          studentIdNumber: application.studentIdNumber ?? null,
+          pageCount: result.pageCount,
+          sizeBytes: result.buffer.length,
+        },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+
+      return result;
+    });
   },
 
   async updateApplication(
@@ -278,6 +357,28 @@ export const admissionsService = {
       );
 
       await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      let generatedPdfUrl: string | null = null;
+      if (!after.isDraft) {
+        try {
+          const schoolProfile = await resolvePdfSchoolProfile(ctx);
+          await admissionsPdfService.generateAndStoreApplicationPdf({
+            school: schoolProfile,
+            application: after,
+          });
+          generatedPdfUrl = buildPdfDownloadUrl(after.id, ctx.schoolSlug);
+        } catch (pdfErr) {
+          logger.warn(
+            {
+              event: "ADMISSION_AUTO_PDF_FAILED",
+              schoolId: ctx.schoolId,
+              applicationId: after.id,
+              error: pdfErr instanceof Error ? pdfErr.message : String(pdfErr),
+            },
+            "[AdmissionsService] Auto-PDF generation failed on update; on-demand PDF remains available",
+          );
+        }
+      }
+
       await logAuditEvent({
         schoolId: ctx.schoolId,
         actorId: ctx.userId,
@@ -286,18 +387,20 @@ export const admissionsService = {
         entityId: after.id,
         details: {
           applicationCode: after.applicationCode,
+          studentIdNumber: after.studentIdNumber ?? null,
           admissionNumber: after.admissionNumber,
           isDraft: Boolean(after.isDraft),
           previousStatus: before.status,
           nextStatus: after.status,
           previousVerification: before.verificationStatus,
           nextVerification: after.verificationStatus,
+          generatedPdfReady: Boolean(generatedPdfUrl),
         },
         ipAddress: ctx.ipAddress,
         userAgent: ctx.userAgent,
       });
 
-      return after;
+      return generatedPdfUrl ? { ...after, generatedPdfUrl } : after;
     });
   },
 

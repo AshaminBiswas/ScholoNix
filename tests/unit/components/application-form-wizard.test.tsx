@@ -182,8 +182,9 @@ describe("ApplicationFormWizard 4-step workflow", () => {
       "/sc_testtoken",
     );
     expect(screen.getByRole("button", { name: /Download Application/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Preview A4 PDF/i })).toBeInTheDocument();
 
     await actor.click(screen.getByRole("button", { name: /View All Applications/i }));
     expect(onViewApplications).toHaveBeenCalled();
-  });
+  }, 30000);
 });

@@ -22,6 +22,7 @@ interface StoredUploadObject {
   buffer: Buffer;
   mimeType: string;
   fileName: string;
+  versionTag?: string;
 }
 
 const memoryUploads = new Map<string, StoredUploadObject>();
@@ -268,5 +269,145 @@ export const admissionsDocumentStorage = {
     }
 
     return { buffer, mimeType, fileName };
+  },
+
+  readDocumentIfExists: async (
+    schoolId: string,
+    storageKey: string,
+  ): Promise<StoredUploadObject | null> => {
+    try {
+      return await admissionsDocumentStorage.readDocument(schoolId, storageKey);
+    } catch {
+      return null;
+    }
+  },
+
+  saveGeneratedPdf: async (
+    schoolId: string,
+    applicationId: string,
+    buffer: Buffer,
+    versionTag?: string,
+  ): Promise<string> => {
+    const cleanAppId = applicationId.replace(/[^a-zA-Z0-9_-]/g, "");
+    const storageKey = `${schoolId}/admissions/pdf/${cleanAppId}.pdf`;
+    assertTenantDocumentStorageKey(schoolId, storageKey);
+
+    if (process.env.NODE_ENV === "test") {
+      memoryUploads.set(storageKey, {
+        buffer,
+        mimeType: "application/pdf",
+        fileName: `${cleanAppId}.pdf`,
+        versionTag,
+      });
+      return storageKey;
+    }
+
+    const supabase = getSupabaseStorageAdmin();
+    let storedInSupabase = false;
+    if (supabase) {
+      try {
+        const { error } = await supabase.storage
+          .from(SUPABASE_BUCKET)
+          .upload(storageKey, buffer, {
+            contentType: "application/pdf",
+            upsert: true,
+          });
+        if (!error) {
+          storedInSupabase = true;
+        }
+      } catch {
+        // Fallback to local runtime storage when bucket is unavailable
+      }
+    }
+
+    if (!storedInSupabase) {
+      try {
+        const targetPath = path.join(LOCAL_UPLOAD_ROOT, storageKey);
+        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+        fs.writeFileSync(targetPath, buffer);
+        fs.writeFileSync(
+          `${targetPath}.meta.json`,
+          JSON.stringify({
+            mimeType: "application/pdf",
+            fileName: `${cleanAppId}.pdf`,
+            versionTag,
+          }),
+          "utf8",
+        );
+      } catch (fsErr) {
+        logger.error(
+          {
+            event: "ADMISSION_PDF_LOCAL_WRITE_FAILED",
+            schoolId,
+            storageKey,
+            error: fsErr instanceof Error ? fsErr.message : String(fsErr),
+          },
+          "[AdmissionsDocumentStorage] Failed writing generated PDF to disk",
+        );
+        throw new ServiceUnavailableError(
+          "Generated PDF storage is temporarily unavailable.",
+        );
+      }
+    }
+
+    return storageKey;
+  },
+
+  readGeneratedPdf: async (
+    schoolId: string,
+    applicationId: string,
+  ): Promise<StoredUploadObject | null> => {
+    const cleanAppId = applicationId.replace(/[^a-zA-Z0-9_-]/g, "");
+    const storageKey = `${schoolId}/admissions/pdf/${cleanAppId}.pdf`;
+    assertTenantDocumentStorageKey(schoolId, storageKey);
+
+    if (process.env.NODE_ENV === "test") {
+      return memoryUploads.get(storageKey) ?? null;
+    }
+
+    const targetPath = path.resolve(LOCAL_UPLOAD_ROOT, storageKey);
+    const rootResolved = path.resolve(LOCAL_UPLOAD_ROOT, schoolId);
+    if (targetPath.startsWith(rootResolved) && fs.existsSync(targetPath)) {
+      try {
+        const buffer = fs.readFileSync(targetPath);
+        let versionTag: string | undefined;
+        const metaPath = `${targetPath}.meta.json`;
+        if (fs.existsSync(metaPath)) {
+          const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as {
+            versionTag?: string;
+          };
+          versionTag = meta.versionTag;
+        }
+        return {
+          buffer,
+          mimeType: "application/pdf",
+          fileName: `${cleanAppId}.pdf`,
+          versionTag,
+        };
+      } catch {
+        // Fall through to Supabase or regeneration
+      }
+    }
+
+    const supabase = getSupabaseStorageAdmin();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.storage
+          .from(SUPABASE_BUCKET)
+          .download(storageKey);
+        if (!error && data) {
+          const arrayBuf = await data.arrayBuffer();
+          return {
+            buffer: Buffer.from(arrayBuf),
+            mimeType: "application/pdf",
+            fileName: `${cleanAppId}.pdf`,
+          };
+        }
+      } catch {
+        // Regenerate on demand
+      }
+    }
+
+    return null;
   },
 };

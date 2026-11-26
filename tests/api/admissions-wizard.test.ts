@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import { NextRequest } from "next/server";
+import { PDFDocument, PageSizes } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import { POST as uploadDocPost } from "@/app/api/school/admissions/documents/route";
 import { GET as viewDocGet } from "@/app/api/school/admissions/documents/view/route";
@@ -8,6 +9,7 @@ import {
   POST as appsPost,
 } from "@/app/api/school/admissions/applications/route";
 import { PATCH as appPatch } from "@/app/api/school/admissions/applications/[applicationId]/route";
+import { GET as pdfGet } from "@/app/api/school/admissions/applications/[applicationId]/pdf/route";
 import { GET as overviewGet } from "@/app/api/school/admissions/overview/route";
 import { authRepository } from "@/server/auth/auth-repository";
 import { getSessionCookieName, sessionService } from "@/server/auth/session-service";
@@ -260,6 +262,52 @@ describe("Admissions 4-Step Wizard API, Document Upload & Tenant Isolation", () 
     expect(submitJson.application.isDraft).toBe(false);
     expect(submitJson.application.academicDetails.percentage).toBe(77);
     expect(submitJson.application.studentIdNumber).toBe("STU2026-0001");
+    expect(submitJson.application.generatedPdfUrl).toContain(
+      `/api/school/admissions/applications/${draftJson.application.id}/pdf?schoolSlug=${tenant.school.slug}`,
+    );
+
+    // Auto-generated A4 PDF is immediately downloadable & parseable
+    const pdfRes = await pdfGet(
+      new NextRequest(
+        `http://localhost/api/school/admissions/applications/${draftJson.application.id}/pdf?schoolSlug=${tenant.school.slug}`,
+        { headers: { cookie: tenant.cookieHeader } },
+      ),
+      { params: Promise.resolve({ applicationId: draftJson.application.id }) },
+    );
+    expect(pdfRes.status).toBe(200);
+    expect(pdfRes.headers.get("content-type")).toBe("application/pdf");
+    expect(pdfRes.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(pdfRes.headers.get("content-disposition")).toContain("attachment;");
+    const pdfBytes = new Uint8Array(await pdfRes.arrayBuffer());
+    const parsedPdf = await PDFDocument.load(pdfBytes);
+    expect(parsedPdf.getPageCount()).toBeGreaterThanOrEqual(2);
+    for (const page of parsedPdf.getPages()) {
+      const { width, height } = page.getSize();
+      expect(Math.abs(width - PageSizes.A4[0])).toBeLessThan(0.5);
+      expect(Math.abs(height - PageSizes.A4[1])).toBeLessThan(0.5);
+    }
+
+    // Inline disposition also works for browser preview
+    const inlinePdfRes = await pdfGet(
+      new NextRequest(
+        `http://localhost/api/school/admissions/applications/${draftJson.application.id}/pdf?schoolSlug=${tenant.school.slug}&disposition=inline`,
+        { headers: { cookie: tenant.cookieHeader } },
+      ),
+      { params: Promise.resolve({ applicationId: draftJson.application.id }) },
+    );
+    expect(inlinePdfRes.status).toBe(200);
+    expect(inlinePdfRes.headers.get("content-disposition")).toContain("inline;");
+
+    // Cross-tenant PDF access is blocked
+    const otherTenant = await seedSchoolUser("pdf-other");
+    const crossTenantPdfRes = await pdfGet(
+      new NextRequest(
+        `http://localhost/api/school/admissions/applications/${draftJson.application.id}/pdf?schoolSlug=${otherTenant.school.slug}`,
+        { headers: { cookie: otherTenant.cookieHeader } },
+      ),
+      { params: Promise.resolve({ applicationId: draftJson.application.id }) },
+    );
+    expect([403, 404]).toContain(crossTenantPdfRes.status);
 
     // Overview now shows 1 submitted application and 0 drafts
     const listRes = await appsGet(

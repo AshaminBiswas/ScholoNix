@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { X, Loader2, CheckCircle2, FileCheck2, UserPlus } from "lucide-react";
+import { X, Loader2, CheckCircle2, FileCheck2, UserPlus, Download } from "lucide-react";
 import {
   ADMISSION_STATUS_META,
   DOCUMENT_VERIFICATION_META,
@@ -1178,28 +1178,41 @@ export function ApplicationDetailModal({
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-[#DFE3F5] dark:border-[#232746]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] cursor-pointer dark:border-[#30365C] dark:text-[#C5CCF0] dark:hover:bg-[#1E2245]"
-          >
-            Close
-          </button>
-          {(canWrite || canVerify) && (
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#DFE3F5] dark:border-[#232746]">
+          <div>
+            {schoolSlug && !application.isDraft && (
+              <a
+                href={`/api/school/admissions/applications/${encodeURIComponent(application.id)}/pdf?schoolSlug=${encodeURIComponent(schoolSlug)}`}
+                className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#B9C1E8] bg-[#FAF8FE] px-3.5 py-2 text-xs font-bold text-[#4F27E8] hover:border-[#663CF6] dark:border-[#3A4173] dark:bg-[#10142C] dark:text-[#C4B5FD]"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Download A4 PDF</span>
+              </a>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
             <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white hover:bg-[#4F27E8] disabled:opacity-60 cursor-pointer"
+              type="button"
+              onClick={onClose}
+              className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] cursor-pointer dark:border-[#30365C] dark:text-[#C5CCF0] dark:hover:bg-[#1E2245]"
             >
-              {saving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-              )}
-              <span>{saving ? "Saving..." : "Save Updates"}</span>
+              Close
             </button>
-          )}
+            {(canWrite || canVerify) && (
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white hover:bg-[#4F27E8] disabled:opacity-60 cursor-pointer"
+              >
+                {saving ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                <span>{saving ? "Saving..." : "Save Updates"}</span>
+              </button>
+            )}
+          </div>
         </div>
       </form>
     </dialog>
