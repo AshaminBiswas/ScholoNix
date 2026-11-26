@@ -176,4 +176,57 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
+
+  it("never renders Syncing indicator and serves cached filter queries without redundant API fetches", async () => {
+    const actor = userEvent.setup();
+    const filteredResponse: AdmissionsOverviewData = {
+      ...emptyOverview,
+      filters: {
+        ...emptyOverview.filters,
+        academicYear: "all",
+        status: "SHORTLISTED",
+      },
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ success: true, data: filteredResponse }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    render(
+      <AdmissionsWorkspace
+        school={school}
+        user={user}
+        initialData={emptyOverview}
+        initialTab="overview"
+      />,
+    );
+
+    // Selecting Custom Range before picking dates from default "all" should not trigger a fetch or Syncing text
+    await actor.selectOptions(screen.getByLabelText("Filter by date range"), "custom");
+    expect(screen.queryByText(/Syncing/i)).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    // Return Date Range to "all" (matches initial filter state -> still 0 fetches)
+    await actor.selectOptions(screen.getByLabelText("Filter by date range"), "all");
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    // Change Academic Year to "all" (cold client cache -> 1 fetch) and then Status to "SHORTLISTED" (1 fetch)
+    await actor.selectOptions(screen.getByLabelText("Filter by academic year"), "all");
+    await actor.selectOptions(screen.getByLabelText("Filter by status"), "SHORTLISTED");
+    expect(screen.queryByText(/Syncing/i)).toBeNull();
+    const callsAfterWarmup = fetchSpy.mock.calls.length;
+    expect(callsAfterWarmup).toBe(2);
+
+    // Switch back to already-cached Academic Year="all", Status="all" -> hits client cache (0 new fetches)
+    await actor.selectOptions(screen.getByLabelText("Filter by status"), "all");
+    // Switch back to initial seeded combination -> hits client cache (0 new fetches)
+    await actor.selectOptions(screen.getByLabelText("Filter by academic year"), "2026 – 2027");
+    expect(screen.queryByText(/Syncing/i)).toBeNull();
+    expect(fetchSpy).toHaveBeenCalledTimes(callsAfterWarmup);
+
+    fetchSpy.mockRestore();
+  });
 });

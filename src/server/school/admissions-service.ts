@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "crypto";
 import { authorize, hasPermission } from "@/server/authorization/permissions";
 import { runWithTenantContext } from "@/server/tenant/tenant-context";
 import { logAuditEvent } from "@/server/security/audit-logger";
@@ -51,11 +52,80 @@ const DEFAULT_FILTERS: AdmissionsOverviewFilters = {
   pageSize: 10,
 };
 
+const ADMISSIONS_VERSION_CACHE_KEY = "admissions:ver";
+const ADMISSIONS_VERSION_TTL_SECONDS = 86_400;
+const ADMISSIONS_OVERVIEW_CACHE_TTL_SECONDS = 60;
+
+type CachedAdmissionsOverviewPayload = Omit<AdmissionsOverviewData, "permissions">;
+
+function resolveAdmissionsPermissions(
+  ctx: AdmissionsActorContext,
+): AdmissionsOverviewData["permissions"] {
+  const authUser = { id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId };
+  return {
+    canWrite: hasPermission(authUser, "admissions:write"),
+    canVerify: hasPermission(authUser, "admissions:verify"),
+    canExport: hasPermission(authUser, "admissions:export"),
+    canManageSettings: hasPermission(authUser, "admissions:settings"),
+  };
+}
+
+function buildOverviewQueryCacheKey(
+  version: string,
+  partialFilters?: Partial<AdmissionsOverviewFilters>,
+): string {
+  const canonicalFilters = {
+    ...DEFAULT_FILTERS,
+    ...partialFilters,
+    academicYear: partialFilters?.academicYear ?? "__default__",
+  };
+  const hash = createHash("sha256")
+    .update(JSON.stringify(canonicalFilters))
+    .digest("hex")
+    .slice(0, 24);
+  return `admissions:overview:v1:${version}:${hash}`;
+}
+
+function isValidCachedOverview(
+  cached: unknown,
+  expectedSchoolId: string,
+): cached is CachedAdmissionsOverviewPayload {
+  if (!cached || typeof cached !== "object") return false;
+  const o = cached as Partial<CachedAdmissionsOverviewPayload>;
+  return Boolean(
+    o.schoolId === expectedSchoolId &&
+      o.filters &&
+      o.kpis &&
+      o.funnel &&
+      o.settings &&
+      Array.isArray(o.applications) &&
+      Array.isArray(o.enquiries) &&
+      Array.isArray(o.admittedStudents) &&
+      Array.isArray(o.reminders) &&
+      Array.isArray(o.activities),
+  );
+}
+
+async function getTenantCacheVersion(schoolId: string): Promise<string> {
+  const version = await tenantCache.get<string>(schoolId, ADMISSIONS_VERSION_CACHE_KEY);
+  return typeof version === "string" && version.trim().length > 0 ? version : "v1";
+}
+
+async function rotateTenantCacheVersion(schoolId: string): Promise<void> {
+  const nextVersion = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  await tenantCache.set(
+    schoolId,
+    ADMISSIONS_VERSION_CACHE_KEY,
+    nextVersion,
+    ADMISSIONS_VERSION_TTL_SECONDS,
+  );
+}
+
 async function invalidateTenantCaches(schoolId: string, actorId: string): Promise<void> {
   await Promise.all([
     tenantCache.del(schoolId, `dashboard:v1:${actorId}`),
     admissionsRepository.invalidateTenantSnapshotCache(schoolId),
-    tenantCache.del(schoolId, `admissions:ver`),
+    rotateTenantCacheVersion(schoolId),
   ]);
 }
 
@@ -76,8 +146,24 @@ export const admissionsService = {
   ): Promise<AdmissionsOverviewData> {
     const startedAt = Date.now();
     authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:read");
+    const permissions = resolveAdmissionsPermissions(ctx);
 
     return runScoped(ctx, async () => {
+      // 1. Check query cache first (avoids touching DB when query result is already cached)
+      const version = await getTenantCacheVersion(ctx.schoolId);
+      const queryCacheKey = buildOverviewQueryCacheKey(version, partialFilters);
+      const cachedQuery = await tenantCache.get<CachedAdmissionsOverviewPayload>(
+        ctx.schoolId,
+        queryCacheKey,
+      );
+      if (isValidCachedOverview(cachedQuery, ctx.schoolId)) {
+        return {
+          ...cachedQuery,
+          permissions,
+        };
+      }
+
+      // 2. Load tenant snapshot via cache-aside (Redis snapshot cache -> DB fallback -> store in cache)
       const snapshot = await admissionsRepository.getTenantSnapshot(ctx.schoolId);
       const filters: AdmissionsOverviewFilters = {
         ...DEFAULT_FILTERS,
@@ -93,25 +179,18 @@ export const admissionsService = {
         customReminders: snapshot.reminders,
         activities: snapshot.activities,
         settings: snapshot.settings,
-        permissions: {
-          canWrite: hasPermission(
-            { id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId },
-            "admissions:write",
-          ),
-          canVerify: hasPermission(
-            { id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId },
-            "admissions:verify",
-          ),
-          canExport: hasPermission(
-            { id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId },
-            "admissions:export",
-          ),
-          canManageSettings: hasPermission(
-            { id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId },
-            "admissions:settings",
-          ),
-        },
+        permissions,
       });
+
+      // 3. Store computed query data in tenant cache before serving
+      const { permissions: _omittedPerms, ...cacheablePayload } = overview;
+      void _omittedPerms;
+      await tenantCache.set(
+        ctx.schoolId,
+        queryCacheKey,
+        cacheablePayload,
+        ADMISSIONS_OVERVIEW_CACHE_TTL_SECONDS,
+      );
 
       logger.info(
         {

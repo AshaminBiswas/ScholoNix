@@ -96,4 +96,66 @@ describe("Admissions tenant snapshot caching & mutation invalidation", () => {
     expect(snapshot.settings.schoolId).toBe(schoolA);
     expect(Array.isArray(snapshot.applications)).toBe(true);
   });
+
+  it("checks query cache first in getOverview, stores missing queries in cache, serves cached results without DB calls, and recomputes fresh role permissions", async () => {
+    const store = new Map<string, unknown>();
+    vi.spyOn(tenantCache, "get").mockImplementation(async (sid, key) => {
+      return (store.get(`${sid}:${key}`) as never) ?? null;
+    });
+    vi.spyOn(tenantCache, "set").mockImplementation(async (sid, key, val) => {
+      store.set(`${sid}:${key}`, val);
+    });
+    vi.spyOn(tenantCache, "del").mockImplementation(async (sid, key) => {
+      store.delete(`${sid}:${key}`);
+    });
+
+    const repoSpy = vi.spyOn(admissionsRepository, "getTenantSnapshot");
+
+    // 1. Cold cache: queries repository once and populates both snapshot & query caches
+    const first = await admissionsService.getOverview(ctxA, {
+      academicYear: "all",
+      grade: "all",
+      status: "all",
+    });
+    expect(repoSpy).toHaveBeenCalledTimes(1);
+    expect(first.permissions.canManageSettings).toBe(true);
+
+    // 2. Subsequent query for same filters returns directly from query cache without touching repository
+    const staffCtx = { ...ctxA, userId: "staff-a", role: "STAFF" };
+    const cachedHit = await admissionsService.getOverview(staffCtx, {
+      academicYear: "all",
+      grade: "all",
+      status: "all",
+    });
+    expect(repoSpy).toHaveBeenCalledTimes(1);
+    expect(cachedHit.schoolId).toBe(schoolA);
+    // Role permissions must always be computed fresh per actor, never cached
+    expect(cachedHit.permissions.canManageSettings).toBe(false);
+
+    // 3. Mutation rotates cache version so next read recomputes fresh state
+    await admissionsService.createApplication(ctxA, {
+      studentName: "Version Bumped Student",
+      gender: "Male",
+      dateOfBirth: "2018-08-12",
+      gradeApplied: "Class II",
+      academicYear: "2026 – 2027",
+      guardianName: "Guardian VB",
+      guardianRelation: "Father",
+      guardianPhone: "+919000000019",
+      guardianEmail: "",
+      previousSchool: "",
+      status: "SHORTLISTED",
+      notes: "",
+    });
+
+    const afterMutation = await admissionsService.getOverview(ctxA, {
+      academicYear: "all",
+      grade: "all",
+      status: "all",
+    });
+    expect(repoSpy).toHaveBeenCalledTimes(2);
+    expect(
+      afterMutation.applications.some((a) => a.studentName === "Version Bumped Student"),
+    ).toBe(true);
+  });
 });

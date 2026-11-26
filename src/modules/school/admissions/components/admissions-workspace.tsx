@@ -96,7 +96,6 @@ export function AdmissionsWorkspace({
   const [activeTab, setActiveTab] = useState<AdmissionsTab>(initialTab);
   const [filters, setFilters] = useState<AdmissionsOverviewFilters>(initialData.filters);
   const [searchInput, setSearchInput] = useState(initialData.filters.search);
-  const [loading, setLoading] = useState(false);
   const [feedbackBanner, setFeedbackBanner] = useState<{
     type: "success" | "error";
     text: string;
@@ -121,6 +120,27 @@ export function AdmissionsWorkspace({
   const [savingSettings, setSavingSettings] = useState(false);
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filtersRef = useRef<AdmissionsOverviewFilters>(initialData.filters);
+  const clientQueryCacheRef = useRef<Map<string, AdmissionsOverviewData>>(new Map());
+  const activeFetchAbortRef = useRef<AbortController | null>(null);
+
+  const applyOverviewSnapshot = useCallback((nextData: AdmissionsOverviewData) => {
+    setData(nextData);
+    setSettingsAcademicYear(nextData.settings.currentAcademicYear);
+    setSettingsDeadline(
+      nextData.settings.applicationDeadline
+        ? nextData.settings.applicationDeadline.slice(0, 10)
+        : "",
+    );
+    setSettingsPrefix(nextData.settings.applicationPrefix);
+    setSettingsGrades(nextData.settings.enabledGrades);
+  }, []);
+
+  // Seed client query cache with initial server-rendered data
+  useEffect(() => {
+    const initialQs = buildFilterQueryString(initialData.filters, school.slug);
+    clientQueryCacheRef.current.set(initialQs, initialData);
+  }, [initialData, school.slug]);
 
   // Sync tab when sidebar links update URL query via initialTab
   useEffect(() => {
@@ -128,49 +148,77 @@ export function AdmissionsWorkspace({
   }, [initialTab]);
 
   const fetchOverview = useCallback(
-    async (nextFilters: AdmissionsOverviewFilters) => {
-      setLoading(true);
+    async (
+      nextFilters: AdmissionsOverviewFilters,
+      options?: { bypassClientCache?: boolean },
+    ) => {
+      const qs = buildFilterQueryString(nextFilters, school.slug);
+
+      if (options?.bypassClientCache) {
+        clientQueryCacheRef.current.clear();
+      } else {
+        const cached = clientQueryCacheRef.current.get(qs);
+        if (cached) {
+          activeFetchAbortRef.current?.abort();
+          activeFetchAbortRef.current = null;
+          applyOverviewSnapshot(cached);
+          return;
+        }
+      }
+
+      activeFetchAbortRef.current?.abort();
+      const controller = new AbortController();
+      activeFetchAbortRef.current = controller;
+
       try {
-        const qs = buildFilterQueryString(nextFilters, school.slug);
         const res = await fetch(`/api/school/admissions/overview?${qs}`, {
           cache: "no-store",
+          signal: controller.signal,
         });
         const json = await res.json();
         if (!res.ok || !json.success) {
           throw new Error(json?.error?.message || "Failed to refresh admissions data.");
         }
-        setData(json.data);
-        setSettingsAcademicYear(json.data.settings.currentAcademicYear);
-        setSettingsDeadline(
-          json.data.settings.applicationDeadline
-            ? json.data.settings.applicationDeadline.slice(0, 10)
-            : "",
-        );
-        setSettingsPrefix(json.data.settings.applicationPrefix);
-        setSettingsGrades(json.data.settings.enabledGrades);
+        if (clientQueryCacheRef.current.size >= 60) {
+          const oldestKey = clientQueryCacheRef.current.keys().next().value;
+          if (oldestKey) clientQueryCacheRef.current.delete(oldestKey);
+        }
+        clientQueryCacheRef.current.set(qs, json.data);
+        applyOverviewSnapshot(json.data);
       } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
         setFeedbackBanner({
           type: "error",
           text: err instanceof Error ? err.message : "Unable to load admissions data.",
         });
       } finally {
-        setLoading(false);
+        if (activeFetchAbortRef.current === controller) {
+          activeFetchAbortRef.current = null;
+        }
       }
     },
-    [school.slug],
+    [school.slug, applyOverviewSnapshot],
   );
 
   const applyFilterUpdate = useCallback(
     (patch: Partial<AdmissionsOverviewFilters>) => {
-      setFilters((prev) => {
-        const next: AdmissionsOverviewFilters = {
-          ...prev,
-          ...patch,
-          page: patch.page !== undefined ? patch.page : 1,
-        };
-        void fetchOverview(next);
-        return next;
-      });
+      const prev = filtersRef.current;
+      const next: AdmissionsOverviewFilters = {
+        ...prev,
+        ...patch,
+        page: patch.page !== undefined ? patch.page : 1,
+      };
+      filtersRef.current = next;
+      setFilters(next);
+      if (patch.datePreset === "custom" && !next.from && !next.to) {
+        if (prev.datePreset !== "all" && prev.datePreset !== "custom") {
+          void fetchOverview({ ...next, datePreset: "all" });
+        }
+        return;
+      }
+      void fetchOverview(next);
     },
     [fetchOverview],
   );
@@ -186,6 +234,7 @@ export function AdmissionsWorkspace({
   useEffect(() => {
     return () => {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      activeFetchAbortRef.current?.abort();
     };
   }, []);
 
@@ -237,7 +286,7 @@ export function AdmissionsWorkspace({
       "success",
       `Application ${json.application.applicationCode} created for ${json.application.studentName}.`,
     );
-    await fetchOverview(filters);
+    await fetchOverview(filters, { bypassClientCache: true });
   };
 
   const handleQuickUpdateApplication = async (
@@ -264,7 +313,7 @@ export function AdmissionsWorkspace({
       throw new Error(msg);
     }
     showToast("success", `Updated ${json.application.studentName} (${json.application.applicationCode}).`);
-    await fetchOverview(filters);
+    await fetchOverview(filters, { bypassClientCache: true });
   };
 
   const handleCreateEnquiry = async (payload: {
@@ -290,7 +339,7 @@ export function AdmissionsWorkspace({
       throw new Error(json?.error?.message || "Unable to save enquiry.");
     }
     showToast("success", `Logged enquiry ${json.enquiry.enquiryCode} for ${json.enquiry.studentName}.`);
-    await fetchOverview(filters);
+    await fetchOverview(filters, { bypassClientCache: true });
   };
 
   const handleEnquiryAction = async (
@@ -318,7 +367,7 @@ export function AdmissionsWorkspace({
     } else {
       showToast("success", `Enquiry ${json.enquiry.enquiryCode} updated.`);
     }
-    await fetchOverview(filters);
+    await fetchOverview(filters, { bypassClientCache: true });
   };
 
   const handleCreateReminder = async (input: {
@@ -339,7 +388,7 @@ export function AdmissionsWorkspace({
       showToast("error", json?.error?.message || "Unable to add reminder.");
       return;
     }
-    await fetchOverview(filters);
+    await fetchOverview(filters, { bypassClientCache: true });
   };
 
   const handleToggleReminder = async (reminderId: string, isCompleted: boolean) => {
@@ -351,7 +400,7 @@ export function AdmissionsWorkspace({
         body: JSON.stringify({ isCompleted }),
       },
     );
-    if (res.ok) await fetchOverview(filters);
+    if (res.ok) await fetchOverview(filters, { bypassClientCache: true });
   };
 
   const handleDeleteReminder = async (reminderId: string) => {
@@ -359,7 +408,7 @@ export function AdmissionsWorkspace({
       `/api/school/admissions/reminders/${encodeURIComponent(reminderId)}?schoolSlug=${encodeURIComponent(school.slug)}`,
       { method: "DELETE" },
     );
-    if (res.ok) await fetchOverview(filters);
+    if (res.ok) await fetchOverview(filters, { bypassClientCache: true });
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -384,7 +433,7 @@ export function AdmissionsWorkspace({
         throw new Error(json?.error?.message || "Unable to update settings.");
       }
       showToast("success", "Admission settings saved.");
-      await fetchOverview(filters);
+      await fetchOverview(filters, { bypassClientCache: true });
     } catch (err: unknown) {
       showToast("error", err instanceof Error ? err.message : "Failed to save settings.");
     } finally {
@@ -646,13 +695,6 @@ export function AdmissionsWorkspace({
                   className="rounded-[10px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#08093B]"
                 />
               </div>
-            )}
-
-            {loading && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#663CF6] ml-auto">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                <span>Syncing...</span>
-              </span>
             )}
           </div>
         </div>
