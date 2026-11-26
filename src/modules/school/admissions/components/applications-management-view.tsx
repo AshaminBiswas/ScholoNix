@@ -210,7 +210,8 @@ export function ApplicationsManagementView({
   // Donut progress rings matching statusBreakdown
   const donutCircumference = 2 * Math.PI * 38;
   const donutSegments = useMemo(() => {
-    const total = data.kpis.totalApplications.value;
+    const breakdownTotal = data.statusBreakdown.reduce((sum, slice) => sum + slice.count, 0);
+    const total = Math.max(data.kpis.totalApplications.value, breakdownTotal);
     if (total <= 0) return [];
     let runningOffset = 0;
     return data.statusBreakdown
@@ -427,7 +428,7 @@ export function ApplicationsManagementView({
       <div
         role="group"
         aria-label="Application management workflows"
-        className="flex flex-nowrap items-center gap-2 overflow-x-auto no-scrollbar py-1.5 -my-1.5 lg:flex-wrap lg:overflow-visible lg:py-0 lg:my-0"
+        className="flex flex-nowrap items-center gap-2 overflow-x-auto no-scrollbar pt-1 pb-4 lg:flex-wrap lg:overflow-visible lg:pt-0 lg:pb-2"
       >
         {workflowButtons.map(({ key, label, Icon }) => {
           const active = subView === key;
@@ -1031,9 +1032,9 @@ export function ApplicationsManagementView({
               ANALYTICS ROW: APPLICATION PROGRESS DONUT + GRADE-WISE BAR CHART
               ================================================================= */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Application Progress (5 cols) */}
-            <section className="lg:col-span-5 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between dark:border-[#272B4D] dark:bg-[#141731]">
-              <div className="flex items-center gap-2 mb-4">
+            {/* Application Progress (6 cols) */}
+            <section className="lg:col-span-6 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between gap-4 dark:border-[#272B4D] dark:bg-[#141731]">
+              <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                   <Settings2 className="h-4 w-4" aria-hidden="true" />
                 </span>
@@ -1042,7 +1043,7 @@ export function ApplicationsManagementView({
                 </h2>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center gap-5 my-auto">
                 <div className="relative flex items-center justify-center shrink-0">
                   <svg
                     className="w-36 h-36 -rotate-90"
@@ -1073,8 +1074,8 @@ export function ApplicationsManagementView({
                       />
                     ))}
                   </svg>
-                  <div className="absolute text-center">
-                    <p className="text-xl font-black text-[#08093B] tabular-nums dark:text-[#F3F5FF]">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center px-5 text-center pointer-events-none">
+                    <p className="max-w-full truncate text-lg sm:text-xl font-black leading-tight text-[#08093B] tabular-nums dark:text-[#F3F5FF]">
                       {data.kpis.totalApplications.value.toLocaleString("en-IN")}
                     </p>
                     <p className="text-[10px] font-semibold text-[#76799C] dark:text-[#9DA6CC]">
@@ -1083,11 +1084,11 @@ export function ApplicationsManagementView({
                   </div>
                 </div>
 
-                <div className="flex-1 w-full space-y-2.5 text-xs">
+                <div className="flex-1 min-w-0 w-full space-y-2.5 text-xs">
                   {data.statusBreakdown
                     .filter((s) => s.status !== "DOCUMENTS_PENDING" || s.count > 0)
                     .map((slice) => (
-                      <div key={slice.status} className="flex items-center justify-between gap-2">
+                      <div key={slice.status} className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 min-w-0">
                           <span
                             className="h-2.5 w-2.5 rounded-full shrink-0"
@@ -1098,11 +1099,11 @@ export function ApplicationsManagementView({
                             {slice.label}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 shrink-0 tabular-nums">
-                          <span className="font-extrabold text-[#08093B] w-10 text-right dark:text-[#F3F5FF]">
-                            {slice.count}
+                        <div className="flex items-center gap-3 shrink-0 tabular-nums">
+                          <span className="font-extrabold text-[#08093B] min-w-[2rem] text-right dark:text-[#F3F5FF]">
+                            {slice.count.toLocaleString("en-IN")}
                           </span>
-                          <span className="font-medium text-[#76799C] w-12 text-right dark:text-[#9DA6CC]">
+                          <span className="font-medium text-[#76799C] min-w-[3.25rem] text-right dark:text-[#9DA6CC]">
                             {slice.percentage.toFixed(1)}%
                           </span>
                         </div>
@@ -1112,8 +1113,8 @@ export function ApplicationsManagementView({
               </div>
             </section>
 
-            {/* Grade-wise Applications (7 cols) */}
-            <section className="lg:col-span-7 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between dark:border-[#272B4D] dark:bg-[#141731]">
+            {/* Grade-wise Applications (6 cols) */}
+            <section className="lg:col-span-6 rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs flex flex-col justify-between dark:border-[#272B4D] dark:bg-[#141731]">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2">
                   <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">

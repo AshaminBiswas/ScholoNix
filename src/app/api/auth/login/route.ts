@@ -16,13 +16,72 @@ const loginSchema = z.discriminatedUnion("method", [
     phone: z.string().optional(),
     email: z.string().optional(),
     otpCode: z.string().min(6, "6-digit OTP code required"),
+    schoolSlug: z.string().trim().min(2).max(100).optional(),
   }),
   z.object({
     method: z.literal("password"),
     identifier: z.string().min(3, "Email address, mobile number or Login ID is required"),
     password: z.string().min(6, "Password is required"),
+    schoolSlug: z.string().trim().min(2).max(100).optional(),
   }),
 ]);
+
+async function enforceUniqueUrlAccess(params: {
+  user: Awaited<ReturnType<typeof authRepository.findUserByIdentifier>>;
+  requestedSchoolSlug?: string;
+  ip: string;
+  userAgent?: string;
+}): Promise<
+  | { allowed: true; school: NonNullable<Awaited<ReturnType<typeof authRepository.findUserByIdentifier>>>["school"] }
+  | { allowed: false; response: NextResponse }
+> {
+  const { user, requestedSchoolSlug, ip, userAgent } = params;
+  if (!user) {
+    return { allowed: true, school: null };
+  }
+
+  const normalizedSlug = requestedSchoolSlug?.trim().toLowerCase();
+  if (!normalizedSlug) {
+    return { allowed: true, school: user.school ?? null };
+  }
+
+  const targetSchool = await authRepository.findSchoolBySlug(normalizedSlug);
+  const isSuperAdmin = user.role === "PLATFORM_SUPER_ADMIN";
+  const belongsToTarget = Boolean(targetSchool && user.schoolId === targetSchool.id);
+
+  if (!targetSchool || (!isSuperAdmin && !belongsToTarget)) {
+    await logAuditEvent({
+      schoolId: user.schoolId || "system",
+      actorId: user.id,
+      action: "LOGIN_TENANT_MISMATCH",
+      entityType: "SchoolRoute",
+      entityId: normalizedSlug,
+      details: {
+        requestedSchoolSlug: normalizedSlug,
+        userSchoolId: user.schoolId,
+      },
+      ipAddress: ip,
+      userAgent,
+    });
+
+    return {
+      allowed: false,
+      response: NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "LOGIN_TENANT_MISMATCH",
+            message:
+              "Access denied: you are not authorized to sign in using this school's unique login URL.",
+          },
+        },
+        { status: 403 },
+      ),
+    };
+  }
+
+  return { allowed: true, school: targetSchool };
+}
 
 // Process-ephemeral bcrypt hash helper used to keep missing-user timing consistent
 // without storing any hardcoded hash literal in source control.
@@ -103,13 +162,30 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Enforce unique-URL school authorization when logging in via /{schoolSlug}/login
+      const accessCheck = await enforceUniqueUrlAccess({
+        user,
+        requestedSchoolSlug: parsed.schoolSlug,
+        ip,
+        userAgent,
+      });
+      if (!accessCheck.allowed) {
+        return accessCheck.response;
+      }
+
+      const activeSchool = accessCheck.school ?? user.school ?? null;
+
       // Create session
       const { token, expiresAt } = await sessionService.createSession(user, {
         ipAddress: ip,
         userAgent,
       });
 
-      const redirectTo = user.school?.slug ? `/${user.school.slug}` : "/dashboard";
+      const redirectTo = activeSchool?.slug
+        ? `/${activeSchool.slug}`
+        : user.role === "PLATFORM_SUPER_ADMIN"
+          ? "/admin"
+          : "/dashboard";
 
       const response = NextResponse.json({
         success: true,
@@ -122,12 +198,13 @@ export async function POST(req: NextRequest) {
             email: user.email,
             role: user.role,
           },
-          school: user.school
+          school: activeSchool
             ? {
-                id: user.school.id,
-                name: user.school.name,
-                slug: user.school.slug,
-                code: user.school.code,
+                id: activeSchool.id,
+                name: activeSchool.name,
+                slug: activeSchool.slug,
+                uniqueId: activeSchool.uniqueId ?? null,
+                code: activeSchool.code,
               }
             : null,
           redirectTo,
@@ -198,6 +275,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Enforce unique-URL school authorization when logging in via /{schoolSlug}/login
+    const accessCheck = await enforceUniqueUrlAccess({
+      user,
+      requestedSchoolSlug: parsed.schoolSlug,
+      ip,
+      userAgent,
+    });
+    if (!accessCheck.allowed) {
+      return accessCheck.response;
+    }
+
+    const activeSchool = accessCheck.school ?? user.school ?? null;
+
     // Create persistent session
     const { token, expiresAt } = await sessionService.createSession(user, {
       ipAddress: ip,
@@ -213,7 +303,11 @@ export async function POST(req: NextRequest) {
       userAgent,
     });
 
-    const redirectTo = user.school?.slug ? `/${user.school.slug}` : "/dashboard";
+    const redirectTo = activeSchool?.slug
+      ? `/${activeSchool.slug}`
+      : user.role === "PLATFORM_SUPER_ADMIN"
+        ? "/admin"
+        : "/dashboard";
 
     const response = NextResponse.json({
       success: true,
@@ -226,12 +320,13 @@ export async function POST(req: NextRequest) {
           phone: user.phone,
           role: user.role,
         },
-        school: user.school
+        school: activeSchool
           ? {
-              id: user.school.id,
-              name: user.school.name,
-              slug: user.school.slug,
-              code: user.school.code,
+              id: activeSchool.id,
+              name: activeSchool.name,
+              slug: activeSchool.slug,
+              uniqueId: activeSchool.uniqueId ?? null,
+              code: activeSchool.code,
             }
           : null,
         redirectTo,

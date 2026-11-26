@@ -37,6 +37,7 @@ import {
   Monitor,
   ArrowRight,
   MessageSquare,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -516,11 +517,13 @@ export function RegisterSchoolPage() {
   const [saveDraftMessage, setSaveDraftMessage] = useState<string | null>(null);
   const [registrationSuccess, setRegistrationSuccess] = useState<{
     schoolId: string;
+    uniqueId: string;
     schoolName: string;
     slug: string;
     adminName: string;
     adminEmail?: string;
   } | null>(null);
+  const [copiedField, setCopiedField] = useState<"uniqueId" | "loginUrl" | null>(null);
 
   // Step 1 validation
   const validateStep1 = () => {
@@ -900,6 +903,7 @@ export function RegisterSchoolPage() {
 
       setRegistrationSuccess({
         schoolId: data.data.schoolId,
+        uniqueId: data.data.uniqueId || "",
         schoolName: data.data.schoolName,
         slug: data.data.slug,
         adminName: data.data.adminName,
@@ -3321,6 +3325,60 @@ export function RegisterSchoolPage() {
               {registrationSuccess.schoolName || institution.name} has been registered on
               <br className="hidden sm:inline" /> ScholoNix.
             </p>
+
+            {/* Unique School ID & Unique Login URL */}
+            <div className="mt-5 space-y-2.5 rounded-2xl border border-[#DDD6FE] bg-[#FAF8FE] p-4 text-left dark:border-[#372E66] dark:bg-[#10142C]">
+              {registrationSuccess.uniqueId && (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#663CF6] dark:text-[#A78BFA]">
+                      Unique School ID
+                    </p>
+                    <p className="text-sm font-black tracking-wide text-[#08093B] dark:text-[#F3F5FF] font-mono">
+                      {registrationSuccess.uniqueId}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(registrationSuccess.uniqueId).catch(() => {});
+                      setCopiedField("uniqueId");
+                      setTimeout(() => setCopiedField(null), 2000);
+                    }}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-[10px] border border-[#D6DBF0] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#08093B] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#F3F5FF]"
+                  >
+                    <Copy className="h-3 w-3" />
+                    <span>{copiedField === "uniqueId" ? "Copied" : "Copy ID"}</span>
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-2 border-t border-[#EAE6FD] pt-2.5 dark:border-[#272B4D]">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#663CF6] dark:text-[#A78BFA]">
+                    Unique Portal Login URL
+                  </p>
+                  <p className="truncate text-xs font-semibold text-[#4D5072] dark:text-[#C5CCF0] font-mono">
+                    /{registrationSuccess.slug}/login
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const origin = typeof window !== "undefined" ? window.location.origin : "";
+                    navigator.clipboard
+                      ?.writeText(`${origin}/${registrationSuccess.slug}/login`)
+                      .catch(() => {});
+                    setCopiedField("loginUrl");
+                    setTimeout(() => setCopiedField(null), 2000);
+                  }}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-[10px] border border-[#D6DBF0] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#08093B] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#F3F5FF]"
+                >
+                  <Copy className="h-3 w-3" />
+                  <span>{copiedField === "loginUrl" ? "Copied" : "Copy URL"}</span>
+                </button>
+              </div>
+            </div>
 
             {/* 3-Feature Card Container */}
             <div className="mt-7 rounded-2xl border border-[#EAE6FD] dark:border-[#372E66] bg-[#F7F6FE] dark:bg-[#191C3B] p-4 sm:p-5">

@@ -111,6 +111,21 @@ export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+const SCHOOL_UNIQUE_ID_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+
+/**
+ * Generates a collision-resistant human-readable Unique School ID (e.g. SNX-2026-7K4M9P).
+ */
+export function generateSchoolUniqueIdCandidate(
+  year: number = new Date().getUTCFullYear(),
+): string {
+  let suffix = "";
+  for (let i = 0; i < 6; i++) {
+    suffix += SCHOOL_UNIQUE_ID_ALPHABET[crypto.randomInt(0, SCHOOL_UNIQUE_ID_ALPHABET.length)];
+  }
+  return `SNX-${year}-${suffix}`;
+}
+
 /**
  * Masks an email address for safe display in logs and UI (e.g. p****l@school.edu.in).
  */

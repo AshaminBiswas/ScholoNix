@@ -54,7 +54,11 @@ function resolvePostLoginUrl(
   return schoolBase;
 }
 
-export function SchoolLoginPage() {
+interface SchoolLoginPageProps {
+  lockedSchoolSlug?: string;
+}
+
+export function SchoolLoginPage({ lockedSchoolSlug }: SchoolLoginPageProps = {}) {
   const router = useRouter();
   const [mode, setMode] = useState<LoginMode>("otp");
   const [otpChannel, setOtpChannel] = useState<OtpChannel>("phone");
@@ -280,8 +284,8 @@ export function SchoolLoginPage() {
     try {
       const payload =
         otpChannel === "email"
-          ? { method: "otp", email, otpCode: entered }
-          : { method: "otp", phone, otpCode: entered };
+          ? { method: "otp", email, otpCode: entered, ...(lockedSchoolSlug ? { schoolSlug: lockedSchoolSlug } : {}) }
+          : { method: "otp", phone, otpCode: entered, ...(lockedSchoolSlug ? { schoolSlug: lockedSchoolSlug } : {}) };
 
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -292,7 +296,8 @@ export function SchoolLoginPage() {
       if (!res.ok) {
         throw new Error(data.error?.message || "Invalid or expired verification code");
       }
-      const targetUrl = resolvePostLoginUrl(data.data.school?.slug, callbackUrl);
+      const targetUrl =
+        data.data.redirectTo || resolvePostLoginUrl(data.data.school?.slug, callbackUrl);
       setCallbackUrl(targetUrl);
       setLoggedInUser({
         name: data.data.user.name,
@@ -331,13 +336,19 @@ export function SchoolLoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: "password", identifier: loginId, password }),
+        body: JSON.stringify({
+          method: "password",
+          identifier: loginId,
+          password,
+          ...(lockedSchoolSlug ? { schoolSlug: lockedSchoolSlug } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error?.message || "Invalid credentials. Please verify your details.");
       }
-      const targetUrl = resolvePostLoginUrl(data.data.school?.slug, callbackUrl);
+      const targetUrl =
+        data.data.redirectTo || resolvePostLoginUrl(data.data.school?.slug, callbackUrl);
       setCallbackUrl(targetUrl);
       setLoggedInUser({
         name: data.data.user.name,
@@ -456,6 +467,13 @@ export function SchoolLoginPage() {
               {errorMessage && (
                 <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
                   {errorMessage}
+                </div>
+              )}
+
+              {lockedSchoolSlug && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-[#DDD6FE] bg-[#FAF8FE] px-3 py-2 text-[11px] font-semibold text-[#4F27E8] dark:border-[#372E66] dark:bg-[#191C3B] dark:text-[#CBB8FF]">
+                  <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>Unique School Portal Sign-In — Authorized school members only.</span>
                 </div>
               )}
 

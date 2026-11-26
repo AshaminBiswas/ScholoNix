@@ -122,6 +122,7 @@ function buildEmptyDashboardData(
       id: school.id,
       name: school.name,
       slug: school.slug,
+      uniqueId: school.uniqueId ?? null,
       code: school.code || "",
       affiliationBoard: school.affiliationBoard || "Not Specified",
       city: school.city || "",

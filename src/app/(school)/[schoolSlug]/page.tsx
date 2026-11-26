@@ -13,12 +13,9 @@ interface SchoolWorkspacePageProps {
   params: Promise<{ schoolSlug: string }>;
 }
 
-export async function generateMetadata({
-  params,
-}: SchoolWorkspacePageProps): Promise<Metadata> {
-  const { schoolSlug } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `${schoolSlug} · School Workspace | ScholoNix`,
+    title: "School Workspace | ScholoNix",
     robots: { index: false, follow: false },
   };
 }

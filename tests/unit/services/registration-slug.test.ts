@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   generateSlug,
   generateSchoolCode,
+  generateUniqueSchoolId,
   generateUniqueSchoolSlug,
   isReservedSchoolSlug,
 } from "@/modules/schools/services/registration-service";
@@ -25,25 +26,29 @@ describe("Registration Service Utilities", () => {
     expect(code).toBe("SGA-301");
   });
 
-  it("blocks reserved platform route slugs and deduplicates school slugs", async () => {
+  it("generates opaque non-name URL tokens and collision-free Unique School IDs", async () => {
     expect(isReservedSchoolSlug("help")).toBe(true);
     expect(isReservedSchoolSlug("login")).toBe(true);
     expect(isReservedSchoolSlug("dashboard")).toBe(true);
+    expect(isReservedSchoolSlug("admin")).toBe(true);
     expect(isReservedSchoolSlug("synthetic-academy-slug")).toBe(false);
 
-    const reservedResolved = await generateUniqueSchoolSlug("Help");
-    expect(reservedResolved).toBe("help-school");
+    const firstSlug = await generateUniqueSchoolSlug("Sunrise International Academy");
+    expect(firstSlug).toMatch(/^sc_[0-9a-f]{20,}$/);
+    expect(firstSlug).not.toContain("sunrise");
+    expect(firstSlug).not.toContain("international");
+    expect(firstSlug).not.toContain("academy");
 
-    const baseName = `Unique Test School ${Date.now()}`;
-    const firstSlug = await generateUniqueSchoolSlug(baseName);
-    expect(firstSlug).toBe(generateSlug(baseName));
+    const uniqueId = await generateUniqueSchoolId();
+    expect(uniqueId).toMatch(/^SNX-\d{4}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6,}$/);
 
     const passwordHash = await hashPassword(`Pass!${randomBytes(8).toString("hex")}1`);
     await authRepository.createUserWithSchool({
       school: {
-        name: baseName,
+        name: "Sunrise International Academy",
         slug: firstSlug,
-        code: "UTS-101",
+        uniqueId,
+        code: "SIA-101",
         category: "Co-Educational School",
       },
       user: {
@@ -57,8 +62,8 @@ describe("Registration Service Utilities", () => {
       },
     });
 
-    const secondSlug = await generateUniqueSchoolSlug(baseName);
-    expect(secondSlug).toBe(`${firstSlug}-2`);
+    const secondSlug = await generateUniqueSchoolSlug("Sunrise International Academy");
+    expect(secondSlug).toMatch(/^sc_[0-9a-f]{20,}$/);
     expect(secondSlug).not.toBe(firstSlug);
   });
 });

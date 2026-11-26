@@ -4,7 +4,11 @@ import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { db } from "@/server/database/client";
-import { normalizePhone, generateSecureToken } from "@/server/security/crypto";
+import {
+  generateSchoolUniqueIdCandidate,
+  generateSecureToken,
+  normalizePhone,
+} from "@/server/security/crypto";
 import { ServiceUnavailableError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
@@ -46,6 +50,7 @@ export interface SchoolRecord {
   id: string;
   name: string;
   slug: string;
+  uniqueId?: string | null;
   code: string;
   category?: string | null;
   affiliationBoard?: string | null;
@@ -200,7 +205,7 @@ const globalForAuthRepo = globalThis as unknown as {
   authRepoPrismaUnavailableUntil?: number;
 };
 const PRISMA_RETRY_COOLDOWN_MS = 30_000;
-const PRISMA_DEV_OP_TIMEOUT_MS = 3000;
+const PRISMA_DEV_OP_TIMEOUT_MS = 10_000;
 const PRISMA_SERVERLESS_OP_TIMEOUT_MS = 10_000;
 
 function isTransientConnectionError(err: unknown): boolean {
@@ -257,40 +262,49 @@ async function isPrismaWorking(): Promise<boolean> {
 }
 
 async function runPrismaOp<T>(operation: string, fn: () => Promise<T>): Promise<T> {
-  if (isServerlessRuntime()) {
-    const isReadOp = operation.startsWith("find") || operation.startsWith("get");
-    try {
-      const result = await runWithTimeout(operation, PRISMA_SERVERLESS_OP_TIMEOUT_MS, fn);
-      globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
-      return result;
-    } catch (err) {
-      if (isReadOp && isTransientConnectionError(err)) {
-        await new Promise((resolve) => setTimeout(resolve, 150));
-        const retried = await runWithTimeout(operation, PRISMA_SERVERLESS_OP_TIMEOUT_MS, fn);
-        globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
-        return retried;
-      }
-      throw err;
-    }
-  }
+  const timeoutMs = isServerlessRuntime()
+    ? PRISMA_SERVERLESS_OP_TIMEOUT_MS
+    : PRISMA_DEV_OP_TIMEOUT_MS;
+  const isReadOp = operation.startsWith("find") || operation.startsWith("get");
 
-  const result = await runWithTimeout(operation, PRISMA_DEV_OP_TIMEOUT_MS, fn);
-  globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
-  return result;
+  try {
+    const result = await runWithTimeout(operation, timeoutMs, fn);
+    globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
+    return result;
+  } catch (err) {
+    if (isReadOp && isTransientConnectionError(err)) {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      const retried = await runWithTimeout(operation, timeoutMs, fn);
+      globalForAuthRepo.authRepoPrismaUnavailableUntil = 0;
+      return retried;
+    }
+    throw err;
+  }
+}
+
+function hasLocalFallbackUsers(): boolean {
+  if (Object.keys(storeMemory.users).length > 0) return true;
+  if (isServerlessRuntime() || process.env.NODE_ENV === "test") return false;
+  const loaded = loadStore();
+  if (Object.keys(loaded.users).length > 0) {
+    storeMemory = loaded;
+    return true;
+  }
+  return false;
 }
 
 function handlePrismaRuntimeError(operation: string, err: unknown): void {
   const message = err instanceof Error ? err.message : String(err);
-  globalForAuthRepo.authRepoPrismaUnavailableUntil = Date.now() + PRISMA_RETRY_COOLDOWN_MS;
   logger.error(
     { operation, error: message, serverless: isServerlessRuntime() },
     `[AuthRepository] Prisma ${operation} failed`,
   );
-  if (isServerlessRuntime()) {
+  if (isServerlessRuntime() || !hasLocalFallbackUsers()) {
     throw new ServiceUnavailableError(
       "Authentication database is temporarily unavailable. Please try again in a moment.",
     );
   }
+  globalForAuthRepo.authRepoPrismaUnavailableUntil = Date.now() + PRISMA_RETRY_COOLDOWN_MS;
 }
 
 function normalizeChannelIdentifier(identifier: string, channel: "EMAIL" | "SMS"): string {
@@ -1058,10 +1072,175 @@ export const authRepository = {
     return Object.values(storeMemory.schools);
   },
 
+  async findSchoolByUniqueId(uniqueId: string): Promise<SchoolRecord | null> {
+    const cleanUniqueId = uniqueId.trim().toUpperCase();
+    if (!cleanUniqueId) return null;
+
+    if (await isPrismaWorking()) {
+      try {
+        const school = await runPrismaOp("findSchoolByUniqueId", () =>
+          (db as any).school.findFirst({
+            where: { uniqueId: { equals: cleanUniqueId, mode: "insensitive" } },
+          }),
+        );
+        return school ? (school as unknown as SchoolRecord) : null;
+      } catch (err) {
+        handlePrismaRuntimeError("findSchoolByUniqueId", err);
+      }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
+    }
+
+    const matchInMemory = (schools: Record<string, SchoolRecord>) =>
+      Object.values(schools).find(
+        (s) => s.uniqueId && s.uniqueId.trim().toUpperCase() === cleanUniqueId,
+      ) || null;
+
+    let found = matchInMemory(storeMemory.schools);
+    if (!found && !isServerlessRuntime()) {
+      storeMemory = loadStore();
+      found = matchInMemory(storeMemory.schools);
+    }
+    return found;
+  },
+
+  async searchSchoolsForAdmin(query?: string): Promise<
+    Array<{
+      school: SchoolRecord;
+      users: Array<{
+        id: string;
+        name: string;
+        email: string | null;
+        phone: string | null;
+        role: string;
+        status: string;
+        emailVerified: boolean;
+        phoneVerified: boolean;
+        createdAt: Date;
+      }>;
+      counts: {
+        users: number;
+        applications: number;
+        enquiries: number;
+      };
+    }>
+  > {
+    const q = (query || "").trim();
+    const qUpper = q.toUpperCase();
+    const qLower = q.toLowerCase();
+
+    if (await isPrismaWorking()) {
+      try {
+        const where = q
+          ? {
+              OR: [
+                { uniqueId: { contains: qUpper, mode: "insensitive" } },
+                { code: { contains: q, mode: "insensitive" } },
+                { slug: { contains: qLower, mode: "insensitive" } },
+                { name: { contains: q, mode: "insensitive" } },
+                { contactEmail: { contains: qLower, mode: "insensitive" } },
+                { contactPhone: { contains: q } },
+              ],
+            }
+          : {};
+
+        const schools = (await runPrismaOp("getAdminSchools", () =>
+          (db as any).school.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            take: 50,
+            include: {
+              users: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                  role: true,
+                  status: true,
+                  emailVerified: true,
+                  phoneVerified: true,
+                  createdAt: true,
+                },
+                orderBy: { createdAt: "asc" },
+                take: 25,
+              },
+              _count: {
+                select: {
+                  users: true,
+                  admissionApplications: true,
+                  admissionEnquiries: true,
+                },
+              },
+            },
+          }),
+        )) as any[];
+
+        return schools.map((s) => ({
+          school: s as unknown as SchoolRecord,
+          users: s.users || [],
+          counts: {
+            users: s._count?.users ?? (s.users?.length || 0),
+            applications: s._count?.admissionApplications ?? 0,
+            enquiries: s._count?.admissionEnquiries ?? 0,
+          },
+        }));
+      } catch (err) {
+        handlePrismaRuntimeError("getAdminSchools", err);
+      }
+    } else if (isServerlessRuntime() && (process.env.NODE_ENV as string) !== "test") {
+      throw new ServiceUnavailableError(
+        "Authentication database is temporarily unavailable. Please try again in a moment.",
+      );
+    }
+
+    if (!isServerlessRuntime() && Object.keys(storeMemory.schools).length === 0) {
+      storeMemory = loadStore();
+    }
+
+    const allSchools = Object.values(storeMemory.schools);
+    const filtered = q
+      ? allSchools.filter((s) =>
+          [s.uniqueId, s.code, s.slug, s.name, s.contactEmail, s.contactPhone].some((field) =>
+            field ? field.toLowerCase().includes(qLower) : false,
+          ),
+        )
+      : allSchools;
+
+    return filtered.slice(0, 50).map((school) => {
+      const schoolUsers = Object.values(storeMemory.users)
+        .filter((u) => u.schoolId === school.id)
+        .map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          phone: u.phone,
+          role: u.role,
+          status: u.status,
+          emailVerified: u.emailVerified,
+          phoneVerified: u.phoneVerified,
+          createdAt: u.createdAt,
+        }));
+
+      return {
+        school,
+        users: schoolUsers,
+        counts: {
+          users: schoolUsers.length,
+          applications: 0,
+          enquiries: 0,
+        },
+      };
+    });
+  },
+
   async createUserWithSchool(params: {
     school: {
       name: string;
       slug: string;
+      uniqueId?: string;
       code: string;
       category: string;
       affiliationBoard?: string;
@@ -1088,11 +1267,14 @@ export const authRepository = {
     const schoolId = randomUUID();
     const userId = randomUUID();
     const now = new Date();
+    const resolvedUniqueId =
+      params.school.uniqueId?.trim().toUpperCase() || generateSchoolUniqueIdCandidate();
 
     const schoolRecord: SchoolRecord = {
       id: schoolId,
       name: params.school.name.trim(),
       slug: params.school.slug.trim(),
+      uniqueId: resolvedUniqueId,
       code: params.school.code.trim(),
       category: params.school.category,
       affiliationBoard: params.school.affiliationBoard || "CBSE",
@@ -1134,6 +1316,7 @@ export const authRepository = {
               id: schoolId,
               name: schoolRecord.name,
               slug: schoolRecord.slug,
+              uniqueId: schoolRecord.uniqueId,
               code: schoolRecord.code,
               category: schoolRecord.category,
               affiliationBoard: schoolRecord.affiliationBoard,

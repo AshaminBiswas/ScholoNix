@@ -30,6 +30,7 @@ export function buildSchoolShellProps(
     id: string;
     name: string;
     slug: string;
+    uniqueId?: string | null;
     code?: string | null;
     affiliationBoard?: string | null;
   },
@@ -47,6 +48,7 @@ export function buildSchoolShellProps(
       id: school.id,
       name: school.name,
       slug: school.slug,
+      uniqueId: school.uniqueId || null,
       code: school.code || "",
       affiliationBoard: school.affiliationBoard || "CBSE",
     },

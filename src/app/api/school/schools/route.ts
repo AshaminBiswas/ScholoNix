@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
         id: s.id,
         name: s.name,
         slug: s.slug,
+        uniqueId: s.uniqueId ?? null,
         code: s.code,
         city: s.city,
         state: s.state,

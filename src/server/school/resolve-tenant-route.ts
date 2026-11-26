@@ -44,7 +44,7 @@ export async function resolveTenantRouteAccess(
   const cookieStore = await cookies();
   const token = cookieStore.get(getSessionCookieName())?.value;
   if (!token) {
-    redirect(`/login?callbackUrl=${encodeURIComponent(callbackPath)}`);
+    redirect(`/${normalizedSlug}/login?callbackUrl=${encodeURIComponent(callbackPath)}`);
   }
 
   let session: SessionContext | null;
@@ -65,7 +65,7 @@ export async function resolveTenantRouteAccess(
   }
 
   if (!session || !session.user) {
-    redirect(`/login?callbackUrl=${encodeURIComponent(callbackPath)}`);
+    redirect(`/${normalizedSlug}/login?callbackUrl=${encodeURIComponent(callbackPath)}`);
   }
 
   if (session.user.role !== "PLATFORM_SUPER_ADMIN") {

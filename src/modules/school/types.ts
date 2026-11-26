@@ -138,6 +138,7 @@ export interface SchoolDashboardData {
     id: string;
     name: string;
     slug: string;
+    uniqueId?: string | null;
     code: string;
     affiliationBoard: string;
     city: string;

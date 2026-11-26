@@ -11,10 +11,9 @@ interface SchoolHelpPageProps {
   params: Promise<{ schoolSlug: string }>;
 }
 
-export async function generateMetadata({ params }: SchoolHelpPageProps): Promise<Metadata> {
-  const { schoolSlug } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Help Center · ${schoolSlug} | ScholoNix`,
+    title: "Help Center | ScholoNix",
     robots: { index: false, follow: false },
   };
 }

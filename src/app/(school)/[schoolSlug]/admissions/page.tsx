@@ -29,12 +29,9 @@ const VALID_TABS = new Set<AdmissionsTab>([
   "settings",
 ]);
 
-export async function generateMetadata({
-  params,
-}: SchoolAdmissionsPageProps): Promise<Metadata> {
-  const { schoolSlug } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Admissions · ${schoolSlug} | ScholoNix`,
+    title: "Admissions | ScholoNix",
     robots: { index: false, follow: false },
   };
 }

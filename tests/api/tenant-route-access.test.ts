@@ -75,14 +75,14 @@ describe("Per-School URL Route Authorization (resolveTenantRouteAccess)", () => 
     );
   });
 
-  it("redirects unauthenticated visitors to /login with callbackUrl", async () => {
+  it("redirects unauthenticated visitors to the school's unique /{slug}/login with callbackUrl", async () => {
     mockCookieGet.mockReturnValue(undefined);
     const { resolveTenantRouteAccess } = await import("@/server/school/resolve-tenant-route");
 
     await expect(
-      resolveTenantRouteAccess("some-school-slug", "/some-school-slug/help"),
+      resolveTenantRouteAccess("sc_testopaquetoken1234", "/sc_testopaquetoken1234/help"),
     ).rejects.toMatchObject({
-      url: "/login?callbackUrl=%2Fsome-school-slug%2Fhelp",
+      url: "/sc_testopaquetoken1234/login?callbackUrl=%2Fsc_testopaquetoken1234%2Fhelp",
     });
   });
 

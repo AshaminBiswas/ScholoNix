@@ -135,7 +135,7 @@ const globalForAdmissionsRepo = globalThis as unknown as {
   admissionsRepoPrismaUnavailableUntil?: number;
 };
 const PRISMA_RETRY_COOLDOWN_MS = 30_000;
-const PRISMA_DEV_OP_TIMEOUT_MS = 2500;
+const PRISMA_DEV_OP_TIMEOUT_MS = 10_000;
 
 async function canUsePrisma(): Promise<boolean> {
   if (process.env.NODE_ENV === "test") {

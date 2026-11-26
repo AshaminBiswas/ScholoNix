@@ -31,6 +31,7 @@ import {
   Send,
   CheckCircle2,
   Loader2,
+  Building2,
 } from "lucide-react";
 
 import type { AdmissionsTab } from "@/modules/school/admissions/types";
@@ -40,6 +41,7 @@ export interface SchoolShellSchool {
   id: string;
   name: string;
   slug: string;
+  uniqueId?: string | null;
   code: string;
   affiliationBoard: string;
 }
@@ -56,7 +58,7 @@ export interface SchoolShellUser {
 interface SchoolWorkspaceShellProps {
   school: SchoolShellSchool;
   user: SchoolShellUser;
-  activeNav: "dashboard" | "admissions" | "help";
+  activeNav: "dashboard" | "admissions" | "profile" | "help";
   activeAdmissionsTab?: AdmissionsTab;
   onSelectAdmissionsTab?: (tab: AdmissionsTab) => void;
   noticeCount?: number;
@@ -95,6 +97,7 @@ export function SchoolWorkspaceShell({
   } | null>(null);
 
   const dashboardHref = buildSchoolRoute(school.slug);
+  const profileHref = buildSchoolRoute(school.slug, "profile");
   const helpHref = buildSchoolRoute(school.slug, "help");
 
   useEffect(() => {
@@ -313,6 +316,14 @@ export function SchoolWorkspaceShell({
                   </div>
                   <div className="py-1">
                     <Link
+                      href={profileHref}
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs text-[#4D5072] hover:bg-[#F6F5FD] hover:text-[#663CF6] dark:text-[#C5CCF0] dark:hover:bg-[#1E2244] dark:hover:text-[#D9CEFF]"
+                    >
+                      <Building2 className="h-3.5 w-3.5" />
+                      <span>School Profile</span>
+                    </Link>
+                    <Link
                       href={helpHref}
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-2 rounded-[8px] px-3 py-1.5 text-xs text-[#4D5072] hover:bg-[#F6F5FD] hover:text-[#663CF6] dark:text-[#C5CCF0] dark:hover:bg-[#1E2244] dark:hover:text-[#D9CEFF]"
@@ -506,6 +517,26 @@ export function SchoolWorkspaceShell({
                 );
               })}
 
+              {/* School Profile */}
+              <Link
+                href={profileHref}
+                onClick={() => setMobileSidebarOpen(false)}
+                className={`flex items-center justify-between rounded-[12px] px-3.5 py-2.5 text-xs font-bold transition ${
+                  activeNav === "profile"
+                    ? "bg-[#663CF6] text-white shadow-md"
+                    : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:bg-[#191D3D] dark:hover:text-[#D9CEFF]"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Building2 className="h-4 w-4" aria-hidden="true" />
+                  <span>School Profile</span>
+                </div>
+                <ChevronRight
+                  className={`h-3 w-3 ${activeNav === "profile" ? "text-white" : "text-[#CAD0EB] dark:text-[#4C5582]"}`}
+                  aria-hidden="true"
+                />
+              </Link>
+
               {/* In-Portal Help Item */}
               <Link
                 href={helpHref}
@@ -536,6 +567,11 @@ export function SchoolWorkspaceShell({
               <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
                 {school.affiliationBoard} · {school.code}
               </p>
+              {school.uniqueId && (
+                <p className="mt-1 rounded-md bg-white/80 px-2 py-0.5 text-[10px] font-mono font-bold text-[#663CF6] dark:bg-[#10142C] dark:text-[#C4B5FD]">
+                  ID: {school.uniqueId}
+                </p>
+              )}
             </div>
           </div>
         </aside>
