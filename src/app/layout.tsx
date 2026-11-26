@@ -39,9 +39,14 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" className={plusJakartaSans.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${plusJakartaSans.variable} light`}
+      data-theme="light"
+      suppressHydrationWarning
+    >
       <head>
-        <meta name="color-scheme" content="light dark" />
+        <meta name="color-scheme" content="light" />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-screen antialiased bg-[var(--bg-main)] text-[var(--text-body)] transition-colors duration-200">

@@ -10,19 +10,19 @@ description: Implement and enforce dual Light and Dark mode styling across every
 ## Architecture
 
 1. **Theme State (`src/components/theme/theme-provider.tsx`)**
-   - Supports three modes (`"system" | "light" | "dark"`) defaulting to `"system"` (`prefers-color-scheme`) when no explicit user override is saved in `localStorage` (`scholonix-theme`).
+   - Supports `"light"` (default), `"dark"`, and optional `"system"`, defaulting explicitly to **Light Mode** (`DEFAULT_THEME = "light"`) when no preference is saved in `localStorage` (`scholonix-theme`), even if the user's OS prefers dark mode.
    - Synchronizes:
-     - `document.documentElement.classList` (`.dark` class for Tailwind v4 `@custom-variant dark (&:where(.dark, .dark *));`)
-     - `<meta name="color-scheme">` (`"light dark"` when following system, `"light"` or `"dark"` when overridden)
-     - `window` `storage` event for cross-tab consistency and `matchMedia("(prefers-color-scheme: dark)")` `change` listener when following system.
-   - Two-state header toggle (`<ThemeToggle />` in `src/components/theme/theme-toggle.tsx`): toggles to the opposite of the currently rendered theme; if that target matches the current OS preference at click time, clears the stored override so the app reverts to following system preference automatically (never clears stored override retroactively on OS time-of-day transitions).
+     - `document.documentElement.classList` (`.dark` / `.light` class for Tailwind v4 `@custom-variant dark (&:where(.dark, .dark *));`)
+     - `<meta name="color-scheme">` (`"light"` by default or `"dark"` when toggled; `"light dark"` only if explicitly switched to `"system"`)
+     - `window` `storage` event for cross-tab consistency and `matchMedia("(prefers-color-scheme: dark)")` `change` listener when explicitly set to `"system"`.
+   - Two-state header toggle (`<ThemeToggle />` in `src/components/theme/theme-toggle.tsx`): flips cleanly between `"light"` and `"dark"` and persists the chosen mode in `localStorage`.
 
 2. **FOUC Prevention (`src/app/layout.tsx`)**
-   - Includes `<meta name="color-scheme" content="light dark" />` in `<head>` and a synchronous inline bootstrap script applying saved theme / `prefers-color-scheme` before first paint (wrapped in `try { ... } catch {}`), plus `suppressHydrationWarning` on `<html>`.
+   - Defaults `<html>` to `className="... light"`, `data-theme="light"`, and `<meta name="color-scheme" content="light" />`, with `THEME_INIT_SCRIPT` running synchronously in `<head>` before first paint so users who previously selected Dark mode see zero flash.
 
 3. **CSS Design Tokens & Tailwind v4 (`src/app/globals.css`)**
    - Uses `@custom-variant dark (&:where(.dark, .dark *));` so `dark:` utility variants respond immediately to `.dark` on `<html>`.
-   - Defines both light tokens (`:root`) and dark tokens (`.dark` and `@media (prefers-color-scheme: dark)` fallback when `:root:has(> head > meta[name="color-scheme"][content="light dark"])` applies) for:
+   - Defines Light tokens on `:root` (`color-scheme: light`) and Dark tokens on `:root.dark` (`color-scheme: dark`) for:
      - Backgrounds: `--bg-main` (`#FCFDFE` / `#090A1A`), `--bg-secondary` (`#F5F7FD` / `#10122A`), `--bg-card` (`#FFFFFF` / `#141731`), `--bg-lavender` (`#F0EBFE` / `#1D183D`), `--bg-blue` (`#E6F4FE` / `#112238`)
      - Text: `--text-heading` (`#08093B` / `#F3F5FF`), `--text-body` (`#1B1D45` / `#DCE1F9`), `--text-muted` (`#4D5072` / `#9EA4C8`), `--text-placeholder` (`#76799C` / `#7C83AA`)
      - Borders: `--border-default` (`#D6DBF0` / `#272B4D`), `--border-input` (`#CAD0EB` / `#313761`), `--border-divider` (`#DFE3F5` / `#232746`), `--border-hover` (`#9B76FF` / `#8B5CF6`)

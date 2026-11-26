@@ -9,25 +9,22 @@ import React, {
   useState,
 } from "react";
 import {
+  DEFAULT_THEME,
   THEME_STORAGE_KEY,
   type ResolvedTheme,
   type ThemePreference,
 } from "./theme-config";
 
 interface ThemeContextValue {
-  /** User preference: "system" (follow OS), "light", or "dark". */
+  /** Active user preference: "light" (default), "dark", or optional "system". */
   theme: ThemePreference;
   /** Currently active rendered theme: "light" or "dark". */
   resolvedTheme: ResolvedTheme;
   /** True after client mount so interactive controls can expose resolved state safely. */
   mounted: boolean;
-  /** Set an explicit preference ("light" | "dark") or return to "system". */
+  /** Set an explicit preference ("light" | "dark" | "system"). */
   setTheme: (next: ThemePreference) => void;
-  /**
-   * Two-state toggle matching web best practices:
-   * flips opposite of currently rendered theme, and clears stored override
-   * if the target matches current system preference so OS auto-switching resumes.
-   */
+  /** Flips between Light and Dark modes and persists the explicit choice. */
   toggleTheme: () => void;
 }
 
@@ -42,27 +39,23 @@ export function getSystemTheme(): ResolvedTheme {
 
 export function readStoredTheme(): ThemePreference {
   if (typeof window === "undefined") {
-    return "system";
+    return DEFAULT_THEME;
   }
   try {
     const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (raw === "light" || raw === "dark") {
+    if (raw === "light" || raw === "dark" || raw === "system") {
       return raw;
     }
   } catch {
     // Ignore storage access errors (e.g. blocked site data in private mode)
   }
-  return "system";
+  return DEFAULT_THEME;
 }
 
 export function persistThemePreference(next: ThemePreference): void {
   if (typeof window === "undefined") return;
   try {
-    if (next === "system") {
-      window.localStorage.removeItem(THEME_STORAGE_KEY);
-    } else {
-      window.localStorage.setItem(THEME_STORAGE_KEY, next);
-    }
+    window.localStorage.setItem(THEME_STORAGE_KEY, next);
   } catch {
     // Theme still applies to current session even if persistence is blocked
   }
@@ -86,7 +79,7 @@ export function applyThemeToDocument(
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemePreference>("system");
+  const [theme, setThemeState] = useState<ThemePreference>(DEFAULT_THEME);
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>("light");
   const [mounted, setMounted] = useState(false);
 
@@ -156,12 +149,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const sys = getSystemTheme();
     const currentResolved = theme === "system" ? sys : theme;
     const target: ResolvedTheme = currentResolved === "dark" ? "light" : "dark";
-    const nextPreference: ThemePreference = target === sys ? "system" : target;
 
-    setThemeState(nextPreference);
+    setThemeState(target);
     setSystemTheme(sys);
-    persistThemePreference(nextPreference);
-    applyThemeToDocument(nextPreference, target);
+    persistThemePreference(target);
+    applyThemeToDocument(target, target);
   }, [theme]);
 
   const value = useMemo<ThemeContextValue>(

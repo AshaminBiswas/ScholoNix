@@ -53,13 +53,16 @@ function installMatchMediaMock(initialDark: boolean): MatchMediaController {
 }
 
 function ThemeDebugProbe() {
-  const { theme, resolvedTheme, toggleTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
   return (
     <div>
       <span data-testid="pref">{theme}</span>
       <span data-testid="resolved">{resolvedTheme}</span>
       <button type="button" data-testid="probe-toggle" onClick={toggleTheme}>
         Flip
+      </button>
+      <button type="button" data-testid="probe-system" onClick={() => setTheme("system")}>
+        System
       </button>
     </div>
   );
@@ -71,7 +74,7 @@ describe("ThemeProvider & ThemeToggle", () => {
     delete document.documentElement.dataset.theme;
     document.documentElement.style.colorScheme = "";
     localStorage.clear();
-    document.head.innerHTML = '<meta name="color-scheme" content="light dark" />';
+    document.head.innerHTML = '<meta name="color-scheme" content="light" />';
   });
 
   afterEach(() => {
@@ -79,7 +82,7 @@ describe("ThemeProvider & ThemeToggle", () => {
     vi.restoreAllMocks();
   });
 
-  it("defaults to system theme when no preference is stored and follows OS preference", () => {
+  it("defaults to light theme when no preference is stored, even if OS prefers dark mode", () => {
     installMatchMediaMock(true);
 
     render(
@@ -89,19 +92,19 @@ describe("ThemeProvider & ThemeToggle", () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByTestId("pref")).toHaveTextContent("system");
-    expect(screen.getByTestId("resolved")).toHaveTextContent("dark");
-    expect(document.documentElement.classList.contains("dark")).toBe(true);
-    expect(document.documentElement.classList.contains("light")).toBe(false);
-    expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(document.documentElement.style.colorScheme).toBe("light dark");
+    expect(screen.getByTestId("pref")).toHaveTextContent("light");
+    expect(screen.getByTestId("resolved")).toHaveTextContent("light");
+    expect(document.documentElement.classList.contains("light")).toBe(true);
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(document.documentElement.style.colorScheme).toBe("light");
     expect(document.querySelector('meta[name="color-scheme"]')?.getAttribute("content")).toBe(
-      "light dark",
+      "light",
     );
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
   });
 
-  it("switches to explicit override when diverging from OS and clears override when returning to OS match", async () => {
+  it("toggles cleanly between light and dark and persists explicit preference", async () => {
     installMatchMediaMock(false);
     const user = userEvent.setup();
 
@@ -115,25 +118,28 @@ describe("ThemeProvider & ThemeToggle", () => {
     expect(screen.getByTestId("resolved")).toHaveTextContent("light");
     const toggle = screen.getByTestId("theme-toggle");
 
-    // Light OS -> click toggles to dark (diverges from OS -> persists override)
+    // Click 1: Light -> Dark
     await user.click(toggle);
     expect(screen.getByTestId("pref")).toHaveTextContent("dark");
     expect(screen.getByTestId("resolved")).toHaveTextContent("dark");
     expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(document.documentElement.classList.contains("light")).toBe(false);
+    expect(document.documentElement.style.colorScheme).toBe("dark");
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
 
-    // Click again -> returns to light matching OS -> clears override to follow system
+    // Click 2: Dark -> Light
     await user.click(toggle);
-    expect(screen.getByTestId("pref")).toHaveTextContent("system");
+    expect(screen.getByTestId("pref")).toHaveTextContent("light");
     expect(screen.getByTestId("resolved")).toHaveTextContent("light");
     expect(document.documentElement.classList.contains("light")).toBe(true);
     expect(document.documentElement.classList.contains("dark")).toBe(false);
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+    expect(document.documentElement.style.colorScheme).toBe("light");
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
   });
 
-  it("preserves an explicit user override even if OS preference later changes to match it", async () => {
+  it("follows OS preference only when explicitly switched to system mode", async () => {
     const media = installMatchMediaMock(false);
-    localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    const user = userEvent.setup();
 
     render(
       <ThemeProvider>
@@ -142,26 +148,27 @@ describe("ThemeProvider & ThemeToggle", () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByTestId("pref")).toHaveTextContent("dark");
-    expect(screen.getByTestId("resolved")).toHaveTextContent("dark");
-
-    // OS switches to dark (matching the explicit pin) and then back to light
+    // Default light stays light even when OS flips dark
     act(() => {
       media.setDark(true);
     });
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
+    expect(screen.getByTestId("resolved")).toHaveTextContent("light");
 
-    act(() => {
-      media.setDark(false);
-    });
-    // Because pin was preserved, UI stays dark despite OS switching back to light
-    expect(screen.getByTestId("pref")).toHaveTextContent("dark");
+    // Explicitly switch to system mode
+    await user.click(screen.getByTestId("probe-system"));
+    expect(screen.getByTestId("pref")).toHaveTextContent("system");
     expect(screen.getByTestId("resolved")).toHaveTextContent("dark");
     expect(document.documentElement.classList.contains("dark")).toBe(true);
+
+    // Clicking toggle pins explicit light/dark instead of removing override
+    await user.click(screen.getByTestId("theme-toggle"));
+    expect(screen.getByTestId("pref")).toHaveTextContent("light");
+    expect(screen.getByTestId("resolved")).toHaveTextContent("light");
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
   });
 
-  it("syncs theme preference across browser tabs via window storage events", () => {
-    installMatchMediaMock(false);
+  it("syncs theme preference across browser tabs via window storage events and falls back to light on clear", () => {
+    installMatchMediaMock(true);
 
     render(
       <ThemeProvider>
@@ -198,7 +205,7 @@ describe("ThemeProvider & ThemeToggle", () => {
       );
     });
 
-    expect(screen.getByTestId("pref")).toHaveTextContent("system");
+    expect(screen.getByTestId("pref")).toHaveTextContent("light");
     expect(screen.getByTestId("resolved")).toHaveTextContent("light");
     expect(document.documentElement.classList.contains("dark")).toBe(false);
   });

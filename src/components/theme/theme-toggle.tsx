@@ -11,6 +11,7 @@ import {
   useOptionalTheme,
 } from "./theme-provider";
 import type { ResolvedTheme, ThemePreference } from "./theme-config";
+import { DEFAULT_THEME } from "./theme-config";
 
 export interface ThemeToggleProps {
   className?: string;
@@ -29,7 +30,7 @@ export function ThemeToggle({
   variant = "icon",
 }: ThemeToggleProps) {
   const ctx = useOptionalTheme();
-  const [fallbackPref, setFallbackPref] = useState<ThemePreference>("system");
+  const [fallbackPref, setFallbackPref] = useState<ThemePreference>(DEFAULT_THEME);
   const [fallbackSys, setFallbackSys] = useState<ResolvedTheme>("light");
   const [fallbackMounted, setFallbackMounted] = useState(false);
 
@@ -47,11 +48,10 @@ export function ThemeToggle({
     const sys = getSystemTheme();
     const currentResolved = fallbackPref === "system" ? sys : fallbackPref;
     const target: ResolvedTheme = currentResolved === "dark" ? "light" : "dark";
-    const nextPref: ThemePreference = target === sys ? "system" : target;
-    setFallbackPref(nextPref);
+    setFallbackPref(target);
     setFallbackSys(sys);
-    persistThemePreference(nextPref);
-    applyThemeToDocument(nextPref, target);
+    persistThemePreference(target);
+    applyThemeToDocument(target, target);
   }, [fallbackPref]);
 
   const resolvedTheme: ResolvedTheme = ctx
