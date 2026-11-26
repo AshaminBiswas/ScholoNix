@@ -2,10 +2,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Plus,
   Download,
   Calendar,
-  ArrowRight,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
@@ -15,10 +13,10 @@ import {
   type SchoolShellUser,
 } from "@/modules/school/components/school-workspace-shell";
 import {
-  ENQUIRY_STATUS_META,
+  DEFAULT_ENQUIRY_SOURCES,
   type AdmissionApplicationRecord,
   type AdmissionApplicationStatusType,
-  type AdmissionEnquiryStatusType,
+  type AdmissionEnquiryRecord,
   type AdmissionsDatePreset,
   type AdmissionsOverviewData,
   type AdmissionsOverviewFilters,
@@ -30,6 +28,7 @@ import { AdmissionsKpisAndCharts } from "./admissions-kpis-and-charts";
 import { AdmissionsTable } from "./admissions-table";
 import { AdmissionsActivityAndNotes } from "./admissions-activity-and-notes";
 import { ApplicationsManagementView } from "./applications-management-view";
+import { EnquiriesWorkspace } from "./enquiries/enquiries-workspace";
 import {
   AdmissionSettingsPanel,
   type AdmissionSettingsSavePayload,
@@ -387,16 +386,9 @@ export function AdmissionsWorkspace({
     return json.application as AdmissionApplicationRecord;
   };
 
-  const handleCreateEnquiry = async (payload: {
-    studentName: string;
-    guardianName: string;
-    guardianPhone: string;
-    guardianEmail: string;
-    gradeApplied: string;
-    academicYear: string;
-    source: "Website" | "Walk-In" | "Phone Call" | "Referral" | "Campaign" | "Other";
-    notes: string;
-  }) => {
+  const handleCreateEnquiry = async (
+    payload: Record<string, unknown>,
+  ): Promise<AdmissionEnquiryRecord> => {
     const res = await fetch(
       `/api/school/admissions/enquiries?schoolSlug=${encodeURIComponent(school.slug)}`,
       {
@@ -411,11 +403,12 @@ export function AdmissionsWorkspace({
     }
     showToast("success", `Logged enquiry ${json.enquiry.enquiryCode} for ${json.enquiry.studentName}.`);
     await fetchOverview(filters, { bypassClientCache: true });
+    return json.enquiry as AdmissionEnquiryRecord;
   };
 
   const handleEnquiryAction = async (
     enquiryId: string,
-    payload: { action: "update" | "convert"; status?: AdmissionEnquiryStatusType },
+    payload: Record<string, unknown>,
   ) => {
     const res = await fetch(
       `/api/school/admissions/enquiries/${encodeURIComponent(enquiryId)}?schoolSlug=${encodeURIComponent(school.slug)}`,
@@ -751,115 +744,36 @@ export function AdmissionsWorkspace({
       )}
 
       {activeTab === "enquiries" && (
-        <div className="space-y-4">
-          <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs space-y-4 dark:border-[#272B4D] dark:bg-[#141731]">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-                  Admission Enquiries ({data.enquiries.length})
-                </h2>
-                <p className="text-xs text-[#76799C] dark:text-[#9DA6CC]">
-                  Track parent enquiries and convert qualified leads directly into formal applications.
-                </p>
-              </div>
-              {data.permissions.canWrite && (
-                <button
-                  type="button"
-                  onClick={() => setNewEnqOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-[12px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#4F27E8] cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>New Enquiry</span>
-                </button>
-              )}
-            </div>
-
-            {data.enquiries.length === 0 ? (
-              <div className="rounded-[14px] border border-dashed border-[#D6DBF0] bg-[#FAF8FE]/60 py-12 px-4 text-center dark:border-[#2E345B] dark:bg-[#10142C]/60">
-                <p className="text-sm font-bold text-[#08093B] dark:text-[#F3F5FF]">No enquiries recorded yet</p>
-                <p className="mt-1 text-xs text-[#76799C] dark:text-[#9DA6CC]">
-                  Log walk-in, phone, or website admission enquiries for {school.name}.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto school-menu-scrollbar rounded-[14px] border border-[#DFE3F5] dark:border-[#272B4D]">
-                <table className="w-full min-w-[720px] text-left text-xs border-collapse">
-                  <thead className="bg-[#F6F5FD] text-[11px] font-bold uppercase tracking-wider text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
-                    <tr>
-                      <th scope="col" className="px-3 py-3">Enquiry ID</th>
-                      <th scope="col" className="px-3 py-3">Student</th>
-                      <th scope="col" className="px-3 py-3">Guardian Contact</th>
-                      <th scope="col" className="px-3 py-3">Grade</th>
-                      <th scope="col" className="px-3 py-3">Source</th>
-                      <th scope="col" className="px-3 py-3">Status</th>
-                      <th scope="col" className="px-3 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F1F5F9] dark:divide-[#232746]">
-                    {data.enquiries.map((enq) => {
-                      const meta = ENQUIRY_STATUS_META[enq.status];
-                      return (
-                        <tr key={enq.id} className="hover:bg-[#FAF8FE] dark:hover:bg-[#1B2042]">
-                          <td className="px-3 py-3 font-bold text-[#663CF6] dark:text-[#A78BFA]">{enq.enquiryCode}</td>
-                          <td className="px-3 py-3 font-bold text-[#08093B] dark:text-[#F3F5FF]">{enq.studentName}</td>
-                          <td className="px-3 py-3 text-[#4D5072] dark:text-[#C5CCF0]">
-                            <div>{enq.guardianName}</div>
-                            <div className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">{enq.guardianPhone}</div>
-                          </td>
-                          <td className="px-3 py-3 font-semibold text-[#4D5072] dark:text-[#C5CCF0]">{enq.gradeApplied}</td>
-                          <td className="px-3 py-3 text-[#4D5072] dark:text-[#C5CCF0]">{enq.source}</td>
-                          <td className="px-3 py-3">
-                            {data.permissions.canWrite && enq.status !== "CONVERTED" ? (
-                              <select
-                                aria-label={`Status for enquiry ${enq.enquiryCode}`}
-                                value={enq.status}
-                                onChange={(e) =>
-                                  handleEnquiryAction(enq.id, {
-                                    action: "update",
-                                    status: e.target.value as AdmissionEnquiryStatusType,
-                                  })
-                                }
-                                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${meta.bgClass} ${meta.textClass} ${meta.borderClass} cursor-pointer`}
-                              >
-                                <option value="NEW">New</option>
-                                <option value="CONTACTED">Contacted</option>
-                                <option value="FOLLOW_UP">Follow Up</option>
-                                <option value="CLOSED">Closed</option>
-                              </select>
-                            ) : (
-                              <span
-                                className={`inline-block rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${meta.bgClass} ${meta.textClass} ${meta.borderClass}`}
-                              >
-                                {meta.label}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {enq.status === "CONVERTED" ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                                <span>Converted</span>
-                              </span>
-                            ) : data.permissions.canWrite ? (
-                              <button
-                                type="button"
-                                onClick={() => handleEnquiryAction(enq.id, { action: "convert" })}
-                                className="inline-flex items-center gap-1 rounded-[8px] border border-[#DDD6FE] bg-[#FAF8FE] px-2.5 py-1 text-[11px] font-bold text-[#663CF6] hover:bg-[#663CF6] hover:text-white transition cursor-pointer dark:border-[#3D3170] dark:bg-[#1E1A40] dark:text-[#CBB8FF] dark:hover:bg-[#7C5CFF] dark:hover:text-white"
-                              >
-                                <span>Convert to Application</span>
-                                <ArrowRight className="h-3 w-3" aria-hidden="true" />
-                              </button>
-                            ) : null}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </div>
+        <EnquiriesWorkspace
+          schoolName={school.name}
+          schoolSlug={school.slug}
+          enquiries={data.enquiries}
+          sources={
+            data.enquirySources && data.enquirySources.length > 0
+              ? data.enquirySources
+              : DEFAULT_ENQUIRY_SOURCES.map((d, idx) => ({
+                  id: `default-${idx}`,
+                  schoolId: school.id,
+                  name: d.name,
+                  description: d.description,
+                  isActive: true,
+                  colorToken: d.colorToken,
+                  createdAt: new Date(0).toISOString(),
+                  updatedAt: new Date(0).toISOString(),
+                }))
+          }
+          followUps={data.enquiryFollowUps ?? []}
+          applications={data.applications}
+          availableAcademicYears={data.availableAcademicYears}
+          availableGrades={data.availableGrades}
+          currentAcademicYear={data.settings.currentAcademicYear}
+          staffOptions={data.staffOptions ?? []}
+          canWrite={data.permissions.canWrite}
+          canExport={data.permissions.canExport}
+          onRefreshOverview={() => fetchOverview(filters, { bypassClientCache: true })}
+          onCreateEnquiry={handleCreateEnquiry}
+          onUpdateOrConvertEnquiry={handleEnquiryAction}
+        />
       )}
 
       {activeTab === "admitted" && (
@@ -956,7 +870,9 @@ export function AdmissionsWorkspace({
         grades={data.availableGrades}
         defaultAcademicYear={data.settings.currentAcademicYear}
         academicYears={data.availableAcademicYears}
-        onSubmit={handleCreateEnquiry}
+        onSubmit={async (payload) => {
+          await handleCreateEnquiry(payload);
+        }}
       />
 
       <ApplicationDetailModal

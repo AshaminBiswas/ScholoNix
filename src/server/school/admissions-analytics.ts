@@ -377,6 +377,9 @@ export function computeAdmissionsOverviewAnalytics(params: {
   activities: AdmissionActivityRecord[];
   settings: AdmissionSettingRecord;
   permissions: AdmissionsOverviewData["permissions"];
+  enquirySources?: import("@/modules/school/admissions/types").AdmissionEnquirySourceRecord[];
+  enquiryFollowUps?: import("@/modules/school/admissions/types").AdmissionEnquiryFollowUpRecord[];
+  staffOptions?: import("@/modules/school/admissions/types").SchoolStaffOption[];
   now?: Date;
 }): AdmissionsOverviewData {
   const {
@@ -388,6 +391,9 @@ export function computeAdmissionsOverviewAnalytics(params: {
     activities,
     settings,
     permissions,
+    enquirySources = [],
+    enquiryFollowUps = [],
+    staffOptions = [],
     now = new Date(),
   } = params;
 
@@ -630,6 +636,9 @@ export function computeAdmissionsOverviewAnalytics(params: {
       totalPages,
     },
     enquiries: filteredEnquiries,
+    enquirySources: enquirySources.filter((s) => s.schoolId === schoolId),
+    enquiryFollowUps: enquiryFollowUps.filter((f) => f.schoolId === schoolId),
+    staffOptions,
     admittedStudents,
     activities: tenantActivities.slice(0, 20),
     reminders,
@@ -680,6 +689,46 @@ export function buildAdmissionsCsv(applications: AdmissionApplicationRecord[]): 
     escapeCsvCell(app.guardianPhone),
     escapeCsvCell(app.guardianEmail || ""),
     escapeCsvCell(app.previousSchool || ""),
+  ]);
+
+  return [headers.map(escapeCsvCell).join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+}
+
+export function buildEnquiriesCsv(enquiries: AdmissionEnquiryRecord[]): string {
+  const headers = [
+    "Enquiry ID",
+    "Enquiry Date",
+    "Student Name",
+    "Guardian Name",
+    "Relation",
+    "Phone",
+    "Email",
+    "Grade Interested",
+    "Academic Year",
+    "Source",
+    "Enquiry Type",
+    "Status",
+    "Assigned To",
+    "Next Follow-up",
+    "Notes",
+  ];
+
+  const rows = enquiries.map((enq) => [
+    escapeCsvCell(enq.enquiryCode),
+    escapeCsvCell((enq.enquiryDate || enq.createdAt).slice(0, 10)),
+    escapeCsvCell(enq.studentName),
+    escapeCsvCell(enq.guardianName),
+    escapeCsvCell(enq.guardianRelation || "Parent"),
+    escapeCsvCell(enq.guardianPhone),
+    escapeCsvCell(enq.guardianEmail || ""),
+    escapeCsvCell(enq.gradeApplied),
+    escapeCsvCell(enq.academicYear),
+    escapeCsvCell(enq.source),
+    escapeCsvCell(enq.enquiryType || "General"),
+    escapeCsvCell(enq.isDraft ? "Draft" : enq.status),
+    escapeCsvCell(enq.assignedToName || "Unassigned"),
+    escapeCsvCell(enq.nextFollowUpAt ? enq.nextFollowUpAt.slice(0, 10) : ""),
+    escapeCsvCell(enq.notes || ""),
   ]);
 
   return [headers.map(escapeCsvCell).join(","), ...rows.map((r) => r.join(","))].join("\r\n");

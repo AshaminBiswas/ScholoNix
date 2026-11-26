@@ -341,3 +341,97 @@ If you did not request this, please ignore this email.
     simulated: true,
   };
 }
+
+export async function sendTransactionalEmail(params: {
+  to: string;
+  cc?: string | null;
+  bcc?: string | null;
+  subject: string;
+  text: string;
+  html?: string;
+}): Promise<{
+  success: boolean;
+  messageId?: string;
+  simulated?: boolean;
+}> {
+  if (!isValidEmailAddress(params.to)) {
+    throw new ValidationError(
+      `Invalid recipient email address: "${params.to}". Please provide a valid email.`,
+    );
+  }
+
+  if (process.env.NODE_ENV === "test") {
+    return {
+      success: true,
+      messageId: `test_comm_${Date.now()}`,
+      simulated: true,
+    };
+  }
+
+  const fromAddress = getSenderAddress();
+  const transporter = getTransporter();
+  const html =
+    params.html ||
+    `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">${params.text
+      .split("\n")
+      .map((line) => `<p style="margin:0 0 8px">${line.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`)
+      .join("")}</div>`;
+
+  const resendApiKey = stripSurroundingQuotes(
+    process.env.RESEND_API_KEY || process.env.EMAIL_PROVIDER_API_KEY,
+  );
+  if (resendApiKey) {
+    try {
+      const body: Record<string, unknown> = {
+        from: fromAddress,
+        to: [params.to.trim().toLowerCase()],
+        subject: params.subject,
+        html,
+        text: params.text,
+      };
+      if (params.cc && isValidEmailAddress(params.cc)) body.cc = [params.cc.trim().toLowerCase()];
+      if (params.bcc && isValidEmailAddress(params.bcc)) body.bcc = [params.bcc.trim().toLowerCase()];
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { id?: string };
+        return { success: true, messageId: data.id || `resend_${Date.now()}` };
+      }
+    } catch {
+      // Fall through cleanly if network/provider fails in dev
+    }
+  }
+
+  if (transporter) {
+    try {
+      const info = await transporter.sendMail({
+        from: fromAddress,
+        to: params.to.trim().toLowerCase(),
+        cc: params.cc && isValidEmailAddress(params.cc) ? params.cc.trim() : undefined,
+        bcc: params.bcc && isValidEmailAddress(params.bcc) ? params.bcc.trim() : undefined,
+        subject: params.subject,
+        text: params.text,
+        html,
+      });
+      return { success: true, messageId: info.messageId };
+    } catch {
+      // Fall through to simulated flag when SMTP fails in local dev
+    }
+  }
+
+  logger.info(
+    { event: "ADMISSIONS_EMAIL_SIMULATED", to: maskEmail(params.to), subject: params.subject },
+    `[EmailService:Simulated] Admissions communication to ${maskEmail(params.to)}`,
+  );
+  return {
+    success: true,
+    messageId: `sim_${Date.now()}`,
+    simulated: true,
+  };
+}

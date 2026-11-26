@@ -7,28 +7,43 @@ import { tenantCache } from "@/server/integrations/redis";
 import { logger } from "@/lib/logger";
 import type {
   AdmissionApplicationRecord,
+  AdmissionEnquiryCommunicationRecord,
+  AdmissionEnquiryFollowUpRecord,
+  AdmissionEnquiryNoteRecord,
   AdmissionEnquiryRecord,
+  AdmissionEnquirySourceRecord,
   AdmissionReminderRecord,
   AdmissionSettingRecord,
   AdmissionsOverviewData,
   AdmissionsOverviewFilters,
+  EnquiryCommunicationAttachment,
+  EnquiryDossierData,
 } from "@/modules/school/admissions/types";
 import type {
   BulkImportApplicationsInput,
   BulkUpdateApplicationsInput,
   CreateApplicationInput,
+  CreateEnquiryCommunicationInput,
+  CreateEnquiryFollowUpInput,
   CreateEnquiryInput,
+  CreateEnquiryNoteInput,
+  CreateEnquirySourceInput,
   CreateReminderInput,
   UpdateAdmissionsSettingsInput,
   UpdateApplicationInput,
+  UpdateEnquiryFollowUpInput,
   UpdateEnquiryInput,
+  UpdateEnquiryNoteInput,
+  UpdateEnquirySourceInput,
 } from "@/modules/school/admissions/schemas";
 import {
   buildAdmissionsCsv,
+  buildEnquiriesCsv,
   computeAdmissionsOverviewAnalytics,
 } from "./admissions-analytics";
 import { admissionsRepository } from "./admissions-repository";
 import { admissionsPdfService, type PdfSchoolProfile } from "./admissions-pdf-generator";
+import { sendTransactionalEmail } from "@/server/notifications/email-service";
 import { authRepository } from "@/server/auth/auth-repository";
 
 export interface AdmissionsActorContext {
@@ -204,6 +219,9 @@ export const admissionsService = {
         activities: snapshot.activities,
         settings: snapshot.settings,
         permissions,
+        enquirySources: snapshot.enquirySources,
+        enquiryFollowUps: snapshot.enquiryFollowUps,
+        staffOptions: snapshot.staffOptions,
       });
 
       // 3. Store computed query data in tenant cache before serving
@@ -678,6 +696,281 @@ export const admissionsService = {
       });
 
       return { csv, filename, count: overview.applications.length };
+    });
+  },
+
+  async getEnquiryDossier(
+    ctx: AdmissionsActorContext,
+    enquiryId: string,
+  ): Promise<EnquiryDossierData> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:read");
+    return runScoped(ctx, () => admissionsRepository.getEnquiryDossier(ctx.schoolId, enquiryId));
+  },
+
+  async listEnquirySources(
+    ctx: AdmissionsActorContext,
+  ): Promise<AdmissionEnquirySourceRecord[]> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:read");
+    return runScoped(ctx, () => admissionsRepository.listEnquirySources(ctx.schoolId));
+  },
+
+  async createEnquirySource(
+    ctx: AdmissionsActorContext,
+    input: CreateEnquirySourceInput,
+  ): Promise<AdmissionEnquirySourceRecord> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      const created = await admissionsRepository.createEnquirySource(ctx.schoolId, input);
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMISSION_ENQUIRY_SOURCE_CREATED",
+        entityType: "AdmissionEnquirySource",
+        entityId: created.id,
+        details: { name: created.name, isActive: created.isActive },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+      return created;
+    });
+  },
+
+  async updateEnquirySource(
+    ctx: AdmissionsActorContext,
+    input: UpdateEnquirySourceInput,
+  ): Promise<AdmissionEnquirySourceRecord> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      const updated = await admissionsRepository.updateEnquirySource(ctx.schoolId, input);
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      return updated;
+    });
+  },
+
+  async deleteEnquirySource(ctx: AdmissionsActorContext, sourceId: string): Promise<void> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      await admissionsRepository.deleteEnquirySource(ctx.schoolId, sourceId);
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+    });
+  },
+
+  async listEnquiryFollowUps(
+    ctx: AdmissionsActorContext,
+  ): Promise<AdmissionEnquiryFollowUpRecord[]> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:read");
+    return runScoped(ctx, () => admissionsRepository.listEnquiryFollowUps(ctx.schoolId));
+  },
+
+  async createEnquiryFollowUp(
+    ctx: AdmissionsActorContext,
+    enquiryId: string,
+    input: CreateEnquiryFollowUpInput,
+  ): Promise<AdmissionEnquiryFollowUpRecord> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      const created = await admissionsRepository.createEnquiryFollowUp(
+        ctx.schoolId,
+        enquiryId,
+        { id: ctx.userId, name: ctx.userName },
+        input,
+      );
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMISSION_ENQUIRY_FOLLOW_UP_CREATED",
+        entityType: "AdmissionEnquiryFollowUp",
+        entityId: created.id,
+        details: {
+          enquiryId,
+          followUpType: created.followUpType,
+          scheduledAt: created.scheduledAt,
+        },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+      return created;
+    });
+  },
+
+  async updateEnquiryFollowUp(
+    ctx: AdmissionsActorContext,
+    enquiryId: string,
+    input: UpdateEnquiryFollowUpInput,
+  ): Promise<AdmissionEnquiryFollowUpRecord> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      const updated = await admissionsRepository.updateEnquiryFollowUp(
+        ctx.schoolId,
+        enquiryId,
+        { id: ctx.userId, name: ctx.userName },
+        input,
+      );
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      return updated;
+    });
+  },
+
+  async sendEnquiryCommunication(
+    ctx: AdmissionsActorContext,
+    enquiryId: string,
+    input: CreateEnquiryCommunicationInput & {
+      attachments?: EnquiryCommunicationAttachment[];
+    },
+  ): Promise<AdmissionEnquiryCommunicationRecord> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      let resolvedStatus: "SENT" | "COMPLETED" | "FAILED" =
+        input.channel === "Phone Call" ? "COMPLETED" : "SENT";
+
+      if (input.channel === "Email") {
+        try {
+          await sendTransactionalEmail({
+            to: input.recipient,
+            cc: input.cc,
+            bcc: input.bcc,
+            subject: input.subject,
+            text: input.message,
+          });
+        } catch (err) {
+          logger.warn(
+            {
+              event: "ENQUIRY_COMM_EMAIL_FAILED",
+              schoolId: ctx.schoolId,
+              enquiryId,
+              error: err instanceof Error ? err.message : String(err),
+            },
+            "[AdmissionsService] Email dispatch warning; recording attempt in log",
+          );
+          resolvedStatus = "FAILED";
+        }
+      }
+
+      const created = await admissionsRepository.createEnquiryCommunication(
+        ctx.schoolId,
+        enquiryId,
+        { id: ctx.userId, name: ctx.userName },
+        { ...input, resolvedStatus },
+      );
+
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMISSION_ENQUIRY_COMMUNICATION_SENT",
+        entityType: "AdmissionEnquiryCommunication",
+        entityId: created.id,
+        details: {
+          enquiryId,
+          channel: created.channel,
+          status: created.status,
+          attachmentsCount: created.attachments.length,
+        },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+      return created;
+    });
+  },
+
+  async createEnquiryNote(
+    ctx: AdmissionsActorContext,
+    enquiryId: string,
+    input: CreateEnquiryNoteInput,
+  ): Promise<AdmissionEnquiryNoteRecord> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      const created = await admissionsRepository.createEnquiryNote(
+        ctx.schoolId,
+        enquiryId,
+        { id: ctx.userId, name: ctx.userName },
+        input,
+      );
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      return created;
+    });
+  },
+
+  async updateEnquiryNote(
+    ctx: AdmissionsActorContext,
+    enquiryId: string,
+    input: UpdateEnquiryNoteInput,
+  ): Promise<AdmissionEnquiryNoteRecord> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      const updated = await admissionsRepository.updateEnquiryNote(
+        ctx.schoolId,
+        enquiryId,
+        input,
+      );
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      return updated;
+    });
+  },
+
+  async deleteEnquiryNote(
+    ctx: AdmissionsActorContext,
+    enquiryId: string,
+    noteId: string,
+  ): Promise<void> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      await admissionsRepository.deleteEnquiryNote(ctx.schoolId, enquiryId, noteId);
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+    });
+  },
+
+  async exportEnquiriesCsv(
+    ctx: AdmissionsActorContext,
+    partialFilters?: Partial<AdmissionsOverviewFilters>,
+  ): Promise<{ csv: string; filename: string; count: number }> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:export");
+    return runScoped(ctx, async () => {
+      const snapshot = await admissionsRepository.getTenantSnapshot(ctx.schoolId);
+      const filters: AdmissionsOverviewFilters = {
+        ...DEFAULT_FILTERS,
+        academicYear: partialFilters?.academicYear ?? snapshot.settings.currentAcademicYear,
+        ...partialFilters,
+        page: 1,
+        pageSize: 5000,
+      };
+      const overview = computeAdmissionsOverviewAnalytics({
+        schoolId: ctx.schoolId,
+        filters,
+        allApplications: snapshot.applications,
+        allEnquiries: snapshot.enquiries,
+        customReminders: snapshot.reminders,
+        activities: snapshot.activities,
+        settings: snapshot.settings,
+        permissions: {
+          canWrite: false,
+          canVerify: false,
+          canExport: true,
+          canManageSettings: false,
+        },
+        enquirySources: snapshot.enquirySources,
+        enquiryFollowUps: snapshot.enquiryFollowUps,
+        staffOptions: snapshot.staffOptions,
+      });
+
+      const csv = buildEnquiriesCsv(overview.enquiries);
+      const safeSlug = ctx.schoolSlug.replace(/[^a-z0-9-_]/gi, "-");
+      const filename = `enquiries-${safeSlug}-${new Date().toISOString().slice(0, 10)}.csv`;
+
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMISSIONS_ENQUIRIES_EXPORTED",
+        entityType: "AdmissionReport",
+        entityId: filename,
+        details: { exportedCount: overview.enquiries.length, academicYear: filters.academicYear },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+
+      return { csv, filename, count: overview.enquiries.length };
     });
   },
 };

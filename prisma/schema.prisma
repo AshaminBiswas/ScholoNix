@@ -55,11 +55,15 @@ model School {
   branches              School[]               @relation("SchoolHierarchy")
   users                 User[]
   auditLogs             AuditLog[]
-  admissionSetting      AdmissionSetting?
-  admissionEnquiries    AdmissionEnquiry[]
-  admissionApplications AdmissionApplication[]
-  admissionReminders    AdmissionReminder[]
-  admissionActivities   AdmissionActivity[]
+  admissionSetting              AdmissionSetting?
+  admissionEnquiries            AdmissionEnquiry[]
+  admissionEnquirySources       AdmissionEnquirySource[]
+  admissionEnquiryFollowUps     AdmissionEnquiryFollowUp[]
+  admissionEnquiryCommunications AdmissionEnquiryCommunication[]
+  admissionEnquiryNotes         AdmissionEnquiryNote[]
+  admissionApplications         AdmissionApplication[]
+  admissionReminders            AdmissionReminder[]
+  admissionActivities           AdmissionActivity[]
 
   @@index([status])
   @@index([slug])
@@ -321,14 +325,32 @@ model AdmissionEnquiry {
   id                     String                 @id @default(uuid()) @db.Uuid
   schoolId               String                 @map("school_id") @db.Uuid
   enquiryCode            String                 @map("enquiry_code") @db.VarChar(40)
+  enquiryDate            DateTime               @default(now()) @map("enquiry_date") @db.Timestamptz(6)
   studentName            String                 @map("student_name") @db.VarChar(255)
+  studentDob             String?                @map("student_dob") @db.VarChar(20)
+  studentGender          String?                @map("student_gender") @db.VarChar(20)
   guardianName           String                 @map("guardian_name") @db.VarChar(255)
+  guardianRelation       String?                @map("guardian_relation") @db.VarChar(60)
   guardianPhone          String                 @map("guardian_phone") @db.VarChar(30)
   guardianEmail          String?                @map("guardian_email") @db.VarChar(255)
+  addressLine1           String?                @map("address_line_1") @db.VarChar(255)
+  addressLine2           String?                @map("address_line_2") @db.VarChar(255)
+  city                   String?                @db.VarChar(100)
+  state                  String?                @db.VarChar(100)
+  pinCode                String?                @map("pin_code") @db.VarChar(20)
   gradeApplied           String                 @map("grade_applied") @db.VarChar(60)
   academicYear           String                 @map("academic_year") @db.VarChar(30)
   source                 String                 @default("Walk-In") @db.VarChar(60)
+  enquiryType            String                 @default("General") @map("enquiry_type") @db.VarChar(60)
   status                 AdmissionEnquiryStatus @default(NEW)
+  assignedToUserId       String?                @map("assigned_to_user_id") @db.Uuid
+  assignedToName         String?                @map("assigned_to_name") @db.VarChar(255)
+  nextFollowUpAt         DateTime?              @map("next_follow_up_at") @db.Timestamptz(6)
+  hasSiblingsInSchool    Boolean                @default(false) @map("has_siblings_in_school")
+  interestedInTransport  Boolean                @default(false) @map("interested_in_transport")
+  interestedInHostel     Boolean                @default(false) @map("interested_in_hostel")
+  requiresSpecialSupport Boolean                @default(false) @map("requires_special_support")
+  isDraft                Boolean                @default(false) @map("is_draft")
   notes                  String?                @db.Text
   convertedApplicationId String?                @map("converted_application_id") @db.Uuid
   createdByUserId        String?                @map("created_by_user_id") @db.Uuid
@@ -336,11 +358,99 @@ model AdmissionEnquiry {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school         School                          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  followUps      AdmissionEnquiryFollowUp[]
+  communications AdmissionEnquiryCommunication[]
+  enquiryNotes   AdmissionEnquiryNote[]
 
   @@unique([schoolId, enquiryCode])
   @@index([schoolId, academicYear, status, createdAt])
+  @@index([schoolId, isDraft, updatedAt])
   @@map("admission_enquiries")
+}
+
+model AdmissionEnquirySource {
+  id          String   @id @default(uuid()) @db.Uuid
+  schoolId    String   @map("school_id") @db.Uuid
+  name        String   @db.VarChar(80)
+  description String?  @db.VarChar(255)
+  isActive    Boolean  @default(true) @map("is_active")
+  colorToken  String   @default("violet") @map("color_token") @db.VarChar(32)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, name])
+  @@index([schoolId, isActive])
+  @@map("admission_enquiry_sources")
+}
+
+model AdmissionEnquiryFollowUp {
+  id               String    @id @default(uuid()) @db.Uuid
+  schoolId         String    @map("school_id") @db.Uuid
+  enquiryId        String    @map("enquiry_id") @db.Uuid
+  followUpType     String    @map("follow_up_type") @db.VarChar(40)
+  scheduledAt      DateTime  @map("scheduled_at") @db.Timestamptz(6)
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+  status           String    @default("UPCOMING") @db.VarChar(30)
+  assignedToUserId String?   @map("assigned_to_user_id") @db.Uuid
+  assignedToName   String?   @map("assigned_to_name") @db.VarChar(255)
+  notes            String    @db.Text
+  outcome          String?   @db.Text
+  createdByUserId  String?   @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  enquiry AdmissionEnquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, enquiryId, scheduledAt])
+  @@index([schoolId, status, scheduledAt])
+  @@map("admission_enquiry_follow_ups")
+}
+
+model AdmissionEnquiryCommunication {
+  id           String   @id @default(uuid()) @db.Uuid
+  schoolId     String   @map("school_id") @db.Uuid
+  enquiryId    String   @map("enquiry_id") @db.Uuid
+  channel      String   @db.VarChar(30)
+  recipient    String   @db.VarChar(255)
+  cc           String?  @db.VarChar(255)
+  bcc          String?  @db.VarChar(255)
+  subject      String   @db.VarChar(255)
+  message      String   @db.Text
+  attachments  Json?
+  status       String   @default("SENT") @db.VarChar(30)
+  sentByUserId String?  @map("sent_by_user_id") @db.Uuid
+  sentByName   String   @map("sent_by_name") @db.VarChar(255)
+  sentAt       DateTime @default(now()) @map("sent_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  school  School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  enquiry AdmissionEnquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, enquiryId, sentAt])
+  @@map("admission_enquiry_communications")
+}
+
+model AdmissionEnquiryNote {
+  id              String   @id @default(uuid()) @db.Uuid
+  schoolId        String   @map("school_id") @db.Uuid
+  enquiryId       String   @map("enquiry_id") @db.Uuid
+  category        String   @default("Admission Related") @db.VarChar(60)
+  title           String   @db.VarChar(180)
+  content         String   @db.Text
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdByName   String   @map("created_by_name") @db.VarChar(255)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  enquiry AdmissionEnquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, enquiryId, createdAt])
+  @@map("admission_enquiry_notes")
 }
 
 model AdmissionApplication {

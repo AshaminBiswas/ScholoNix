@@ -11,6 +11,7 @@ import { logger } from "@/lib/logger";
 import type {
   AdmissionDocumentType,
   AdmissionUploadedDocument,
+  EnquiryCommunicationAttachment,
 } from "@/modules/school/admissions/types";
 import { createLocalStorageAdapter } from "@/server/storage/local-adapter";
 import {
@@ -329,5 +330,65 @@ export const admissionsDocumentStorage = {
     const adapter = getObjectStorageAdapter();
     if (!adapter.getSignedUrl) return null;
     return adapter.getSignedUrl(storageKey, options);
+  },
+
+  uploadEnquiryAttachment: async (
+    schoolId: string,
+    enquiryId: string,
+    file: { buffer: Buffer; mimeType: string; fileName: string },
+  ): Promise<EnquiryCommunicationAttachment> => {
+    const cleanSchool = schoolId.replace(/[^a-zA-Z0-9_-]/g, "");
+    const cleanEnquiry = enquiryId.replace(/[^a-zA-Z0-9_-]/g, "");
+    const safeName = sanitizeFileName(file.fileName);
+    const mimeType = normalizeDeclaredMime(file.mimeType, safeName);
+
+    if (!ALLOWED_DOC_MIMES.has(mimeType)) {
+      throw new ValidationError("Unsupported file type. Only PDF, JPG, and PNG files are allowed.");
+    }
+    if (file.buffer.length === 0 || file.buffer.length > MAX_DOC_BYTES) {
+      throw new ValidationError("Attachment size must be between 1 byte and 5 MB.");
+    }
+    if (!matchesMagicBytes(file.buffer, mimeType)) {
+      throw new ValidationError("File content does not match declared PDF/JPG/PNG format.");
+    }
+
+    const ext = getExtensionForMime(mimeType);
+    const uniqueKey = randomUUID();
+    const storageKey = `${cleanSchool}/admissions/enquiries/${cleanEnquiry}/${uniqueKey}.${ext}`;
+    assertTenantDocumentStorageKey(schoolId, storageKey);
+
+    const adapter = getObjectStorageAdapter();
+    try {
+      await adapter.putObject({
+        storageKey,
+        buffer: file.buffer,
+        mimeType,
+        fileName: safeName,
+        isPrivate: true,
+        overwrite: false,
+        tags: [`school:${schoolId}`, "doc:enquiry_attachment"],
+      });
+    } catch (storageErr) {
+      logger.error(
+        {
+          event: "ENQUIRY_ATTACHMENT_UPLOAD_FAILED",
+          provider: adapter.provider,
+          schoolId,
+          storageKey,
+          error: storageErr instanceof Error ? storageErr.message : String(storageErr),
+        },
+        "[AdmissionsDocumentStorage] Failed storing enquiry attachment",
+      );
+      throw new ServiceUnavailableError("Attachment storage is temporarily unavailable.");
+    }
+
+    return {
+      key: uniqueKey,
+      fileName: safeName,
+      mimeType,
+      sizeBytes: file.buffer.length,
+      storageKey,
+      uploadedAt: new Date().toISOString(),
+    };
   },
 };

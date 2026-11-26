@@ -7,6 +7,14 @@ const optionalEmailSchema = z
   .optional()
   .or(z.literal(""));
 
+const optionalDateSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
+  .optional()
+  .nullable()
+  .or(z.literal(""));
+
 const phoneSchema = z
   .string()
   .trim()
@@ -115,21 +123,140 @@ export const uploadedDocumentSchema = z.object({
 
 export const createEnquirySchema = z.object({
   studentName: z.string().trim().min(2, "Student name is required").max(120),
+  studentDob: optionalDateSchema,
+  studentGender: z.enum(["Male", "Female", "Other", ""]).optional().or(z.literal("")),
   guardianName: z.string().trim().min(2, "Guardian name is required").max(120),
+  guardianRelation: z.string().trim().max(60).optional().or(z.literal("")),
   guardianPhone: phoneSchema,
   guardianEmail: optionalEmailSchema,
+  addressLine1: z.string().trim().max(255).optional().or(z.literal("")),
+  addressLine2: z.string().trim().max(255).optional().or(z.literal("")),
+  city: z.string().trim().max(100).optional().or(z.literal("")),
+  state: z.string().trim().max(100).optional().or(z.literal("")),
+  pinCode: z.string().trim().max(20).optional().or(z.literal("")),
   gradeApplied: z.string().trim().min(1, "Grade is required").max(60),
   academicYear: z.string().trim().min(4, "Academic year is required").max(30),
-  source: z
-    .enum(["Website", "Walk-In", "Phone Call", "Referral", "Campaign", "Other"])
-    .default("Walk-In"),
+  enquiryDate: optionalDateSchema,
+  source: z.string().trim().min(1, "Source is required").max(80).default("Walk-In"),
+  enquiryType: z.string().trim().min(1).max(60).default("General"),
+  status: z.enum(["NEW", "CONTACTED", "FOLLOW_UP", "CONVERTED", "CLOSED"]).default("NEW"),
+  assignedToUserId: z.string().uuid().optional().nullable().or(z.literal("")),
+  assignedToName: z.string().trim().max(255).optional().nullable().or(z.literal("")),
+  hasSiblingsInSchool: z.boolean().default(false),
+  interestedInTransport: z.boolean().default(false),
+  interestedInHostel: z.boolean().default(false),
+  requiresSpecialSupport: z.boolean().default(false),
+  isDraft: z.boolean().default(false),
   notes: z.string().trim().max(500).optional().or(z.literal("")),
+  initialFollowUp: z
+    .object({
+      followUpType: z
+        .enum(["Phone Call", "Email", "WhatsApp", "Meeting", "Campus Visit"])
+        .default("Phone Call"),
+      scheduledAt: z.string().trim().min(10, "Follow-up date and time is required"),
+      assignedToUserId: z.string().uuid().optional().nullable().or(z.literal("")),
+      assignedToName: z.string().trim().max(255).optional().nullable().or(z.literal("")),
+      notes: z.string().trim().max(500).optional().or(z.literal("")),
+    })
+    .optional()
+    .nullable(),
 });
 
 export const updateEnquirySchema = z.object({
   action: z.enum(["update", "convert"]).default("update"),
+  studentName: z.string().trim().min(2).max(120).optional(),
+  studentDob: optionalDateSchema,
+  studentGender: z.enum(["Male", "Female", "Other", ""]).optional().nullable(),
+  guardianName: z.string().trim().min(2).max(120).optional(),
+  guardianRelation: z.string().trim().max(60).optional().nullable(),
+  guardianPhone: phoneSchema.optional(),
+  guardianEmail: optionalEmailSchema,
+  addressLine1: z.string().trim().max(255).optional().nullable(),
+  addressLine2: z.string().trim().max(255).optional().nullable(),
+  city: z.string().trim().max(100).optional().nullable(),
+  state: z.string().trim().max(100).optional().nullable(),
+  pinCode: z.string().trim().max(20).optional().nullable(),
+  gradeApplied: z.string().trim().min(1).max(60).optional(),
+  academicYear: z.string().trim().min(4).max(30).optional(),
+  enquiryDate: optionalDateSchema,
+  source: z.string().trim().min(1).max(80).optional(),
+  enquiryType: z.string().trim().min(1).max(60).optional(),
   status: z.enum(["NEW", "CONTACTED", "FOLLOW_UP", "CONVERTED", "CLOSED"]).optional(),
+  assignedToUserId: z.string().uuid().optional().nullable().or(z.literal("")),
+  assignedToName: z.string().trim().max(255).optional().nullable().or(z.literal("")),
+  hasSiblingsInSchool: z.boolean().optional(),
+  interestedInTransport: z.boolean().optional(),
+  interestedInHostel: z.boolean().optional(),
+  requiresSpecialSupport: z.boolean().optional(),
+  isDraft: z.boolean().optional(),
   notes: z.string().trim().max(500).optional().nullable(),
+});
+
+export const createEnquirySourceSchema = z.object({
+  name: z.string().trim().min(2, "Source name is required").max(80),
+  description: z.string().trim().max(250).optional().or(z.literal("")),
+  isActive: z.boolean().default(true),
+  colorToken: z
+    .enum(["violet", "sky", "cyan", "emerald", "amber", "indigo", "rose"])
+    .default("violet"),
+});
+
+export const updateEnquirySourceSchema = z.object({
+  id: z.string().uuid("Invalid source ID"),
+  name: z.string().trim().min(2).max(80).optional(),
+  description: z.string().trim().max(250).optional().nullable(),
+  isActive: z.boolean().optional(),
+  colorToken: z
+    .enum(["violet", "sky", "cyan", "emerald", "amber", "indigo", "rose"])
+    .optional(),
+});
+
+export const createEnquiryFollowUpSchema = z.object({
+  followUpType: z
+    .enum(["Phone Call", "Email", "WhatsApp", "Meeting", "Campus Visit"])
+    .default("Phone Call"),
+  scheduledAt: z.string().trim().min(10, "Follow-up date and time is required"),
+  assignedToUserId: z.string().uuid().optional().nullable().or(z.literal("")),
+  assignedToName: z.string().trim().max(255).optional().nullable().or(z.literal("")),
+  notes: z.string().trim().min(2, "Follow-up notes are required").max(500),
+});
+
+export const updateEnquiryFollowUpSchema = z.object({
+  followUpId: z.string().uuid("Invalid follow-up ID"),
+  followUpType: z
+    .enum(["Phone Call", "Email", "WhatsApp", "Meeting", "Campus Visit"])
+    .optional(),
+  scheduledAt: z.string().trim().min(10).optional(),
+  status: z.enum(["UPCOMING", "DUE_TODAY", "COMPLETED", "OVERDUE", "CANCELLED"]).optional(),
+  assignedToUserId: z.string().uuid().optional().nullable().or(z.literal("")),
+  assignedToName: z.string().trim().max(255).optional().nullable().or(z.literal("")),
+  notes: z.string().trim().max(500).optional(),
+  outcome: z.string().trim().max(500).optional().nullable(),
+});
+
+export const createEnquiryCommunicationSchema = z.object({
+  channel: z.enum(["Email", "SMS", "WhatsApp", "Phone Call"]),
+  recipient: z.string().trim().min(2, "Recipient is required").max(255),
+  cc: z.string().trim().max(255).optional().or(z.literal("")),
+  bcc: z.string().trim().max(255).optional().or(z.literal("")),
+  subject: z.string().trim().min(2, "Subject is required").max(255),
+  message: z.string().trim().min(2, "Message is required").max(2000),
+  status: z.enum(["SENT", "COMPLETED"]).optional(),
+});
+
+export const createEnquiryNoteSchema = z.object({
+  category: z
+    .enum(["Admission Related", "Parent Requirement", "Follow-up", "Other"])
+    .default("Admission Related"),
+  title: z.string().trim().min(2, "Note title is required").max(180),
+  content: z.string().trim().min(2, "Note details are required").max(2000),
+});
+
+export const updateEnquiryNoteSchema = z.object({
+  noteId: z.string().uuid("Invalid note ID"),
+  category: z.enum(["Admission Related", "Parent Requirement", "Follow-up", "Other"]).optional(),
+  title: z.string().trim().min(2).max(180).optional(),
+  content: z.string().trim().min(2).max(2000).optional(),
 });
 
 export const createApplicationSchema = z
@@ -309,14 +436,6 @@ export const updateApplicationSchema = z.object({
   declarationAccepted: z.boolean().optional(),
 });
 
-const optionalDateSchema = z
-  .string()
-  .trim()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
-  .optional()
-  .nullable()
-  .or(z.literal(""));
-
 export const admissionExtendedSettingsSchema = z
   .object({
     admissionMode: z.enum(["ONLINE_OFFLINE", "ONLINE_ONLY", "OFFLINE_ONLY"]).default("ONLINE_OFFLINE"),
@@ -454,8 +573,15 @@ export const bulkUpdateApplicationsSchema = z
     { message: "Provide at least one field to update across selected applications." },
   );
 
-export type CreateEnquiryInput = z.infer<typeof createEnquirySchema>;
+export type CreateEnquiryInput = z.input<typeof createEnquirySchema>;
 export type UpdateEnquiryInput = z.infer<typeof updateEnquirySchema>;
+export type CreateEnquirySourceInput = z.input<typeof createEnquirySourceSchema>;
+export type UpdateEnquirySourceInput = z.infer<typeof updateEnquirySourceSchema>;
+export type CreateEnquiryFollowUpInput = z.input<typeof createEnquiryFollowUpSchema>;
+export type UpdateEnquiryFollowUpInput = z.infer<typeof updateEnquiryFollowUpSchema>;
+export type CreateEnquiryCommunicationInput = z.input<typeof createEnquiryCommunicationSchema>;
+export type CreateEnquiryNoteInput = z.input<typeof createEnquiryNoteSchema>;
+export type UpdateEnquiryNoteInput = z.infer<typeof updateEnquiryNoteSchema>;
 export type CreateApplicationInput = z.input<typeof createApplicationSchema>;
 export type UpdateApplicationInput = z.infer<typeof updateApplicationSchema>;
 export type UpdateAdmissionsSettingsInput = z.infer<typeof updateAdmissionsSettingsSchema>;

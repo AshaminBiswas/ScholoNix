@@ -6,6 +6,26 @@ import { resolveApiTenantActor } from "@/server/school/resolve-api-tenant";
 
 export const dynamic = "force-dynamic";
 
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ enquiryId: string }> },
+) {
+  try {
+    const resolved = await resolveApiTenantActor(req);
+    if ("response" in resolved) return resolved.response;
+
+    const { enquiryId } = await context.params;
+    const dossier = await admissionsService.getEnquiryDossier(resolved.ctx, enquiryId);
+
+    return NextResponse.json({
+      success: true,
+      dossier,
+    });
+  } catch (err) {
+    return toErrorResponse(err);
+  }
+}
+
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ enquiryId: string }> },

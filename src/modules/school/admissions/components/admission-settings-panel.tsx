@@ -4,14 +4,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Bell,
-  Building2,
   Calendar,
   Check,
   CheckCircle2,
   ClipboardCheck,
   FileText,
   GitBranch,
-  GraduationCap,
   Info,
   Loader2,
   Mail,
@@ -424,38 +422,6 @@ export function AdmissionSettingsPanel({
             </button>
           </div>
         )}
-      </div>
-
-      {/* Hero Banner */}
-      <div className="overflow-hidden rounded-[20px] border border-[#D6DBF0] bg-gradient-to-r from-[#F4F0FF] via-white to-[#EEF4FF] px-5 py-4 shadow-xs flex items-center justify-between gap-4 dark:border-[#272B4D] dark:from-[#1B173D] dark:via-[#141731] dark:to-[#131C3A]">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#7C3AED] to-[#4F27E8] text-white shadow-md">
-            <GraduationCap className="h-6 w-6" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-base font-extrabold text-[#08093B] truncate dark:text-[#F3F5FF]">
-              {schoolName} — Admissions Control Center
-            </p>
-            <p className="text-xs text-[#4D5072] dark:text-[#9DA6CC]">
-              Every setting below belongs strictly to this school and applies to your{" "}
-              <span className="font-bold text-[#663CF6] dark:text-[#C4B5FD]">
-                {academicYear || settings.currentAcademicYear}
-              </span>{" "}
-              cycle.
-            </p>
-          </div>
-        </div>
-
-        <div
-          aria-hidden="true"
-          className="hidden sm:flex items-center gap-2 rounded-[14px] border border-[#D6DBF0]/80 bg-white/80 px-3.5 py-2 text-[#663CF6] dark:border-[#2E345B] dark:bg-[#10142C]/80 dark:text-[#A78BFA]"
-        >
-          <Building2 className="h-7 w-7" />
-          <div className="text-[10px] font-bold leading-tight text-[#4D5072] dark:text-[#9DA6CC]">
-            <div>SCHOOL-SCOPED</div>
-            <div className="text-[#08093B] dark:text-[#F3F5FF]">CUSTOM RULES</div>
-          </div>
-        </div>
       </div>
 
       {validationError && (

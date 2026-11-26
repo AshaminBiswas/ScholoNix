@@ -11,29 +11,48 @@ import { logger } from "@/lib/logger";
 import {
   DEFAULT_ADMISSION_GRADES,
   DEFAULT_DOCUMENT_CHECKLIST,
+  DEFAULT_ENQUIRY_SOURCES,
   mergeExtendedSettings,
   type AdmissionAcademicDetailsPayload,
   type AdmissionActivityRecord,
   type AdmissionApplicationRecord,
   type AdmissionApplicationStatusType,
   type AdmissionDocumentChecklistItem,
+  type AdmissionEnquiryCommunicationRecord,
+  type AdmissionEnquiryFollowUpRecord,
+  type AdmissionEnquiryNoteRecord,
   type AdmissionEnquiryRecord,
+  type AdmissionEnquirySourceRecord,
   type AdmissionGuardianDetailsPayload,
   type AdmissionReminderRecord,
   type AdmissionSettingRecord,
   type AdmissionStudentDetailsPayload,
   type AdmissionTypeValue,
   type AdmissionUploadedDocument,
+  type EnquiryCommunicationAttachment,
+  type EnquiryCommunicationChannelValue,
+  type EnquiryDossierData,
+  type EnquiryFollowUpStatusValue,
+  type EnquiryFollowUpTypeValue,
+  type EnquiryNoteCategoryValue,
+  type SchoolStaffOption,
 } from "@/modules/school/admissions/types";
 import { assertTenantDocumentStorageKey } from "./admissions-document-storage";
 import type {
   BulkUpdateApplicationsInput,
   CreateApplicationInput,
+  CreateEnquiryCommunicationInput,
+  CreateEnquiryFollowUpInput,
   CreateEnquiryInput,
+  CreateEnquiryNoteInput,
+  CreateEnquirySourceInput,
   CreateReminderInput,
   UpdateAdmissionsSettingsInput,
   UpdateApplicationInput,
+  UpdateEnquiryFollowUpInput,
   UpdateEnquiryInput,
+  UpdateEnquiryNoteInput,
+  UpdateEnquirySourceInput,
 } from "@/modules/school/admissions/schemas";
 import { getCurrentAcademicYearLabel } from "./admissions-analytics";
 
@@ -47,6 +66,10 @@ interface AdmissionsStoreState {
   settings: Record<string, StoredSetting>;
   applications: Record<string, AdmissionApplicationRecord>;
   enquiries: Record<string, AdmissionEnquiryRecord>;
+  enquirySources: Record<string, AdmissionEnquirySourceRecord>;
+  enquiryFollowUps: Record<string, AdmissionEnquiryFollowUpRecord>;
+  enquiryCommunications: Record<string, AdmissionEnquiryCommunicationRecord>;
+  enquiryNotes: Record<string, AdmissionEnquiryNoteRecord>;
   reminders: Record<string, AdmissionReminderRecord>;
   activities: AdmissionActivityRecord[];
 }
@@ -58,6 +81,10 @@ let storeMemory: AdmissionsStoreState = {
   settings: {},
   applications: {},
   enquiries: {},
+  enquirySources: {},
+  enquiryFollowUps: {},
+  enquiryCommunications: {},
+  enquiryNotes: {},
   reminders: {},
   activities: [],
 };
@@ -84,6 +111,10 @@ function loadStore(): AdmissionsStoreState {
         settings: parsed.settings || {},
         applications: parsed.applications || {},
         enquiries: parsed.enquiries || {},
+        enquirySources: parsed.enquirySources || {},
+        enquiryFollowUps: parsed.enquiryFollowUps || {},
+        enquiryCommunications: parsed.enquiryCommunications || {},
+        enquiryNotes: parsed.enquiryNotes || {},
         reminders: parsed.reminders || {},
         activities: Array.isArray(parsed.activities) ? parsed.activities : [],
       };
@@ -99,6 +130,10 @@ function loadStore(): AdmissionsStoreState {
     settings: {},
     applications: {},
     enquiries: {},
+    enquirySources: {},
+    enquiryFollowUps: {},
+    enquiryCommunications: {},
+    enquiryNotes: {},
     reminders: {},
     activities: [],
   };
@@ -417,16 +452,146 @@ function mapPrismaEnquiry(row: any): AdmissionEnquiryRecord {
     id: row.id,
     schoolId: row.schoolId,
     enquiryCode: row.enquiryCode,
+    enquiryDate: row.enquiryDate
+      ? new Date(row.enquiryDate).toISOString()
+      : new Date(row.createdAt).toISOString(),
     studentName: row.studentName,
+    studentDob: row.studentDob ?? null,
+    studentGender: row.studentGender ?? null,
     guardianName: row.guardianName,
+    guardianRelation: row.guardianRelation ?? "Parent",
     guardianPhone: row.guardianPhone,
     guardianEmail: row.guardianEmail ?? null,
+    addressLine1: row.addressLine1 ?? null,
+    addressLine2: row.addressLine2 ?? null,
+    city: row.city ?? null,
+    state: row.state ?? null,
+    pinCode: row.pinCode ?? null,
     gradeApplied: row.gradeApplied,
     academicYear: row.academicYear,
     source: row.source,
+    enquiryType: row.enquiryType ?? "General",
     status: row.status,
+    assignedToUserId: row.assignedToUserId ?? null,
+    assignedToName: row.assignedToName ?? null,
+    nextFollowUpAt: row.nextFollowUpAt ? new Date(row.nextFollowUpAt).toISOString() : null,
+    hasSiblingsInSchool: Boolean(row.hasSiblingsInSchool),
+    interestedInTransport: Boolean(row.interestedInTransport),
+    interestedInHostel: Boolean(row.interestedInHostel),
+    requiresSpecialSupport: Boolean(row.requiresSpecialSupport),
+    isDraft: Boolean(row.isDraft),
     notes: row.notes ?? null,
     convertedApplicationId: row.convertedApplicationId ?? null,
+    createdAt: new Date(row.createdAt).toISOString(),
+    updatedAt: new Date(row.updatedAt).toISOString(),
+  };
+}
+
+function getIstDateKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+export function computeEffectiveFollowUpStatus(
+  rawStatus: string,
+  scheduledAtIso: string,
+): EnquiryFollowUpStatusValue {
+  if (rawStatus === "COMPLETED" || rawStatus === "CANCELLED") {
+    return rawStatus;
+  }
+  const scheduledMs = Date.parse(scheduledAtIso);
+  if (Number.isNaN(scheduledMs)) {
+    return (rawStatus as EnquiryFollowUpStatusValue) || "UPCOMING";
+  }
+  const scheduledDay = getIstDateKey(new Date(scheduledMs));
+  const todayDay = getIstDateKey(new Date());
+  if (scheduledDay < todayDay) return "OVERDUE";
+  if (scheduledDay === todayDay) return "DUE_TODAY";
+  return "UPCOMING";
+}
+
+function mapPrismaEnquirySource(row: any): AdmissionEnquirySourceRecord {
+  return {
+    id: row.id,
+    schoolId: row.schoolId,
+    name: row.name,
+    description: row.description ?? null,
+    isActive: row.isActive !== undefined ? Boolean(row.isActive) : true,
+    colorToken: row.colorToken || "violet",
+    createdAt: new Date(row.createdAt).toISOString(),
+    updatedAt: new Date(row.updatedAt).toISOString(),
+  };
+}
+
+function mapPrismaEnquiryFollowUp(
+  row: any,
+  enquiry?: {
+    enquiryCode?: string;
+    studentName?: string;
+    guardianName?: string;
+    academicYear?: string;
+  },
+): AdmissionEnquiryFollowUpRecord {
+  const scheduledAt = new Date(row.scheduledAt).toISOString();
+  return {
+    id: row.id,
+    schoolId: row.schoolId,
+    enquiryId: row.enquiryId,
+    enquiryCode: enquiry?.enquiryCode ?? row.enquiry?.enquiryCode,
+    studentName: enquiry?.studentName ?? row.enquiry?.studentName,
+    guardianName: enquiry?.guardianName ?? row.enquiry?.guardianName,
+    academicYear: enquiry?.academicYear ?? row.enquiry?.academicYear,
+    followUpType: row.followUpType as EnquiryFollowUpTypeValue,
+    scheduledAt,
+    completedAt: row.completedAt ? new Date(row.completedAt).toISOString() : null,
+    status: computeEffectiveFollowUpStatus(row.status || "UPCOMING", scheduledAt),
+    assignedToUserId: row.assignedToUserId ?? null,
+    assignedToName: row.assignedToName ?? null,
+    notes: row.notes,
+    outcome: row.outcome ?? null,
+    createdByUserId: row.createdByUserId ?? null,
+    createdAt: new Date(row.createdAt).toISOString(),
+    updatedAt: new Date(row.updatedAt).toISOString(),
+  };
+}
+
+function mapPrismaEnquiryCommunication(row: any): AdmissionEnquiryCommunicationRecord {
+  const attachments = Array.isArray(row.attachments)
+    ? (row.attachments as EnquiryCommunicationAttachment[])
+    : [];
+  return {
+    id: row.id,
+    schoolId: row.schoolId,
+    enquiryId: row.enquiryId,
+    channel: row.channel as EnquiryCommunicationChannelValue,
+    recipient: row.recipient,
+    cc: row.cc ?? null,
+    bcc: row.bcc ?? null,
+    subject: row.subject,
+    message: row.message,
+    attachments,
+    status: (row.status as "SENT" | "COMPLETED" | "FAILED") || "SENT",
+    sentByUserId: row.sentByUserId ?? null,
+    sentByName: row.sentByName,
+    sentAt: new Date(row.sentAt).toISOString(),
+    createdAt: new Date(row.createdAt).toISOString(),
+  };
+}
+
+function mapPrismaEnquiryNote(row: any): AdmissionEnquiryNoteRecord {
+  return {
+    id: row.id,
+    schoolId: row.schoolId,
+    enquiryId: row.enquiryId,
+    category: (row.category as EnquiryNoteCategoryValue) || "Admission Related",
+    title: row.title,
+    content: row.content,
+    createdByUserId: row.createdByUserId ?? null,
+    createdByName: row.createdByName,
     createdAt: new Date(row.createdAt).toISOString(),
     updatedAt: new Date(row.updatedAt).toISOString(),
   };
@@ -464,13 +629,16 @@ export interface ActorMeta {
   name: string;
 }
 
-export const ADMISSIONS_SNAPSHOT_CACHE_KEY = "admissions:snapshot:v1";
+export const ADMISSIONS_SNAPSHOT_CACHE_KEY = "admissions:snapshot:v2";
 const ADMISSIONS_SNAPSHOT_TTL_SECONDS = 60;
 
 export interface TenantAdmissionsSnapshot {
   settings: AdmissionSettingRecord;
   applications: AdmissionApplicationRecord[];
   enquiries: AdmissionEnquiryRecord[];
+  enquirySources: AdmissionEnquirySourceRecord[];
+  enquiryFollowUps: AdmissionEnquiryFollowUpRecord[];
+  staffOptions: SchoolStaffOption[];
   reminders: AdmissionReminderRecord[];
   activities: AdmissionActivityRecord[];
 }
@@ -486,6 +654,8 @@ function isValidCachedSnapshot(
       s.settings.schoolId === expectedSchoolId &&
       Array.isArray(s.applications) &&
       Array.isArray(s.enquiries) &&
+      Array.isArray(s.enquirySources) &&
+      Array.isArray(s.enquiryFollowUps) &&
       Array.isArray(s.reminders) &&
       Array.isArray(s.activities),
   );
@@ -525,6 +695,33 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     return store.settings[schoolId]!;
   }
 
+  private ensureFallbackSources(
+    store: AdmissionsStoreState,
+    schoolId: string,
+  ): AdmissionEnquirySourceRecord[] {
+    const existing = Object.values(store.enquirySources).filter((s) => s.schoolId === schoolId);
+    if (existing.length > 0) {
+      return existing.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+    }
+    const nowIso = new Date().toISOString();
+    const created: AdmissionEnquirySourceRecord[] = DEFAULT_ENQUIRY_SOURCES.map((def) => {
+      const rec: AdmissionEnquirySourceRecord = {
+        id: randomUUID(),
+        schoolId,
+        name: def.name,
+        description: def.description,
+        isActive: true,
+        colorToken: def.colorToken,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      store.enquirySources[rec.id] = rec;
+      return rec;
+    });
+    saveStore(store);
+    return created;
+  }
+
   async getTenantSnapshot(explicitSchoolId: string): Promise<TenantAdmissionsSnapshot> {
     const schoolId = this.requireSchoolId(explicitSchoolId);
 
@@ -541,7 +738,16 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         const fresh = await runPrismaOp("getTenantSnapshot", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const [settingRow, appRows, enqRows, reminderRows, activityRows] = await Promise.all([
+            const [
+              settingRow,
+              appRows,
+              enqRows,
+              reminderRows,
+              activityRows,
+              sourceRowsRaw,
+              followUpRowsRaw,
+              staffRowsRaw,
+            ] = await Promise.all([
               tx.admissionSetting.findUnique({ where: { schoolId } }),
               tx.admissionApplication.findMany({
                 where: { schoolId },
@@ -558,9 +764,58 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               tx.admissionActivity.findMany({
                 where: { schoolId },
                 orderBy: { createdAt: "desc" },
-                take: 30,
+                take: 40,
+              }),
+              (tx as any).admissionEnquirySource
+                ? (tx as any).admissionEnquirySource.findMany({
+                    where: { schoolId },
+                    orderBy: { createdAt: "asc" },
+                  })
+                : Promise.resolve([]),
+              (tx as any).admissionEnquiryFollowUp
+                ? (tx as any).admissionEnquiryFollowUp.findMany({
+                    where: { schoolId },
+                    orderBy: { scheduledAt: "asc" },
+                    include: {
+                      enquiry: {
+                        select: {
+                          enquiryCode: true,
+                          studentName: true,
+                          guardianName: true,
+                          academicYear: true,
+                        },
+                      },
+                    },
+                  })
+                : Promise.resolve([]),
+              tx.user.findMany({
+                where: {
+                  schoolId,
+                  status: "ACTIVE",
+                  role: { in: ["SCHOOL_ADMIN", "PRINCIPAL", "TEACHER", "STAFF", "ACCOUNTANT"] },
+                },
+                select: { id: true, name: true, role: true },
+                orderBy: { name: "asc" },
               }),
             ]);
+
+            let sourceRows = sourceRowsRaw as any[];
+            if (sourceRows.length === 0 && (tx as any).admissionEnquirySource) {
+              const seeded = await Promise.all(
+                DEFAULT_ENQUIRY_SOURCES.map((def) =>
+                  (tx as any).admissionEnquirySource.create({
+                    data: {
+                      schoolId,
+                      name: def.name,
+                      description: def.description,
+                      isActive: true,
+                      colorToken: def.colorToken,
+                    },
+                  }),
+                ),
+              );
+              sourceRows = seeded;
+            }
 
             const settings: AdmissionSettingRecord = settingRow
               ? mapPrismaSetting(settingRow)
@@ -578,6 +833,13 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               settings,
               applications: appRows.map(mapPrismaApplication),
               enquiries: enqRows.map(mapPrismaEnquiry),
+              enquirySources: sourceRows.map(mapPrismaEnquirySource),
+              enquiryFollowUps: (followUpRowsRaw as any[]).map((r) => mapPrismaEnquiryFollowUp(r)),
+              staffOptions: staffRowsRaw.map((u) => ({
+                id: u.id,
+                name: u.name,
+                role: u.role,
+              })),
               reminders: reminderRows.map(mapPrismaReminder),
               activities: activityRows.map(mapPrismaActivity),
             };
@@ -608,12 +870,33 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     void _e;
     void _adm;
 
+    const fallbackSources = this.ensureFallbackSources(store, schoolId);
+    const enquiries = Object.values(store.enquiries).filter((r) => r.schoolId === schoolId);
+    const enquiryById = new Map(enquiries.map((e) => [e.id, e]));
+    const enquiryFollowUps = Object.values(store.enquiryFollowUps)
+      .filter((f) => f.schoolId === schoolId)
+      .map((f) => {
+        const parent = enquiryById.get(f.enquiryId);
+        return {
+          ...f,
+          status: computeEffectiveFollowUpStatus(f.status, f.scheduledAt),
+          enquiryCode: parent?.enquiryCode ?? f.enquiryCode,
+          studentName: parent?.studentName ?? f.studentName,
+          guardianName: parent?.guardianName ?? f.guardianName,
+          academicYear: parent?.academicYear ?? f.academicYear,
+        };
+      })
+      .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt));
+
     const fallbackSnapshot: TenantAdmissionsSnapshot = {
       settings: publicSettings,
       applications: Object.values(store.applications).filter((r) => r.schoolId === schoolId),
-      enquiries: Object.values(store.enquiries).filter((r) => r.schoolId === schoolId),
+      enquiries,
+      enquirySources: fallbackSources,
+      enquiryFollowUps,
+      staffOptions: [],
       reminders: Object.values(store.reminders).filter((r) => r.schoolId === schoolId),
-      activities: store.activities.filter((a) => a.schoolId === schoolId).slice(0, 30),
+      activities: store.activities.filter((a) => a.schoolId === schoolId).slice(0, 40),
     };
     await tenantCache.set(
       schoolId,
@@ -1298,7 +1581,22 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     input: CreateEnquiryInput,
   ): Promise<AdmissionEnquiryRecord> {
     const schoolId = this.requireSchoolId(explicitSchoolId);
-    const nowIso = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const enquiryDateObj =
+      input.enquiryDate && input.enquiryDate.trim() !== ""
+        ? new Date(`${input.enquiryDate.slice(0, 10)}T00:00:00.000Z`)
+        : now;
+    const enquiryDateIso = enquiryDateObj.toISOString();
+    const initialFollowUpDate =
+      input.initialFollowUp?.scheduledAt && !Number.isNaN(Date.parse(input.initialFollowUp.scheduledAt))
+        ? new Date(input.initialFollowUp.scheduledAt)
+        : null;
+    const isDraft = Boolean(input.isDraft);
+    const resolvedStatus =
+      initialFollowUpDate && (!input.status || input.status === "NEW")
+        ? "FOLLOW_UP"
+        : (input.status ?? "NEW");
 
     if (await canUsePrisma()) {
       try {
@@ -1323,29 +1621,67 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               data: {
                 schoolId,
                 enquiryCode,
+                enquiryDate: enquiryDateObj,
                 studentName: input.studentName,
+                studentDob: input.studentDob || null,
+                studentGender: input.studentGender || null,
                 guardianName: input.guardianName,
+                guardianRelation: input.guardianRelation || "Parent",
                 guardianPhone: input.guardianPhone,
                 guardianEmail: input.guardianEmail || null,
+                addressLine1: input.addressLine1 || null,
+                addressLine2: input.addressLine2 || null,
+                city: input.city || null,
+                state: input.state || null,
+                pinCode: input.pinCode || null,
                 gradeApplied: input.gradeApplied,
                 academicYear: input.academicYear,
-                source: input.source,
-                status: "NEW",
+                source: input.source || "Walk-In",
+                enquiryType: input.enquiryType || "General",
+                status: resolvedStatus,
+                assignedToUserId: input.assignedToUserId || null,
+                assignedToName: input.assignedToName || null,
+                nextFollowUpAt: initialFollowUpDate,
+                hasSiblingsInSchool: Boolean(input.hasSiblingsInSchool),
+                interestedInTransport: Boolean(input.interestedInTransport),
+                interestedInHostel: Boolean(input.interestedInHostel),
+                requiresSpecialSupport: Boolean(input.requiresSpecialSupport),
+                isDraft,
                 notes: input.notes || null,
                 createdByUserId: actor.id,
-              },
+              } as any,
             });
 
-            await tx.admissionActivity.create({
-              data: {
-                schoolId,
-                enquiryId: created.id,
-                actorId: actor.id,
-                actorName: actor.name,
-                action: "ENQUIRY_CREATED",
-                summary: `Enquiry ${enquiryCode} logged for ${input.studentName} (${input.gradeApplied}).`,
-              },
-            });
+            if (initialFollowUpDate && input.initialFollowUp && (tx as any).admissionEnquiryFollowUp) {
+              await (tx as any).admissionEnquiryFollowUp.create({
+                data: {
+                  schoolId,
+                  enquiryId: created.id,
+                  followUpType: input.initialFollowUp.followUpType || "Phone Call",
+                  scheduledAt: initialFollowUpDate,
+                  status: computeEffectiveFollowUpStatus("UPCOMING", initialFollowUpDate.toISOString()),
+                  assignedToUserId:
+                    input.initialFollowUp.assignedToUserId || input.assignedToUserId || null,
+                  assignedToName:
+                    input.initialFollowUp.assignedToName || input.assignedToName || actor.name,
+                  notes: input.initialFollowUp.notes || "Initial follow-up scheduled during enquiry creation.",
+                  createdByUserId: actor.id,
+                },
+              });
+            }
+
+            if (!isDraft) {
+              await tx.admissionActivity.create({
+                data: {
+                  schoolId,
+                  enquiryId: created.id,
+                  actorId: actor.id,
+                  actorName: actor.name,
+                  action: "ENQUIRY_CREATED",
+                  summary: `Enquiry ${enquiryCode} logged with source "${input.source || "Walk-In"}" for student ${input.studentName} (${input.gradeApplied}).`,
+                },
+              });
+            }
 
             return mapPrismaEnquiry(created);
           });
@@ -1365,14 +1701,32 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
       id: randomUUID(),
       schoolId,
       enquiryCode,
+      enquiryDate: enquiryDateIso,
       studentName: input.studentName,
+      studentDob: input.studentDob || null,
+      studentGender: input.studentGender || null,
       guardianName: input.guardianName,
+      guardianRelation: input.guardianRelation || "Parent",
       guardianPhone: input.guardianPhone,
       guardianEmail: input.guardianEmail || null,
+      addressLine1: input.addressLine1 || null,
+      addressLine2: input.addressLine2 || null,
+      city: input.city || null,
+      state: input.state || null,
+      pinCode: input.pinCode || null,
       gradeApplied: input.gradeApplied,
       academicYear: input.academicYear,
-      source: input.source,
-      status: "NEW",
+      source: input.source || "Walk-In",
+      enquiryType: input.enquiryType || "General",
+      status: resolvedStatus,
+      assignedToUserId: input.assignedToUserId || null,
+      assignedToName: input.assignedToName || null,
+      nextFollowUpAt: initialFollowUpDate ? initialFollowUpDate.toISOString() : null,
+      hasSiblingsInSchool: Boolean(input.hasSiblingsInSchool),
+      interestedInTransport: Boolean(input.interestedInTransport),
+      interestedInHostel: Boolean(input.interestedInHostel),
+      requiresSpecialSupport: Boolean(input.requiresSpecialSupport),
+      isDraft,
       notes: input.notes || null,
       convertedApplicationId: null,
       createdAt: nowIso,
@@ -1380,17 +1734,45 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     };
 
     store.enquiries[record.id] = record;
-    store.activities.unshift({
-      id: randomUUID(),
-      schoolId,
-      applicationId: null,
-      enquiryId: record.id,
-      actorId: actor.id,
-      actorName: actor.name,
-      action: "ENQUIRY_CREATED",
-      summary: `Enquiry ${enquiryCode} logged for ${input.studentName} (${input.gradeApplied}).`,
-      createdAt: nowIso,
-    });
+
+    if (initialFollowUpDate && input.initialFollowUp) {
+      const fuId = randomUUID();
+      const fuScheduledIso = initialFollowUpDate.toISOString();
+      store.enquiryFollowUps[fuId] = {
+        id: fuId,
+        schoolId,
+        enquiryId: record.id,
+        enquiryCode: record.enquiryCode,
+        studentName: record.studentName,
+        guardianName: record.guardianName,
+        academicYear: record.academicYear,
+        followUpType: input.initialFollowUp.followUpType || "Phone Call",
+        scheduledAt: fuScheduledIso,
+        completedAt: null,
+        status: computeEffectiveFollowUpStatus("UPCOMING", fuScheduledIso),
+        assignedToUserId: input.initialFollowUp.assignedToUserId || input.assignedToUserId || null,
+        assignedToName: input.initialFollowUp.assignedToName || input.assignedToName || actor.name,
+        notes: input.initialFollowUp.notes || "Initial follow-up scheduled during enquiry creation.",
+        outcome: null,
+        createdByUserId: actor.id,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+    }
+
+    if (!isDraft) {
+      store.activities.unshift({
+        id: randomUUID(),
+        schoolId,
+        applicationId: null,
+        enquiryId: record.id,
+        actorId: actor.id,
+        actorName: actor.name,
+        action: "ENQUIRY_CREATED",
+        summary: `Enquiry ${enquiryCode} logged with source "${record.source}" for student ${input.studentName} (${input.gradeApplied}).`,
+        createdAt: nowIso,
+      });
+    }
     saveStore(store);
     return record;
   }
@@ -1405,20 +1787,47 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
 
     if (input.action === "convert") {
       const existing = await this.getEnquiryById(schoolId, enquiryId);
+      const hasAddress = Boolean(
+        existing.addressLine1 || existing.city || existing.state || existing.pinCode,
+      );
       const createdApplication = await this.createApplication(schoolId, actor, {
         studentName: existing.studentName,
-        gender: "",
-        dateOfBirth: "",
+        gender: (existing.studentGender as "Male" | "Female" | "Other" | "") || "",
+        dateOfBirth: existing.studentDob || "",
         gradeApplied: existing.gradeApplied,
         academicYear: existing.academicYear,
         guardianName: existing.guardianName,
-        guardianRelation: "Parent",
+        guardianRelation: existing.guardianRelation || "Parent",
         guardianPhone: existing.guardianPhone,
         guardianEmail: existing.guardianEmail || "",
         previousSchool: "",
         status: "UNDER_REVIEW",
         enquiryId: existing.id,
         notes: existing.notes || "",
+        studentDetails: hasAddress
+          ? {
+              email: "",
+              phone: "",
+              address: {
+                addressLine1: existing.addressLine1 || "",
+                addressLine2: existing.addressLine2 || "",
+                city: existing.city || "",
+                state: existing.state || "",
+                postalCode: existing.pinCode || "",
+              },
+            }
+          : undefined,
+        guardianDetails: {
+          primary: {
+            fullName: existing.guardianName,
+            relationship: existing.guardianRelation || "Parent",
+            occupation: "",
+            annualIncome: "",
+            email: existing.guardianEmail || "",
+            phone: existing.guardianPhone,
+          },
+          sameAsStudentAddress: true,
+        },
       });
       const updatedEnquiry = await this.getEnquiryById(schoolId, enquiryId);
       return { enquiry: updatedEnquiry, createdApplication };
@@ -1436,13 +1845,69 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
             if (!existing) {
               throw new NotFoundError("Admission enquiry");
             }
+            const dataPatch: Record<string, any> = {};
+            if (input.studentName !== undefined) dataPatch.studentName = input.studentName;
+            if (input.studentDob !== undefined) dataPatch.studentDob = input.studentDob || null;
+            if (input.studentGender !== undefined) dataPatch.studentGender = input.studentGender || null;
+            if (input.guardianName !== undefined) dataPatch.guardianName = input.guardianName;
+            if (input.guardianRelation !== undefined) dataPatch.guardianRelation = input.guardianRelation || null;
+            if (input.guardianPhone !== undefined) dataPatch.guardianPhone = input.guardianPhone;
+            if (input.guardianEmail !== undefined) dataPatch.guardianEmail = input.guardianEmail || null;
+            if (input.addressLine1 !== undefined) dataPatch.addressLine1 = input.addressLine1 || null;
+            if (input.addressLine2 !== undefined) dataPatch.addressLine2 = input.addressLine2 || null;
+            if (input.city !== undefined) dataPatch.city = input.city || null;
+            if (input.state !== undefined) dataPatch.state = input.state || null;
+            if (input.pinCode !== undefined) dataPatch.pinCode = input.pinCode || null;
+            if (input.gradeApplied !== undefined) dataPatch.gradeApplied = input.gradeApplied;
+            if (input.academicYear !== undefined) dataPatch.academicYear = input.academicYear;
+            if (input.enquiryDate && input.enquiryDate.trim() !== "") {
+              dataPatch.enquiryDate = new Date(`${input.enquiryDate.slice(0, 10)}T00:00:00.000Z`);
+            }
+            if (input.source !== undefined) dataPatch.source = input.source;
+            if (input.enquiryType !== undefined) dataPatch.enquiryType = input.enquiryType;
+            if (input.status !== undefined) dataPatch.status = input.status;
+            if (input.assignedToUserId !== undefined) dataPatch.assignedToUserId = input.assignedToUserId || null;
+            if (input.assignedToName !== undefined) dataPatch.assignedToName = input.assignedToName || null;
+            if (input.hasSiblingsInSchool !== undefined) dataPatch.hasSiblingsInSchool = input.hasSiblingsInSchool;
+            if (input.interestedInTransport !== undefined) dataPatch.interestedInTransport = input.interestedInTransport;
+            if (input.interestedInHostel !== undefined) dataPatch.interestedInHostel = input.interestedInHostel;
+            if (input.requiresSpecialSupport !== undefined) dataPatch.requiresSpecialSupport = input.requiresSpecialSupport;
+            if (input.isDraft !== undefined) dataPatch.isDraft = input.isDraft;
+            if (input.notes !== undefined) dataPatch.notes = input.notes;
+
             const updated = await tx.admissionEnquiry.update({
               where: { id: existing.id },
+              data: dataPatch as any,
+            });
+
+            const changes: string[] = [];
+            if (input.status !== undefined && input.status !== existing.status) {
+              changes.push(`Status changed from "${existing.status}" to "${input.status}".`);
+            }
+            if (
+              input.assignedToName !== undefined &&
+              (input.assignedToName || "Unassigned") !== ((existing as any).assignedToName || "Unassigned")
+            ) {
+              changes.push(
+                `Assigned to ${input.assignedToName || "Unassigned"} (previously ${(existing as any).assignedToName || "Unassigned"}).`,
+              );
+            }
+            await tx.admissionActivity.create({
               data: {
-                status: input.status ?? existing.status,
-                notes: input.notes !== undefined ? input.notes : existing.notes,
+                schoolId,
+                enquiryId: existing.id,
+                actorId: actor.id,
+                actorName: actor.name,
+                action:
+                  changes.length > 0 && input.status !== existing.status
+                    ? "ENQUIRY_STATUS_UPDATED"
+                    : "ENQUIRY_UPDATED",
+                summary:
+                  changes[0] ||
+                  `Updated enquiry ${existing.enquiryCode} for ${updated.studentName}.`,
               },
             });
+
             return { enquiry: mapPrismaEnquiry(updated) };
           });
         });
@@ -1459,11 +1924,89 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     }
     const updated: AdmissionEnquiryRecord = {
       ...existing,
+      studentName: input.studentName ?? existing.studentName,
+      studentDob: input.studentDob !== undefined ? input.studentDob || null : existing.studentDob,
+      studentGender:
+        input.studentGender !== undefined ? input.studentGender || null : existing.studentGender,
+      guardianName: input.guardianName ?? existing.guardianName,
+      guardianRelation:
+        input.guardianRelation !== undefined
+          ? input.guardianRelation || null
+          : existing.guardianRelation,
+      guardianPhone: input.guardianPhone ?? existing.guardianPhone,
+      guardianEmail:
+        input.guardianEmail !== undefined ? input.guardianEmail || null : existing.guardianEmail,
+      addressLine1:
+        input.addressLine1 !== undefined ? input.addressLine1 || null : existing.addressLine1,
+      addressLine2:
+        input.addressLine2 !== undefined ? input.addressLine2 || null : existing.addressLine2,
+      city: input.city !== undefined ? input.city || null : existing.city,
+      state: input.state !== undefined ? input.state || null : existing.state,
+      pinCode: input.pinCode !== undefined ? input.pinCode || null : existing.pinCode,
+      gradeApplied: input.gradeApplied ?? existing.gradeApplied,
+      academicYear: input.academicYear ?? existing.academicYear,
+      enquiryDate:
+        input.enquiryDate && input.enquiryDate.trim() !== ""
+          ? new Date(`${input.enquiryDate.slice(0, 10)}T00:00:00.000Z`).toISOString()
+          : existing.enquiryDate,
+      source: input.source ?? existing.source,
+      enquiryType: input.enquiryType ?? existing.enquiryType,
       status: input.status ?? existing.status,
+      assignedToUserId:
+        input.assignedToUserId !== undefined
+          ? input.assignedToUserId || null
+          : existing.assignedToUserId,
+      assignedToName:
+        input.assignedToName !== undefined
+          ? input.assignedToName || null
+          : existing.assignedToName,
+      hasSiblingsInSchool:
+        input.hasSiblingsInSchool !== undefined
+          ? input.hasSiblingsInSchool
+          : existing.hasSiblingsInSchool,
+      interestedInTransport:
+        input.interestedInTransport !== undefined
+          ? input.interestedInTransport
+          : existing.interestedInTransport,
+      interestedInHostel:
+        input.interestedInHostel !== undefined
+          ? input.interestedInHostel
+          : existing.interestedInHostel,
+      requiresSpecialSupport:
+        input.requiresSpecialSupport !== undefined
+          ? input.requiresSpecialSupport
+          : existing.requiresSpecialSupport,
+      isDraft: input.isDraft !== undefined ? input.isDraft : existing.isDraft,
       notes: input.notes !== undefined ? input.notes : existing.notes,
       updatedAt: nowIso,
     };
     store.enquiries[enquiryId] = updated;
+    const changes: string[] = [];
+    if (input.status !== undefined && input.status !== existing.status) {
+      changes.push(`Status changed from "${existing.status}" to "${input.status}".`);
+    }
+    if (
+      input.assignedToName !== undefined &&
+      (input.assignedToName || "Unassigned") !== (existing.assignedToName || "Unassigned")
+    ) {
+      changes.push(
+        `Assigned to ${input.assignedToName || "Unassigned"} (previously ${existing.assignedToName || "Unassigned"}).`,
+      );
+    }
+    store.activities.unshift({
+      id: randomUUID(),
+      schoolId,
+      applicationId: null,
+      enquiryId: existing.id,
+      actorId: actor.id,
+      actorName: actor.name,
+      action:
+        changes.length > 0 && input.status !== existing.status
+          ? "ENQUIRY_STATUS_UPDATED"
+          : "ENQUIRY_UPDATED",
+      summary: changes[0] || `Updated enquiry ${existing.enquiryCode} for ${updated.studentName}.`,
+      createdAt: nowIso,
+    });
     saveStore(store);
     return { enquiry: updated };
   }
@@ -2008,6 +2551,956 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
 
     saveStore(store);
     return updatedRecords;
+  }
+
+  async getEnquiryDossier(
+    explicitSchoolId: string,
+    enquiryId: string,
+  ): Promise<EnquiryDossierData> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("getEnquiryDossier", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const row = await tx.admissionEnquiry.findFirst({
+              where: { id: enquiryId, schoolId },
+            });
+            if (!row) throw new NotFoundError("Admission enquiry");
+
+            const [followUpsRaw, commsRaw, notesRaw, activityRows, staffRows] = await Promise.all([
+              (tx as any).admissionEnquiryFollowUp
+                ? (tx as any).admissionEnquiryFollowUp.findMany({
+                    where: { schoolId, enquiryId },
+                    orderBy: { scheduledAt: "desc" },
+                  })
+                : Promise.resolve([]),
+              (tx as any).admissionEnquiryCommunication
+                ? (tx as any).admissionEnquiryCommunication.findMany({
+                    where: { schoolId, enquiryId },
+                    orderBy: { sentAt: "desc" },
+                  })
+                : Promise.resolve([]),
+              (tx as any).admissionEnquiryNote
+                ? (tx as any).admissionEnquiryNote.findMany({
+                    where: { schoolId, enquiryId },
+                    orderBy: { createdAt: "desc" },
+                  })
+                : Promise.resolve([]),
+              tx.admissionActivity.findMany({
+                where: { schoolId, enquiryId },
+                orderBy: { createdAt: "desc" },
+                take: 100,
+              }),
+              tx.user.findMany({
+                where: {
+                  schoolId,
+                  status: "ACTIVE",
+                  role: { in: ["SCHOOL_ADMIN", "PRINCIPAL", "TEACHER", "STAFF", "ACCOUNTANT"] },
+                },
+                select: { id: true, name: true, role: true },
+                orderBy: { name: "asc" },
+              }),
+            ]);
+
+            const enquiry = mapPrismaEnquiry(row);
+            return {
+              enquiry,
+              followUps: (followUpsRaw as any[]).map((f) =>
+                mapPrismaEnquiryFollowUp(f, {
+                  enquiryCode: enquiry.enquiryCode,
+                  studentName: enquiry.studentName,
+                  guardianName: enquiry.guardianName,
+                  academicYear: enquiry.academicYear,
+                }),
+              ),
+              communications: (commsRaw as any[]).map(mapPrismaEnquiryCommunication),
+              notes: (notesRaw as any[]).map(mapPrismaEnquiryNote),
+              activities: activityRows.map(mapPrismaActivity),
+              staffOptions: staffRows.map((u) => ({
+                id: u.id,
+                name: u.name,
+                role: u.role,
+              })),
+            };
+          });
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) throw err;
+        handlePrismaError("getEnquiryDossier", err);
+      }
+    }
+
+    const store = loadStore();
+    const enquiry = store.enquiries[enquiryId];
+    if (!enquiry || enquiry.schoolId !== schoolId) {
+      throw new NotFoundError("Admission enquiry");
+    }
+
+    const followUps = Object.values(store.enquiryFollowUps)
+      .filter((f) => f.schoolId === schoolId && f.enquiryId === enquiryId)
+      .map((f) => ({
+        ...f,
+        status: computeEffectiveFollowUpStatus(f.status, f.scheduledAt),
+        enquiryCode: enquiry.enquiryCode,
+        studentName: enquiry.studentName,
+        guardianName: enquiry.guardianName,
+        academicYear: enquiry.academicYear,
+      }))
+      .sort((a, b) => Date.parse(b.scheduledAt) - Date.parse(a.scheduledAt));
+
+    const communications = Object.values(store.enquiryCommunications)
+      .filter((c) => c.schoolId === schoolId && c.enquiryId === enquiryId)
+      .sort((a, b) => Date.parse(b.sentAt) - Date.parse(a.sentAt));
+
+    const notes = Object.values(store.enquiryNotes)
+      .filter((n) => n.schoolId === schoolId && n.enquiryId === enquiryId)
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+
+    const activities = store.activities
+      .filter((a) => a.schoolId === schoolId && a.enquiryId === enquiryId)
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+
+    return {
+      enquiry,
+      followUps,
+      communications,
+      notes,
+      activities,
+      staffOptions: [],
+    };
+  }
+
+  async listEnquirySources(explicitSchoolId: string): Promise<AdmissionEnquirySourceRecord[]> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("listEnquirySources", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            let rows = await (tx as any).admissionEnquirySource.findMany({
+              where: { schoolId },
+              orderBy: { createdAt: "asc" },
+            });
+            if (rows.length === 0) {
+              rows = await Promise.all(
+                DEFAULT_ENQUIRY_SOURCES.map((def) =>
+                  (tx as any).admissionEnquirySource.create({
+                    data: {
+                      schoolId,
+                      name: def.name,
+                      description: def.description,
+                      isActive: true,
+                      colorToken: def.colorToken,
+                    },
+                  }),
+                ),
+              );
+            }
+            return (rows as any[]).map(mapPrismaEnquirySource);
+          });
+        });
+      } catch (err) {
+        handlePrismaError("listEnquirySources", err);
+      }
+    }
+
+    const store = loadStore();
+    return this.ensureFallbackSources(store, schoolId);
+  }
+
+  async createEnquirySource(
+    explicitSchoolId: string,
+    input: CreateEnquirySourceInput,
+  ): Promise<AdmissionEnquirySourceRecord> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const nowIso = new Date().toISOString();
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("createEnquirySource", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const dup = await (tx as any).admissionEnquirySource.findFirst({
+              where: { schoolId, name: { equals: input.name.trim(), mode: "insensitive" } },
+            });
+            if (dup) {
+              throw new ConflictError(`Enquiry source "${input.name}" already exists.`);
+            }
+            const created = await (tx as any).admissionEnquirySource.create({
+              data: {
+                schoolId,
+                name: input.name.trim(),
+                description: input.description?.trim() || null,
+                isActive: input.isActive ?? true,
+                colorToken: input.colorToken || "violet",
+              },
+            });
+            return mapPrismaEnquirySource(created);
+          });
+        });
+      } catch (err) {
+        if (err instanceof ConflictError) throw err;
+        handlePrismaError("createEnquirySource", err);
+      }
+    }
+
+    const store = loadStore();
+    const existing = this.ensureFallbackSources(store, schoolId);
+    if (existing.some((s) => s.name.toLowerCase() === input.name.trim().toLowerCase())) {
+      throw new ConflictError(`Enquiry source "${input.name}" already exists.`);
+    }
+    const created: AdmissionEnquirySourceRecord = {
+      id: randomUUID(),
+      schoolId,
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+      isActive: input.isActive ?? true,
+      colorToken: input.colorToken || "violet",
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+    store.enquirySources[created.id] = created;
+    saveStore(store);
+    return created;
+  }
+
+  async updateEnquirySource(
+    explicitSchoolId: string,
+    input: UpdateEnquirySourceInput,
+  ): Promise<AdmissionEnquirySourceRecord> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const nowIso = new Date().toISOString();
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("updateEnquirySource", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const existing = await (tx as any).admissionEnquirySource.findFirst({
+              where: { id: input.id, schoolId },
+            });
+            if (!existing) throw new NotFoundError("Enquiry source");
+            const updated = await (tx as any).admissionEnquirySource.update({
+              where: { id: existing.id },
+              data: {
+                name: input.name !== undefined ? input.name.trim() : existing.name,
+                description:
+                  input.description !== undefined
+                    ? input.description?.trim() || null
+                    : existing.description,
+                isActive: input.isActive !== undefined ? input.isActive : existing.isActive,
+                colorToken: input.colorToken ?? existing.colorToken,
+              },
+            });
+            return mapPrismaEnquirySource(updated);
+          });
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) throw err;
+        handlePrismaError("updateEnquirySource", err);
+      }
+    }
+
+    const store = loadStore();
+    const existing = store.enquirySources[input.id];
+    if (!existing || existing.schoolId !== schoolId) {
+      throw new NotFoundError("Enquiry source");
+    }
+    const updated: AdmissionEnquirySourceRecord = {
+      ...existing,
+      name: input.name !== undefined ? input.name.trim() : existing.name,
+      description:
+        input.description !== undefined
+          ? input.description?.trim() || null
+          : existing.description,
+      isActive: input.isActive !== undefined ? input.isActive : existing.isActive,
+      colorToken: input.colorToken ?? existing.colorToken,
+      updatedAt: nowIso,
+    };
+    store.enquirySources[input.id] = updated;
+    saveStore(store);
+    return updated;
+  }
+
+  async deleteEnquirySource(explicitSchoolId: string, sourceId: string): Promise<void> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+
+    if (await canUsePrisma()) {
+      try {
+        await runPrismaOp("deleteEnquirySource", async () => {
+          await db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const existing = await (tx as any).admissionEnquirySource.findFirst({
+              where: { id: sourceId, schoolId },
+            });
+            if (!existing) throw new NotFoundError("Enquiry source");
+            await (tx as any).admissionEnquirySource.delete({ where: { id: existing.id } });
+          });
+        });
+        return;
+      } catch (err) {
+        if (err instanceof NotFoundError) throw err;
+        handlePrismaError("deleteEnquirySource", err);
+      }
+    }
+
+    const store = loadStore();
+    const existing = store.enquirySources[sourceId];
+    if (!existing || existing.schoolId !== schoolId) {
+      throw new NotFoundError("Enquiry source");
+    }
+    delete store.enquirySources[sourceId];
+    saveStore(store);
+  }
+
+  async listEnquiryFollowUps(
+    explicitSchoolId: string,
+  ): Promise<AdmissionEnquiryFollowUpRecord[]> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("listEnquiryFollowUps", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const rows = await (tx as any).admissionEnquiryFollowUp.findMany({
+              where: { schoolId },
+              orderBy: { scheduledAt: "asc" },
+              include: {
+                enquiry: {
+                  select: {
+                    enquiryCode: true,
+                    studentName: true,
+                    guardianName: true,
+                    academicYear: true,
+                  },
+                },
+              },
+            });
+            return (rows as any[]).map((r) => mapPrismaEnquiryFollowUp(r));
+          });
+        });
+      } catch (err) {
+        handlePrismaError("listEnquiryFollowUps", err);
+      }
+    }
+
+    const store = loadStore();
+    const enquiryById = new Map(
+      Object.values(store.enquiries)
+        .filter((e) => e.schoolId === schoolId)
+        .map((e) => [e.id, e]),
+    );
+    return Object.values(store.enquiryFollowUps)
+      .filter((f) => f.schoolId === schoolId)
+      .map((f) => {
+        const parent = enquiryById.get(f.enquiryId);
+        return {
+          ...f,
+          status: computeEffectiveFollowUpStatus(f.status, f.scheduledAt),
+          enquiryCode: parent?.enquiryCode ?? f.enquiryCode,
+          studentName: parent?.studentName ?? f.studentName,
+          guardianName: parent?.guardianName ?? f.guardianName,
+          academicYear: parent?.academicYear ?? f.academicYear,
+        };
+      })
+      .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt));
+  }
+
+  async createEnquiryFollowUp(
+    explicitSchoolId: string,
+    enquiryId: string,
+    actor: ActorMeta,
+    input: CreateEnquiryFollowUpInput,
+  ): Promise<AdmissionEnquiryFollowUpRecord> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const nowIso = new Date().toISOString();
+    const scheduledDate = new Date(input.scheduledAt);
+    if (Number.isNaN(scheduledDate.getTime())) {
+      throw new NotFoundError("Valid follow-up schedule timestamp");
+    }
+    const scheduledIso = scheduledDate.toISOString();
+    const initialStatus = computeEffectiveFollowUpStatus("UPCOMING", scheduledIso);
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("createEnquiryFollowUp", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const enq = await tx.admissionEnquiry.findFirst({
+              where: { id: enquiryId, schoolId },
+            });
+            if (!enq) throw new NotFoundError("Admission enquiry");
+
+            const created = await (tx as any).admissionEnquiryFollowUp.create({
+              data: {
+                schoolId,
+                enquiryId,
+                followUpType: input.followUpType,
+                scheduledAt: scheduledDate,
+                status: initialStatus,
+                assignedToUserId: input.assignedToUserId || null,
+                assignedToName: input.assignedToName || actor.name,
+                notes: input.notes,
+                createdByUserId: actor.id,
+              },
+            });
+
+            const pendingFollowUps = await (tx as any).admissionEnquiryFollowUp.findMany({
+              where: { schoolId, enquiryId, status: { notIn: ["COMPLETED", "CANCELLED"] } },
+              orderBy: { scheduledAt: "asc" },
+              take: 1,
+            });
+            await tx.admissionEnquiry.update({
+              where: { id: enquiryId },
+              data: {
+                status: enq.status === "NEW" || enq.status === "CONTACTED" ? "FOLLOW_UP" : enq.status,
+                nextFollowUpAt: pendingFollowUps[0]?.scheduledAt ?? scheduledDate,
+              } as any,
+            });
+
+            await tx.admissionActivity.create({
+              data: {
+                schoolId,
+                enquiryId,
+                actorId: actor.id,
+                actorName: actor.name,
+                action: "FOLLOW_UP_SCHEDULED",
+                summary: `Scheduled a follow-up: ${input.followUpType} on ${scheduledIso.slice(0, 10)} (${input.assignedToName || actor.name}).`,
+              },
+            });
+
+            return mapPrismaEnquiryFollowUp(created, {
+              enquiryCode: enq.enquiryCode,
+              studentName: enq.studentName,
+              guardianName: enq.guardianName,
+              academicYear: enq.academicYear,
+            });
+          });
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) throw err;
+        handlePrismaError("createEnquiryFollowUp", err);
+      }
+    }
+
+    const store = loadStore();
+    const enq = store.enquiries[enquiryId];
+    if (!enq || enq.schoolId !== schoolId) {
+      throw new NotFoundError("Admission enquiry");
+    }
+
+    const created: AdmissionEnquiryFollowUpRecord = {
+      id: randomUUID(),
+      schoolId,
+      enquiryId,
+      enquiryCode: enq.enquiryCode,
+      studentName: enq.studentName,
+      guardianName: enq.guardianName,
+      academicYear: enq.academicYear,
+      followUpType: input.followUpType || "Phone Call",
+      scheduledAt: scheduledIso,
+      completedAt: null,
+      status: initialStatus,
+      assignedToUserId: input.assignedToUserId || null,
+      assignedToName: input.assignedToName || actor.name,
+      notes: input.notes,
+      outcome: null,
+      createdByUserId: actor.id,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+    store.enquiryFollowUps[created.id] = created;
+
+    const earliest = Object.values(store.enquiryFollowUps)
+      .filter(
+        (f) =>
+          f.schoolId === schoolId &&
+          f.enquiryId === enquiryId &&
+          f.status !== "COMPLETED" &&
+          f.status !== "CANCELLED",
+      )
+      .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt))[0];
+
+    store.enquiries[enquiryId] = {
+      ...enq,
+      status: enq.status === "NEW" || enq.status === "CONTACTED" ? "FOLLOW_UP" : enq.status,
+      nextFollowUpAt: earliest?.scheduledAt ?? scheduledIso,
+      updatedAt: nowIso,
+    };
+    store.activities.unshift({
+      id: randomUUID(),
+      schoolId,
+      applicationId: null,
+      enquiryId,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "FOLLOW_UP_SCHEDULED",
+      summary: `Scheduled a follow-up: ${created.followUpType} on ${scheduledIso.slice(0, 10)} (${created.assignedToName || actor.name}).`,
+      createdAt: nowIso,
+    });
+    saveStore(store);
+    return created;
+  }
+
+  async updateEnquiryFollowUp(
+    explicitSchoolId: string,
+    enquiryId: string,
+    actor: ActorMeta,
+    input: UpdateEnquiryFollowUpInput,
+  ): Promise<AdmissionEnquiryFollowUpRecord> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("updateEnquiryFollowUp", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const existing = await (tx as any).admissionEnquiryFollowUp.findFirst({
+              where: { id: input.followUpId, schoolId, enquiryId },
+              include: {
+                enquiry: {
+                  select: {
+                    enquiryCode: true,
+                    studentName: true,
+                    guardianName: true,
+                    academicYear: true,
+                  },
+                },
+              },
+            });
+            if (!existing) throw new NotFoundError("Enquiry follow-up");
+
+            const nextScheduled = input.scheduledAt ? new Date(input.scheduledAt) : existing.scheduledAt;
+            const nextStatus =
+              input.status ??
+              computeEffectiveFollowUpStatus(
+                existing.status,
+                new Date(nextScheduled).toISOString(),
+              );
+            const updated = await (tx as any).admissionEnquiryFollowUp.update({
+              where: { id: existing.id },
+              data: {
+                followUpType: input.followUpType ?? existing.followUpType,
+                scheduledAt: nextScheduled,
+                status: nextStatus,
+                completedAt:
+                  nextStatus === "COMPLETED" && !existing.completedAt ? now : existing.completedAt,
+                assignedToUserId:
+                  input.assignedToUserId !== undefined
+                    ? input.assignedToUserId || null
+                    : existing.assignedToUserId,
+                assignedToName:
+                  input.assignedToName !== undefined
+                    ? input.assignedToName || null
+                    : existing.assignedToName,
+                notes: input.notes ?? existing.notes,
+                outcome: input.outcome !== undefined ? input.outcome : existing.outcome,
+              },
+              include: {
+                enquiry: {
+                  select: {
+                    enquiryCode: true,
+                    studentName: true,
+                    guardianName: true,
+                    academicYear: true,
+                  },
+                },
+              },
+            });
+
+            const pending = await (tx as any).admissionEnquiryFollowUp.findMany({
+              where: { schoolId, enquiryId, status: { notIn: ["COMPLETED", "CANCELLED"] } },
+              orderBy: { scheduledAt: "asc" },
+              take: 1,
+            });
+            await tx.admissionEnquiry.update({
+              where: { id: enquiryId },
+              data: { nextFollowUpAt: pending[0]?.scheduledAt ?? null } as any,
+            });
+
+            await tx.admissionActivity.create({
+              data: {
+                schoolId,
+                enquiryId,
+                actorId: actor.id,
+                actorName: actor.name,
+                action: nextStatus === "COMPLETED" ? "FOLLOW_UP_COMPLETED" : "FOLLOW_UP_UPDATED",
+                summary:
+                  nextStatus === "COMPLETED"
+                    ? `Completed ${updated.followUpType} follow-up.${input.outcome ? ` Outcome: ${input.outcome}` : ""}`
+                    : `Updated ${updated.followUpType} follow-up status to ${nextStatus}.`,
+              },
+            });
+
+            return mapPrismaEnquiryFollowUp(updated);
+          });
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) throw err;
+        handlePrismaError("updateEnquiryFollowUp", err);
+      }
+    }
+
+    const store = loadStore();
+    const existing = store.enquiryFollowUps[input.followUpId];
+    if (!existing || existing.schoolId !== schoolId || existing.enquiryId !== enquiryId) {
+      throw new NotFoundError("Enquiry follow-up");
+    }
+
+    const nextScheduledIso = input.scheduledAt
+      ? new Date(input.scheduledAt).toISOString()
+      : existing.scheduledAt;
+    const nextStatus =
+      input.status ?? computeEffectiveFollowUpStatus(existing.status, nextScheduledIso);
+
+    const updated: AdmissionEnquiryFollowUpRecord = {
+      ...existing,
+      followUpType: input.followUpType ?? existing.followUpType,
+      scheduledAt: nextScheduledIso,
+      status: nextStatus,
+      completedAt:
+        nextStatus === "COMPLETED" && !existing.completedAt ? nowIso : existing.completedAt,
+      assignedToUserId:
+        input.assignedToUserId !== undefined
+          ? input.assignedToUserId || null
+          : existing.assignedToUserId,
+      assignedToName:
+        input.assignedToName !== undefined
+          ? input.assignedToName || null
+          : existing.assignedToName,
+      notes: input.notes ?? existing.notes,
+      outcome: input.outcome !== undefined ? input.outcome : existing.outcome,
+      updatedAt: nowIso,
+    };
+    store.enquiryFollowUps[existing.id] = updated;
+
+    const earliest = Object.values(store.enquiryFollowUps)
+      .filter(
+        (f) =>
+          f.schoolId === schoolId &&
+          f.enquiryId === enquiryId &&
+          f.status !== "COMPLETED" &&
+          f.status !== "CANCELLED",
+      )
+      .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt))[0];
+
+    const parent = store.enquiries[enquiryId];
+    if (parent && parent.schoolId === schoolId) {
+      store.enquiries[enquiryId] = {
+        ...parent,
+        nextFollowUpAt: earliest?.scheduledAt ?? null,
+        updatedAt: nowIso,
+      };
+    }
+
+    store.activities.unshift({
+      id: randomUUID(),
+      schoolId,
+      applicationId: null,
+      enquiryId,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: nextStatus === "COMPLETED" ? "FOLLOW_UP_COMPLETED" : "FOLLOW_UP_UPDATED",
+      summary:
+        nextStatus === "COMPLETED"
+          ? `Completed ${updated.followUpType} follow-up.${input.outcome ? ` Outcome: ${input.outcome}` : ""}`
+          : `Updated ${updated.followUpType} follow-up status to ${nextStatus}.`,
+      createdAt: nowIso,
+    });
+
+    saveStore(store);
+    return updated;
+  }
+
+  async createEnquiryCommunication(
+    explicitSchoolId: string,
+    enquiryId: string,
+    actor: ActorMeta,
+    input: CreateEnquiryCommunicationInput & {
+      attachments?: EnquiryCommunicationAttachment[];
+      resolvedStatus?: "SENT" | "COMPLETED" | "FAILED";
+    },
+  ): Promise<AdmissionEnquiryCommunicationRecord> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const nowIso = new Date().toISOString();
+    const attachments = input.attachments ?? [];
+    for (const att of attachments) {
+      assertTenantDocumentStorageKey(schoolId, att.storageKey);
+    }
+    const status =
+      input.resolvedStatus ?? (input.channel === "Phone Call" ? "COMPLETED" : "SENT");
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("createEnquiryCommunication", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const enq = await tx.admissionEnquiry.findFirst({
+              where: { id: enquiryId, schoolId },
+            });
+            if (!enq) throw new NotFoundError("Admission enquiry");
+
+            const created = await (tx as any).admissionEnquiryCommunication.create({
+              data: {
+                schoolId,
+                enquiryId,
+                channel: input.channel,
+                recipient: input.recipient,
+                cc: input.cc || null,
+                bcc: input.bcc || null,
+                subject: input.subject,
+                message: input.message,
+                attachments: attachments as any,
+                status,
+                sentByUserId: actor.id,
+                sentByName: actor.name,
+              },
+            });
+
+            if (enq.status === "NEW") {
+              await tx.admissionEnquiry.update({
+                where: { id: enquiryId },
+                data: { status: "CONTACTED" },
+              });
+            }
+
+            await tx.admissionActivity.create({
+              data: {
+                schoolId,
+                enquiryId,
+                actorId: actor.id,
+                actorName: actor.name,
+                action: "COMMUNICATION_SENT",
+                summary: `Sent ${input.channel.toLowerCase()}: "${input.subject}" to ${input.recipient}.`,
+              },
+            });
+
+            return mapPrismaEnquiryCommunication(created);
+          });
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) throw err;
+        handlePrismaError("createEnquiryCommunication", err);
+      }
+    }
+
+    const store = loadStore();
+    const enq = store.enquiries[enquiryId];
+    if (!enq || enq.schoolId !== schoolId) {
+      throw new NotFoundError("Admission enquiry");
+    }
+
+    const created: AdmissionEnquiryCommunicationRecord = {
+      id: randomUUID(),
+      schoolId,
+      enquiryId,
+      channel: input.channel,
+      recipient: input.recipient,
+      cc: input.cc || null,
+      bcc: input.bcc || null,
+      subject: input.subject,
+      message: input.message,
+      attachments,
+      status,
+      sentByUserId: actor.id,
+      sentByName: actor.name,
+      sentAt: nowIso,
+      createdAt: nowIso,
+    };
+    store.enquiryCommunications[created.id] = created;
+    if (enq.status === "NEW") {
+      store.enquiries[enquiryId] = { ...enq, status: "CONTACTED", updatedAt: nowIso };
+    }
+    store.activities.unshift({
+      id: randomUUID(),
+      schoolId,
+      applicationId: null,
+      enquiryId,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "COMMUNICATION_SENT",
+      summary: `Sent ${input.channel.toLowerCase()}: "${input.subject}" to ${input.recipient}.`,
+      createdAt: nowIso,
+    });
+    saveStore(store);
+    return created;
+  }
+
+  async createEnquiryNote(
+    explicitSchoolId: string,
+    enquiryId: string,
+    actor: ActorMeta,
+    input: CreateEnquiryNoteInput,
+  ): Promise<AdmissionEnquiryNoteRecord> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const nowIso = new Date().toISOString();
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("createEnquiryNote", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const enq = await tx.admissionEnquiry.findFirst({
+              where: { id: enquiryId, schoolId },
+            });
+            if (!enq) throw new NotFoundError("Admission enquiry");
+
+            const created = await (tx as any).admissionEnquiryNote.create({
+              data: {
+                schoolId,
+                enquiryId,
+                category: input.category || "Admission Related",
+                title: input.title,
+                content: input.content,
+                createdByUserId: actor.id,
+                createdByName: actor.name,
+              },
+            });
+
+            await tx.admissionActivity.create({
+              data: {
+                schoolId,
+                enquiryId,
+                actorId: actor.id,
+                actorName: actor.name,
+                action: "NOTE_ADDED",
+                summary: `Added a note: "${input.title}".`,
+              },
+            });
+
+            return mapPrismaEnquiryNote(created);
+          });
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) throw err;
+        handlePrismaError("createEnquiryNote", err);
+      }
+    }
+
+    const store = loadStore();
+    const enq = store.enquiries[enquiryId];
+    if (!enq || enq.schoolId !== schoolId) {
+      throw new NotFoundError("Admission enquiry");
+    }
+
+    const created: AdmissionEnquiryNoteRecord = {
+      id: randomUUID(),
+      schoolId,
+      enquiryId,
+      category: (input.category as EnquiryNoteCategoryValue) || "Admission Related",
+      title: input.title,
+      content: input.content,
+      createdByUserId: actor.id,
+      createdByName: actor.name,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+    store.enquiryNotes[created.id] = created;
+    store.activities.unshift({
+      id: randomUUID(),
+      schoolId,
+      applicationId: null,
+      enquiryId,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "NOTE_ADDED",
+      summary: `Added a note: "${input.title}".`,
+      createdAt: nowIso,
+    });
+    saveStore(store);
+    return created;
+  }
+
+  async updateEnquiryNote(
+    explicitSchoolId: string,
+    enquiryId: string,
+    input: UpdateEnquiryNoteInput,
+  ): Promise<AdmissionEnquiryNoteRecord> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const nowIso = new Date().toISOString();
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("updateEnquiryNote", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const existing = await (tx as any).admissionEnquiryNote.findFirst({
+              where: { id: input.noteId, schoolId, enquiryId },
+            });
+            if (!existing) throw new NotFoundError("Enquiry note");
+            const updated = await (tx as any).admissionEnquiryNote.update({
+              where: { id: existing.id },
+              data: {
+                category: input.category ?? existing.category,
+                title: input.title ?? existing.title,
+                content: input.content ?? existing.content,
+              },
+            });
+            return mapPrismaEnquiryNote(updated);
+          });
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) throw err;
+        handlePrismaError("updateEnquiryNote", err);
+      }
+    }
+
+    const store = loadStore();
+    const existing = store.enquiryNotes[input.noteId];
+    if (!existing || existing.schoolId !== schoolId || existing.enquiryId !== enquiryId) {
+      throw new NotFoundError("Enquiry note");
+    }
+    const updated: AdmissionEnquiryNoteRecord = {
+      ...existing,
+      category: (input.category as EnquiryNoteCategoryValue) ?? existing.category,
+      title: input.title ?? existing.title,
+      content: input.content ?? existing.content,
+      updatedAt: nowIso,
+    };
+    store.enquiryNotes[existing.id] = updated;
+    saveStore(store);
+    return updated;
+  }
+
+  async deleteEnquiryNote(
+    explicitSchoolId: string,
+    enquiryId: string,
+    noteId: string,
+  ): Promise<void> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+
+    if (await canUsePrisma()) {
+      try {
+        await runPrismaOp("deleteEnquiryNote", async () => {
+          await db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const existing = await (tx as any).admissionEnquiryNote.findFirst({
+              where: { id: noteId, schoolId, enquiryId },
+            });
+            if (!existing) throw new NotFoundError("Enquiry note");
+            await (tx as any).admissionEnquiryNote.delete({ where: { id: existing.id } });
+          });
+        });
+        return;
+      } catch (err) {
+        if (err instanceof NotFoundError) throw err;
+        handlePrismaError("deleteEnquiryNote", err);
+      }
+    }
+
+    const store = loadStore();
+    const existing = store.enquiryNotes[noteId];
+    if (!existing || existing.schoolId !== schoolId || existing.enquiryId !== enquiryId) {
+      throw new NotFoundError("Enquiry note");
+    }
+    delete store.enquiryNotes[noteId];
+    saveStore(store);
   }
 }
 

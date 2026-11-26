@@ -151,19 +151,192 @@ export interface AdmissionEnquiryRecord {
   id: string;
   schoolId: string;
   enquiryCode: string;
+  enquiryDate?: string;
   studentName: string;
+  studentDob?: string | null;
+  studentGender?: string | null;
   guardianName: string;
+  guardianRelation?: string | null;
   guardianPhone: string;
   guardianEmail: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pinCode?: string | null;
   gradeApplied: string;
   academicYear: string;
   source: string;
+  enquiryType?: string;
   status: AdmissionEnquiryStatusType;
+  assignedToUserId?: string | null;
+  assignedToName?: string | null;
+  nextFollowUpAt?: string | null;
+  hasSiblingsInSchool?: boolean;
+  interestedInTransport?: boolean;
+  interestedInHostel?: boolean;
+  requiresSpecialSupport?: boolean;
+  isDraft?: boolean;
   notes: string | null;
   convertedApplicationId: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export type EnquiryFollowUpTypeValue =
+  | "Phone Call"
+  | "Email"
+  | "WhatsApp"
+  | "Meeting"
+  | "Campus Visit";
+
+export type EnquiryFollowUpStatusValue =
+  | "UPCOMING"
+  | "DUE_TODAY"
+  | "COMPLETED"
+  | "OVERDUE"
+  | "CANCELLED";
+
+export type EnquiryCommunicationChannelValue =
+  | "Email"
+  | "SMS"
+  | "WhatsApp"
+  | "Phone Call";
+
+export type EnquiryNoteCategoryValue =
+  | "Admission Related"
+  | "Parent Requirement"
+  | "Follow-up"
+  | "Other";
+
+export interface AdmissionEnquirySourceRecord {
+  id: string;
+  schoolId: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  colorToken: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdmissionEnquiryFollowUpRecord {
+  id: string;
+  schoolId: string;
+  enquiryId: string;
+  enquiryCode?: string;
+  studentName?: string;
+  guardianName?: string;
+  academicYear?: string;
+  followUpType: EnquiryFollowUpTypeValue;
+  scheduledAt: string;
+  completedAt: string | null;
+  status: EnquiryFollowUpStatusValue;
+  assignedToUserId: string | null;
+  assignedToName: string | null;
+  notes: string;
+  outcome: string | null;
+  createdByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EnquiryCommunicationAttachment {
+  key: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storageKey: string;
+  uploadedAt: string;
+}
+
+export interface AdmissionEnquiryCommunicationRecord {
+  id: string;
+  schoolId: string;
+  enquiryId: string;
+  channel: EnquiryCommunicationChannelValue;
+  recipient: string;
+  cc: string | null;
+  bcc: string | null;
+  subject: string;
+  message: string;
+  attachments: EnquiryCommunicationAttachment[];
+  status: "SENT" | "COMPLETED" | "FAILED";
+  sentByUserId: string | null;
+  sentByName: string;
+  sentAt: string;
+  createdAt: string;
+}
+
+export interface AdmissionEnquiryNoteRecord {
+  id: string;
+  schoolId: string;
+  enquiryId: string;
+  category: EnquiryNoteCategoryValue;
+  title: string;
+  content: string;
+  createdByUserId: string | null;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SchoolStaffOption {
+  id: string;
+  name: string;
+  role: string;
+}
+
+export interface EnquiryDossierData {
+  enquiry: AdmissionEnquiryRecord;
+  followUps: AdmissionEnquiryFollowUpRecord[];
+  communications: AdmissionEnquiryCommunicationRecord[];
+  notes: AdmissionEnquiryNoteRecord[];
+  activities: AdmissionActivityRecord[];
+  staffOptions: SchoolStaffOption[];
+}
+
+export const DEFAULT_ENQUIRY_SOURCES: ReadonlyArray<{
+  name: string;
+  description: string;
+  colorToken: string;
+}> = [
+  {
+    name: "Website",
+    description: "Enquiries from school website (enquiry form)",
+    colorToken: "violet",
+  },
+  {
+    name: "Walk-In",
+    description: "Enquiries from direct walk-in at school",
+    colorToken: "sky",
+  },
+  {
+    name: "Referral",
+    description: "Enquiries through parent or alumni referral",
+    colorToken: "cyan",
+  },
+  {
+    name: "Social Media",
+    description: "Enquiries from social media campaigns",
+    colorToken: "emerald",
+  },
+  {
+    name: "Event / Campaign",
+    description: "Enquiries from school events, fairs or campaigns",
+    colorToken: "amber",
+  },
+  {
+    name: "Phone Call",
+    description: "Direct telephone admission enquiries",
+    colorToken: "indigo",
+  },
+  {
+    name: "Other",
+    description: "Other enquiry channels and partner referrals",
+    colorToken: "rose",
+  },
+];
 
 export type AdmissionModeValue = "ONLINE_OFFLINE" | "ONLINE_ONLY" | "OFFLINE_ONLY";
 
@@ -336,6 +509,9 @@ export interface AdmissionsOverviewData {
     totalPages: number;
   };
   enquiries: AdmissionEnquiryRecord[];
+  enquirySources?: AdmissionEnquirySourceRecord[];
+  enquiryFollowUps?: AdmissionEnquiryFollowUpRecord[];
+  staffOptions?: SchoolStaffOption[];
   admittedStudents: AdmissionApplicationRecord[];
   activities: AdmissionActivityRecord[];
   reminders: AdmissionReminderRecord[];
