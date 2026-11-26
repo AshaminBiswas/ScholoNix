@@ -111,9 +111,38 @@ export const updateReminderSchema = z.object({
   isCompleted: z.boolean(),
 });
 
+export const bulkImportApplicationsSchema = z.object({
+  applications: z
+    .array(createApplicationSchema)
+    .min(1, "Include at least one application row to import")
+    .max(100, "Import at most 100 applications per batch"),
+});
+
+export const bulkUpdateApplicationsSchema = z
+  .object({
+    applicationIds: z
+      .array(z.string().uuid("Invalid application ID"))
+      .min(1, "Select at least one application")
+      .max(100, "Bulk update is limited to 100 applications at once"),
+    status: z
+      .enum(["UNDER_REVIEW", "DOCUMENTS_PENDING", "SHORTLISTED", "ADMITTED", "REJECTED"])
+      .optional(),
+    verificationStatus: z.enum(["PENDING", "VERIFIED", "REJECTED"]).optional(),
+    verificationNotes: z.string().trim().max(500).optional().nullable(),
+  })
+  .refine(
+    (val) =>
+      val.status !== undefined ||
+      val.verificationStatus !== undefined ||
+      val.verificationNotes !== undefined,
+    { message: "Provide at least one field to update across selected applications." },
+  );
+
 export type CreateEnquiryInput = z.infer<typeof createEnquirySchema>;
 export type UpdateEnquiryInput = z.infer<typeof updateEnquirySchema>;
 export type CreateApplicationInput = z.infer<typeof createApplicationSchema>;
 export type UpdateApplicationInput = z.infer<typeof updateApplicationSchema>;
 export type UpdateAdmissionsSettingsInput = z.infer<typeof updateAdmissionsSettingsSchema>;
 export type CreateReminderInput = z.infer<typeof createReminderSchema>;
+export type BulkImportApplicationsInput = z.infer<typeof bulkImportApplicationsSchema>;
+export type BulkUpdateApplicationsInput = z.infer<typeof bulkUpdateApplicationsSchema>;

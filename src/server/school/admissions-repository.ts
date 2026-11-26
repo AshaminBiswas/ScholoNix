@@ -20,6 +20,7 @@ import {
   type AdmissionSettingRecord,
 } from "@/modules/school/admissions/types";
 import type {
+  BulkUpdateApplicationsInput,
   CreateApplicationInput,
   CreateEnquiryInput,
   CreateReminderInput,
@@ -1301,6 +1302,303 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     }
     delete store.reminders[reminderId];
     saveStore(store);
+  }
+
+  async importApplications(
+    explicitSchoolId: string,
+    actor: ActorMeta,
+    items: CreateApplicationInput[],
+  ): Promise<AdmissionApplicationRecord[]> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("importApplications", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            let setting = await tx.admissionSetting.findUnique({ where: { schoolId } });
+            if (!setting) {
+              setting = await tx.admissionSetting.create({
+                data: {
+                  schoolId,
+                  currentAcademicYear: getCurrentAcademicYearLabel(),
+                  applicationPrefix: "APP",
+                  enabledGrades: [...DEFAULT_ADMISSION_GRADES],
+                },
+              });
+            }
+
+            const updatedSetting = await tx.admissionSetting.update({
+              where: { schoolId },
+              data: { nextApplicationSeq: { increment: items.length } },
+            });
+            const firstSeq = updatedSetting.nextApplicationSeq - items.length;
+            const createdRecords: AdmissionApplicationRecord[] = [];
+
+            for (let idx = 0; idx < items.length; idx += 1) {
+              const item = items[idx]!;
+              const seq = firstSeq + idx;
+              const applicationCode = `${setting.applicationPrefix}${extractYearTag(item.academicYear)}-${String(seq).padStart(4, "0")}`;
+
+              const created = await tx.admissionApplication.create({
+                data: {
+                  schoolId,
+                  applicationCode,
+                  enquiryId: item.enquiryId ?? null,
+                  studentName: item.studentName,
+                  gender: item.gender || null,
+                  dateOfBirth: item.dateOfBirth ? new Date(`${item.dateOfBirth}T00:00:00.000Z`) : null,
+                  gradeApplied: item.gradeApplied,
+                  academicYear: item.academicYear,
+                  guardianName: item.guardianName,
+                  guardianRelation: item.guardianRelation,
+                  guardianPhone: item.guardianPhone,
+                  guardianEmail: item.guardianEmail || null,
+                  previousSchool: item.previousSchool || null,
+                  status: item.status,
+                  verificationStatus: "PENDING",
+                  verificationNotes: item.notes || null,
+                  documentsChecklist: cloneDefaultChecklist() as any,
+                  appliedAt: now,
+                  shortlistedAt: item.status === "SHORTLISTED" ? now : null,
+                  reviewedByUserId: actor.id,
+                },
+              });
+              createdRecords.push(mapPrismaApplication(created));
+            }
+
+            await tx.admissionActivity.create({
+              data: {
+                schoolId,
+                actorId: actor.id,
+                actorName: actor.name,
+                action: "APPLICATION_CREATED",
+                summary: `Imported ${createdRecords.length} admission application${createdRecords.length === 1 ? "" : "s"}.`,
+              },
+            });
+
+            return createdRecords;
+          });
+        });
+      } catch (err) {
+        handlePrismaError("importApplications", err);
+      }
+    }
+
+    const store = loadStore();
+    const setting = this.getOrCreateFallbackSetting(store, schoolId);
+    const createdRecords: AdmissionApplicationRecord[] = [];
+
+    for (const item of items) {
+      const seq = setting.nextApplicationSeq;
+      setting.nextApplicationSeq += 1;
+      const applicationCode = `${setting.applicationPrefix}${extractYearTag(item.academicYear)}-${String(seq).padStart(4, "0")}`;
+      const record: AdmissionApplicationRecord = {
+        id: randomUUID(),
+        schoolId,
+        applicationCode,
+        admissionNumber: null,
+        enquiryId: item.enquiryId ?? null,
+        studentName: item.studentName,
+        gender: item.gender || null,
+        dateOfBirth: item.dateOfBirth || null,
+        gradeApplied: item.gradeApplied,
+        academicYear: item.academicYear,
+        guardianName: item.guardianName,
+        guardianRelation: item.guardianRelation,
+        guardianPhone: item.guardianPhone,
+        guardianEmail: item.guardianEmail || null,
+        previousSchool: item.previousSchool || null,
+        status: item.status,
+        verificationStatus: "PENDING",
+        verificationNotes: item.notes || null,
+        documentsChecklist: cloneDefaultChecklist(),
+        appliedAt: nowIso,
+        shortlistedAt: item.status === "SHORTLISTED" ? nowIso : null,
+        admittedAt: null,
+        rejectedAt: null,
+        verifiedAt: null,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      store.applications[record.id] = record;
+      createdRecords.push(record);
+    }
+
+    store.activities.unshift({
+      id: randomUUID(),
+      schoolId,
+      applicationId: null,
+      enquiryId: null,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "APPLICATION_CREATED",
+      summary: `Imported ${createdRecords.length} admission application${createdRecords.length === 1 ? "" : "s"}.`,
+      createdAt: nowIso,
+    });
+
+    saveStore(store);
+    return createdRecords;
+  }
+
+  async bulkUpdateApplications(
+    explicitSchoolId: string,
+    actor: ActorMeta,
+    input: BulkUpdateApplicationsInput,
+  ): Promise<AdmissionApplicationRecord[]> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const uniqueIds = Array.from(new Set(input.applicationIds));
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("bulkUpdateApplications", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const rows = await tx.admissionApplication.findMany({
+              where: { id: { in: uniqueIds }, schoolId },
+            });
+            if (rows.length !== uniqueIds.length) {
+              throw new NotFoundError("Admission application");
+            }
+
+            const updatedRecords: AdmissionApplicationRecord[] = [];
+            for (const existingRow of rows) {
+              const nextStatus: AdmissionApplicationStatusType = input.status ?? existingRow.status;
+              let admissionNumber = existingRow.admissionNumber;
+              if (nextStatus === "ADMITTED" && !admissionNumber) {
+                const updatedSetting = await tx.admissionSetting.upsert({
+                  where: { schoolId },
+                  update: { nextAdmissionSeq: { increment: 1 } },
+                  create: {
+                    schoolId,
+                    currentAcademicYear: getCurrentAcademicYearLabel(),
+                    applicationPrefix: "APP",
+                    enabledGrades: [...DEFAULT_ADMISSION_GRADES],
+                    nextAdmissionSeq: 2,
+                  },
+                });
+                const seq = updatedSetting.nextAdmissionSeq - 1;
+                admissionNumber = `ADM${extractYearTag(existingRow.academicYear)}-${String(seq).padStart(4, "0")}`;
+              }
+              const nextVerification = input.verificationStatus ?? existingRow.verificationStatus;
+
+              const updatedRow = await tx.admissionApplication.update({
+                where: { id: existingRow.id },
+                data: {
+                  status: nextStatus,
+                  admissionNumber,
+                  verificationStatus: nextVerification,
+                  verificationNotes:
+                    input.verificationNotes !== undefined
+                      ? input.verificationNotes
+                      : existingRow.verificationNotes,
+                  shortlistedAt:
+                    nextStatus === "SHORTLISTED" && !existingRow.shortlistedAt
+                      ? now
+                      : existingRow.shortlistedAt,
+                  admittedAt:
+                    nextStatus === "ADMITTED" && !existingRow.admittedAt
+                      ? now
+                      : existingRow.admittedAt,
+                  rejectedAt:
+                    nextStatus === "REJECTED" && !existingRow.rejectedAt
+                      ? now
+                      : existingRow.rejectedAt,
+                  verifiedAt:
+                    nextVerification === "VERIFIED" && !existingRow.verifiedAt
+                      ? now
+                      : existingRow.verifiedAt,
+                  reviewedByUserId: actor.id,
+                },
+              });
+              updatedRecords.push(mapPrismaApplication(updatedRow));
+            }
+
+            const targetSummary = input.status
+              ? `stage ${input.status.replace(/_/g, " ")}`
+              : `verification ${input.verificationStatus ?? "updated"}`;
+            await tx.admissionActivity.create({
+              data: {
+                schoolId,
+                actorId: actor.id,
+                actorName: actor.name,
+                action: "APPLICATION_UPDATED",
+                summary: `Bulk updated ${updatedRecords.length} application${updatedRecords.length === 1 ? "" : "s"} (${targetSummary}).`,
+              },
+            });
+
+            return updatedRecords;
+          });
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) throw err;
+        handlePrismaError("bulkUpdateApplications", err);
+      }
+    }
+
+    const store = loadStore();
+    const targets: AdmissionApplicationRecord[] = [];
+    for (const id of uniqueIds) {
+      const existing = store.applications[id];
+      if (!existing || existing.schoolId !== schoolId) {
+        throw new NotFoundError("Admission application");
+      }
+      targets.push(existing);
+    }
+
+    const updatedRecords: AdmissionApplicationRecord[] = [];
+    for (const existing of targets) {
+      const nextStatus: AdmissionApplicationStatusType = input.status ?? existing.status;
+      let admissionNumber = existing.admissionNumber;
+      if (nextStatus === "ADMITTED" && !admissionNumber) {
+        const setting = this.getOrCreateFallbackSetting(store, schoolId);
+        const seq = setting.nextAdmissionSeq;
+        setting.nextAdmissionSeq += 1;
+        admissionNumber = `ADM${extractYearTag(existing.academicYear)}-${String(seq).padStart(4, "0")}`;
+      }
+      const nextVerification = input.verificationStatus ?? existing.verificationStatus;
+      const after: AdmissionApplicationRecord = {
+        ...existing,
+        status: nextStatus,
+        admissionNumber,
+        verificationStatus: nextVerification,
+        verificationNotes:
+          input.verificationNotes !== undefined ? input.verificationNotes : existing.verificationNotes,
+        shortlistedAt:
+          nextStatus === "SHORTLISTED" && !existing.shortlistedAt ? nowIso : existing.shortlistedAt,
+        admittedAt:
+          nextStatus === "ADMITTED" && !existing.admittedAt ? nowIso : existing.admittedAt,
+        rejectedAt:
+          nextStatus === "REJECTED" && !existing.rejectedAt ? nowIso : existing.rejectedAt,
+        verifiedAt:
+          nextVerification === "VERIFIED" && !existing.verifiedAt ? nowIso : existing.verifiedAt,
+        updatedAt: nowIso,
+      };
+      store.applications[after.id] = after;
+      updatedRecords.push(after);
+    }
+
+    const targetSummary = input.status
+      ? `stage ${input.status.replace(/_/g, " ")}`
+      : `verification ${input.verificationStatus ?? "updated"}`;
+    store.activities.unshift({
+      id: randomUUID(),
+      schoolId,
+      applicationId: null,
+      enquiryId: null,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "APPLICATION_UPDATED",
+      summary: `Bulk updated ${updatedRecords.length} application${updatedRecords.length === 1 ? "" : "s"} (${targetSummary}).`,
+      createdAt: nowIso,
+    });
+
+    saveStore(store);
+    return updatedRecords;
   }
 }
 

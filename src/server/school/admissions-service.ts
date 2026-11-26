@@ -14,6 +14,8 @@ import type {
   AdmissionsOverviewFilters,
 } from "@/modules/school/admissions/types";
 import type {
+  BulkImportApplicationsInput,
+  BulkUpdateApplicationsInput,
   CreateApplicationInput,
   CreateEnquiryInput,
   CreateReminderInput,
@@ -293,6 +295,76 @@ export const admissionsService = {
       });
 
       return after;
+    });
+  },
+
+  async importApplications(
+    ctx: AdmissionsActorContext,
+    input: BulkImportApplicationsInput,
+  ): Promise<AdmissionApplicationRecord[]> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+
+    return runScoped(ctx, async () => {
+      const created = await admissionsRepository.importApplications(
+        ctx.schoolId,
+        { id: ctx.userId, name: ctx.userName },
+        input.applications,
+      );
+
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMISSION_APPLICATIONS_IMPORTED",
+        entityType: "AdmissionApplication",
+        entityId: created[0]?.id ?? ctx.schoolId,
+        details: {
+          importedCount: created.length,
+          applicationCodes: created.slice(0, 10).map((a) => a.applicationCode),
+        },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+
+      return created;
+    });
+  },
+
+  async bulkUpdateApplications(
+    ctx: AdmissionsActorContext,
+    input: BulkUpdateApplicationsInput,
+  ): Promise<AdmissionApplicationRecord[]> {
+    const authUser = { id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId };
+    if (input.verificationStatus !== undefined || input.verificationNotes !== undefined) {
+      authorize(authUser, "admissions:verify");
+    } else {
+      authorize(authUser, "admissions:write");
+    }
+
+    return runScoped(ctx, async () => {
+      const updated = await admissionsRepository.bulkUpdateApplications(
+        ctx.schoolId,
+        { id: ctx.userId, name: ctx.userName },
+        input,
+      );
+
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMISSION_APPLICATIONS_BULK_UPDATED",
+        entityType: "AdmissionApplication",
+        entityId: updated[0]?.id ?? ctx.schoolId,
+        details: {
+          updatedCount: updated.length,
+          status: input.status ?? null,
+          verificationStatus: input.verificationStatus ?? null,
+        },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+
+      return updated;
     });
   },
 

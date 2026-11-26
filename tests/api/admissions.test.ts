@@ -15,6 +15,8 @@ import { PATCH as enquiryPatch } from "@/app/api/school/admissions/enquiries/[en
 import { GET as exportCsvGet } from "@/app/api/school/admissions/export/route";
 import { PATCH as settingsPatch } from "@/app/api/school/admissions/settings/route";
 import { POST as reminderPost } from "@/app/api/school/admissions/reminders/route";
+import { POST as bulkImportPost } from "@/app/api/school/admissions/applications/import/route";
+import { PATCH as bulkUpdatePatch } from "@/app/api/school/admissions/applications/bulk/route";
 import { authRepository } from "@/server/auth/auth-repository";
 import { getSessionCookieName, sessionService } from "@/server/auth/session-service";
 import { hashPassword } from "@/server/security/crypto";
@@ -312,5 +314,117 @@ describe("Admissions API: Dynamic CRUD, Analytics, CSV Export, RBAC & Multi-Tena
     );
     expect(ownBCsv.status).toBe(200);
     expect(await ownBCsv.text()).not.toContain("Synthetic Applicant One");
+  });
+
+  it("supports batch CSV import, bulk application updates, phone search, and blocks cross-tenant bulk access", async () => {
+    const { user: adminA } = await createSchoolUser("BulkA", "SCHOOL_ADMIN");
+    const { user: adminB } = await createSchoolUser("BulkB", "SCHOOL_ADMIN");
+    const { user: teacher } = await createSchoolUser("BulkTeacher", "TEACHER");
+
+    const cookieName = getSessionCookieName();
+    const sessionA = await sessionService.createSession(adminA);
+    const sessionB = await sessionService.createSession(adminB);
+    const sessionTeacher = await sessionService.createSession(teacher);
+    const cookieA = `${cookieName}=${sessionA.token}`;
+    const cookieB = `${cookieName}=${sessionB.token}`;
+    const cookieTeacher = `${cookieName}=${sessionTeacher.token}`;
+
+    // Teacher cannot import applications
+    const forbiddenImport = await bulkImportPost(
+      new NextRequest("http://localhost/api/school/admissions/applications/import", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: cookieTeacher },
+        body: JSON.stringify({
+          applications: [
+            {
+              studentName: "Synthetic Blocked",
+              gradeApplied: "Class I",
+              academicYear: "2026 – 2027",
+              guardianName: "Synthetic Guardian",
+              guardianPhone: "+919000001234",
+            },
+          ],
+        }),
+      }),
+    );
+    expect(forbiddenImport.status).toBe(403);
+
+    // School A imports 2 synthetic applicants in one batch
+    const importRes = await bulkImportPost(
+      new NextRequest("http://localhost/api/school/admissions/applications/import", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: cookieA },
+        body: JSON.stringify({
+          applications: [
+            {
+              studentName: "Synthetic Batch One",
+              gradeApplied: "Class I",
+              academicYear: "2026 – 2027",
+              guardianName: "Synthetic Parent Alpha",
+              guardianPhone: "+919876540001",
+              status: "UNDER_REVIEW",
+            },
+            {
+              studentName: "Synthetic Batch Two",
+              gradeApplied: "Class II",
+              academicYear: "2026 – 2027",
+              guardianName: "Synthetic Parent Beta",
+              guardianPhone: "+919876540002",
+              status: "SHORTLISTED",
+            },
+          ],
+        }),
+      }),
+    );
+    expect(importRes.status).toBe(201);
+    const importJson = await importRes.json();
+    expect(importJson.importedCount).toBe(2);
+    const importedIds = importJson.applications.map((a: { id: string }) => a.id) as string[];
+
+    // Search by guardian contact number matches exact record
+    const searchRes = await overviewGet(
+      new NextRequest(
+        "http://localhost/api/school/admissions/overview?search=9876540002&academicYear=all",
+        { headers: { cookie: cookieA } },
+      ),
+    );
+    expect(searchRes.status).toBe(200);
+    const searchJson = await searchRes.json();
+    expect(searchJson.data.applications).toHaveLength(1);
+    expect(searchJson.data.applications[0].studentName).toBe("Synthetic Batch Two");
+
+    // Cross-tenant bulk update by School B against School A IDs returns 404
+    const crossBulk = await bulkUpdatePatch(
+      new NextRequest("http://localhost/api/school/admissions/applications/bulk", {
+        method: "PATCH",
+        headers: { "content-type": "application/json", cookie: cookieB },
+        body: JSON.stringify({
+          applicationIds: importedIds,
+          status: "REJECTED",
+        }),
+      }),
+    );
+    expect(crossBulk.status).toBe(404);
+
+    // School A bulk verifies & admits both applicants atomically
+    const bulkRes = await bulkUpdatePatch(
+      new NextRequest("http://localhost/api/school/admissions/applications/bulk", {
+        method: "PATCH",
+        headers: { "content-type": "application/json", cookie: cookieA },
+        body: JSON.stringify({
+          applicationIds: importedIds,
+          verificationStatus: "VERIFIED",
+          status: "ADMITTED",
+        }),
+      }),
+    );
+    expect(bulkRes.status).toBe(200);
+    const bulkJson = await bulkRes.json();
+    expect(bulkJson.updatedCount).toBe(2);
+    expect(bulkJson.applications[0].admissionNumber).toMatch(/^ADM/);
+    expect(bulkJson.applications[1].admissionNumber).toMatch(/^ADM/);
+    expect(bulkJson.applications[0].admissionNumber).not.toBe(
+      bulkJson.applications[1].admissionNumber,
+    );
   });
 });

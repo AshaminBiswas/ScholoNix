@@ -33,11 +33,14 @@ import {
 import { AdmissionsKpisAndCharts } from "./admissions-kpis-and-charts";
 import { AdmissionsTable } from "./admissions-table";
 import { AdmissionsActivityAndNotes } from "./admissions-activity-and-notes";
+import { ApplicationsManagementView } from "./applications-management-view";
+import { ImportApplicationsModal } from "./import-applications-modal";
 import {
   ApplicationDetailModal,
   NewApplicationModal,
   NewEnquiryModal,
 } from "./admissions-modals";
+import type { CreateApplicationInput } from "@/modules/school/admissions/schemas";
 
 interface AdmissionsWorkspaceProps {
   school: SchoolShellSchool;
@@ -82,8 +85,10 @@ export function AdmissionsWorkspace({
 
   // Modals state
   const [newAppOpen, setNewAppOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [newEnqOpen, setNewEnqOpen] = useState(false);
   const [inspectApp, setInspectApp] = useState<AdmissionApplicationRecord | null>(null);
+  const [inspectAppMode, setInspectAppMode] = useState<"view" | "edit">("view");
 
   // Settings form state synced from server data
   const [settingsAcademicYear, setSettingsAcademicYear] = useState(
@@ -210,6 +215,36 @@ export function AdmissionsWorkspace({
     }, 250);
   };
 
+  const handleSearchSubmit = useCallback(
+    (value: string) => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      setSearchInput(value);
+      applyFilterUpdate({ search: value, page: 1 });
+    },
+    [applyFilterUpdate],
+  );
+
+  const handleResetFilters = useCallback(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    setSearchInput("");
+    const resetFilters: AdmissionsOverviewFilters = {
+      academicYear: data.settings.currentAcademicYear || "all",
+      grade: "all",
+      status: "all",
+      verificationStatus: "all",
+      datePreset: "all",
+      from: "",
+      to: "",
+      granularity: filtersRef.current.granularity,
+      search: "",
+      page: 1,
+      pageSize: filtersRef.current.pageSize,
+    };
+    filtersRef.current = resetFilters;
+    setFilters(resetFilters);
+    void fetchOverview(resetFilters);
+  }, [data.settings.currentAcademicYear, fetchOverview]);
+
   useEffect(() => {
     return () => {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -233,6 +268,70 @@ export function AdmissionsWorkspace({
   const handleDownloadReport = () => {
     const qs = buildFilterQueryString(filters, school.slug);
     window.location.assign(`/api/school/admissions/export?${qs}`);
+  };
+
+  const handleDownloadImportTemplate = () => {
+    const templateCsv = [
+      "Student Name,Grade Applied,Academic Year,Guardian Name,Guardian Phone,Guardian Email,Gender,Date of Birth,Previous School,Status",
+      `Synthetic Applicant,Class I,${data.settings.currentAcademicYear || "2026 – 2027"},Synthetic Guardian,+919000000001,guardian@example.com,Male,2019-05-12,Example Prep School,UNDER_REVIEW`,
+    ].join("\n");
+    const blob = new Blob([templateCsv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "admissions-import-template.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportApplications = async (applications: CreateApplicationInput[]) => {
+    const res = await fetch(
+      `/api/school/admissions/applications/import?schoolSlug=${encodeURIComponent(school.slug)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applications }),
+      },
+    );
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json?.error?.message || "Unable to import applications.");
+    }
+    showToast(
+      "success",
+      `Imported ${json.importedCount} admission application${json.importedCount === 1 ? "" : "s"}.`,
+    );
+    await fetchOverview(filters, { bypassClientCache: true });
+  };
+
+  const handleBulkUpdateApplications = async (
+    applicationIds: string[],
+    payload: {
+      status?: AdmissionApplicationStatusType;
+      verificationStatus?: DocumentVerificationStatusType;
+    },
+  ) => {
+    const res = await fetch(
+      `/api/school/admissions/applications/bulk?schoolSlug=${encodeURIComponent(school.slug)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicationIds, ...payload }),
+      },
+    );
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      const msg = json?.error?.message || "Unable to bulk update applications.";
+      showToast("error", msg);
+      throw new Error(msg);
+    }
+    showToast(
+      "success",
+      `Updated ${json.updatedCount} selected application${json.updatedCount === 1 ? "" : "s"}.`,
+    );
+    await fetchOverview(filters, { bypassClientCache: true });
   };
 
   const handleCreateApplication = async (payload: {
@@ -275,6 +374,11 @@ export function AdmissionsWorkspace({
       verificationStatus?: DocumentVerificationStatusType;
       verificationNotes?: string;
       documentsChecklist?: AdmissionDocumentChecklistItem[];
+      gradeApplied?: string;
+      guardianName?: string;
+      guardianPhone?: string;
+      guardianEmail?: string;
+      previousSchool?: string;
     },
   ) => {
     const res = await fetch(
@@ -438,43 +542,45 @@ export function AdmissionsWorkspace({
         handleTabSelect("applications");
       }}
     >
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#08093B] tracking-tight dark:text-[#F3F5FF]">
-            Admissions
-          </h1>
-          <p className="mt-1 text-xs sm:text-sm font-medium text-[#4D5072] dark:text-[#9DA6CC]">
-            Manage enquiries, applications, document verification, and student admissions in one place.
-          </p>
-        </div>
+      {/* Page Header (Overview, Enquiries, Admitted, Settings — Applications renders custom Application Management header) */}
+      {activeTab !== "applications" && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#08093B] tracking-tight dark:text-[#F3F5FF]">
+              Admissions
+            </h1>
+            <p className="mt-1 text-xs sm:text-sm font-medium text-[#4D5072] dark:text-[#9DA6CC]">
+              Manage enquiries, applications, document verification, and student admissions in one place.
+            </p>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          {data.permissions.canWrite && (
-            <button
-              id="admissions-new-application-btn"
-              type="button"
-              onClick={() => setNewAppOpen(true)}
-              className="inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:opacity-95 cursor-pointer"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              <span>New Application</span>
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {data.permissions.canWrite && (
+              <button
+                id="admissions-new-application-btn"
+                type="button"
+                onClick={() => setNewAppOpen(true)}
+                className="inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:opacity-95 cursor-pointer"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                <span>New Application</span>
+              </button>
+            )}
 
-          {data.permissions.canExport && (
-            <button
-              id="admissions-download-report-btn"
-              type="button"
-              onClick={handleDownloadReport}
-              className="inline-flex items-center gap-2 rounded-[12px] border border-[#D6DBF0] bg-white px-4 py-2.5 text-xs font-bold text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#F3F5FF] dark:hover:border-[#8B5CF6] dark:hover:text-[#C4B5FD]"
-            >
-              <Download className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
-              <span>Download Report</span>
-            </button>
-          )}
+            {data.permissions.canExport && (
+              <button
+                id="admissions-download-report-btn"
+                type="button"
+                onClick={handleDownloadReport}
+                className="inline-flex items-center gap-2 rounded-[12px] border border-[#D6DBF0] bg-white px-4 py-2.5 text-xs font-bold text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#F3F5FF] dark:hover:border-[#8B5CF6] dark:hover:text-[#C4B5FD]"
+              >
+                <Download className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
+                <span>Download Report</span>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Status Toast / Alert */}
       {feedbackBanner && (
@@ -505,9 +611,9 @@ export function AdmissionsWorkspace({
       )}
 
       {/* =====================================================================
-          FILTER CONTROL BAR (Shared across Overview / Applications / Admitted)
+          FILTER CONTROL BAR (Overview / Enquiries / Admitted)
           ===================================================================== */}
-      {activeTab !== "settings" && (
+      {activeTab !== "settings" && activeTab !== "applications" && (
         <div className="rounded-[18px] border border-[#D6DBF0] bg-white p-3.5 shadow-xs dark:border-[#272B4D] dark:bg-[#141731]">
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Academic Year Filter */}
@@ -655,26 +761,26 @@ export function AdmissionsWorkspace({
       )}
 
       {activeTab === "applications" && (
-        <div className="space-y-4">
-          <AdmissionsTable
-            applications={data.applications}
-            pagination={data.pagination}
-            searchQuery={searchInput}
-            onSearchChange={handleSearchChange}
-            verificationFilter={filters.verificationStatus}
-            onVerificationFilterChange={(verificationStatus) =>
-              applyFilterUpdate({ verificationStatus })
-            }
-            onPageChange={(page) => applyFilterUpdate({ page })}
-            onPageSizeChange={(pageSize) => applyFilterUpdate({ pageSize, page: 1 })}
-            onInspectApplication={(app) => setInspectApp(app)}
-            onQuickUpdateApplication={handleQuickUpdateApplication}
-            onOpenNewApplication={() => setNewAppOpen(true)}
-            canWrite={data.permissions.canWrite}
-            canVerify={data.permissions.canVerify}
-            title="All Applications"
-          />
-        </div>
+        <ApplicationsManagementView
+          data={data}
+          filters={filters}
+          searchInput={searchInput}
+          onSearchChange={handleSearchChange}
+          onSearchSubmit={handleSearchSubmit}
+          onApplyFilterUpdate={applyFilterUpdate}
+          onResetFilters={handleResetFilters}
+          onInspectApplication={(app, mode = "view") => {
+            setInspectAppMode(mode);
+            setInspectApp(app);
+          }}
+          onQuickUpdateApplication={handleQuickUpdateApplication}
+          onBulkUpdateApplications={handleBulkUpdateApplications}
+          onCreateApplication={handleCreateApplication}
+          onOpenNewApplicationModal={() => setNewAppOpen(true)}
+          onOpenImportModal={() => setImportModalOpen(true)}
+          onDownloadReport={handleDownloadReport}
+          onDownloadImportTemplate={handleDownloadImportTemplate}
+        />
       )}
 
       {activeTab === "enquiries" && (
@@ -1008,11 +1114,21 @@ export function AdmissionsWorkspace({
         onSubmit={handleCreateEnquiry}
       />
 
+      <ImportApplicationsModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        defaultAcademicYear={data.settings.currentAcademicYear}
+        availableGrades={data.availableGrades}
+        onImport={handleImportApplications}
+      />
+
       <ApplicationDetailModal
         application={inspectApp}
         onClose={() => setInspectApp(null)}
         canWrite={data.permissions.canWrite}
         canVerify={data.permissions.canVerify}
+        initialMode={inspectAppMode}
+        availableGrades={data.availableGrades}
         onSave={handleQuickUpdateApplication}
       />
     </SchoolWorkspaceShell>

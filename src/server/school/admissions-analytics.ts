@@ -488,7 +488,7 @@ export function computeAdmissionsOverviewAnalytics(params: {
         return false;
       }
       if (q) {
-        const hay = `${app.applicationCode} ${app.studentName} ${app.guardianName} ${app.gradeApplied}`.toLowerCase();
+        const hay = `${app.applicationCode} ${app.studentName} ${app.guardianName} ${app.guardianPhone} ${app.guardianEmail || ""} ${app.gradeApplied}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;

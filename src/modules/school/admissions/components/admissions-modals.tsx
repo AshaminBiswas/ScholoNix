@@ -690,13 +690,20 @@ interface ApplicationDetailModalProps {
   onClose: () => void;
   canWrite: boolean;
   canVerify: boolean;
+  initialMode?: "view" | "edit";
+  availableGrades?: string[];
   onSave: (
     applicationId: string,
     payload: {
-      status: AdmissionApplicationStatusType;
-      verificationStatus: DocumentVerificationStatusType;
-      verificationNotes: string;
-      documentsChecklist: AdmissionDocumentChecklistItem[];
+      status?: AdmissionApplicationStatusType;
+      verificationStatus?: DocumentVerificationStatusType;
+      verificationNotes?: string;
+      documentsChecklist?: AdmissionDocumentChecklistItem[];
+      gradeApplied?: string;
+      guardianName?: string;
+      guardianPhone?: string;
+      guardianEmail?: string;
+      previousSchool?: string;
     },
   ) => Promise<void>;
 }
@@ -706,6 +713,8 @@ export function ApplicationDetailModal({
   onClose,
   canWrite,
   canVerify,
+  initialMode = "view",
+  availableGrades = [],
   onSave,
 }: ApplicationDetailModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -716,6 +725,12 @@ export function ApplicationDetailModal({
     useState<DocumentVerificationStatusType>("PENDING");
   const [verificationNotes, setVerificationNotes] = useState("");
   const [checklist, setChecklist] = useState<AdmissionDocumentChecklistItem[]>([]);
+  const [editProfileFields, setEditProfileFields] = useState(initialMode === "edit");
+  const [gradeApplied, setGradeApplied] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianPhone, setGuardianPhone] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
+  const [previousSchool, setPreviousSchool] = useState("");
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -725,14 +740,21 @@ export function ApplicationDetailModal({
       setVerificationStatus(application.verificationStatus);
       setVerificationNotes(application.verificationNotes || "");
       setChecklist(application.documentsChecklist.map((c) => ({ ...c })));
+      setGradeApplied(application.gradeApplied);
+      setGuardianName(application.guardianName);
+      setGuardianPhone(application.guardianPhone);
+      setGuardianEmail(application.guardianEmail || "");
+      setPreviousSchool(application.previousSchool || "");
+      setEditProfileFields(initialMode === "edit");
       setErrorMsg(null);
     }
-  }, [application]);
+  }, [application, initialMode]);
 
   if (!application) return null;
 
   const statusMeta = ADMISSION_STATUS_META[status];
   const verMeta = DOCUMENT_VERIFICATION_META[verificationStatus];
+  const gradeOptions = Array.from(new Set([application.gradeApplied, ...availableGrades]));
 
   const handleToggleChecklist = (key: string, field: "submitted" | "verified") => {
     setChecklist((prev) =>
@@ -757,6 +779,15 @@ export function ApplicationDetailModal({
         verificationStatus,
         verificationNotes,
         documentsChecklist: checklist,
+        ...(editProfileFields && canWrite
+          ? {
+              gradeApplied,
+              guardianName,
+              guardianPhone,
+              guardianEmail,
+              previousSchool,
+            }
+          : {}),
       });
       onClose();
     } catch (err: unknown) {
@@ -807,26 +838,115 @@ export function ApplicationDetailModal({
           </div>
         )}
 
-        {/* Applicant & Guardian Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-3.5 text-xs dark:border-[#272B4D] dark:bg-[#10142C]">
-          <div>
-            <span className="text-[#76799C] dark:text-[#9DA6CC]">Guardian:</span>{" "}
-            <strong className="text-[#08093B] dark:text-[#F3F5FF]">
-              {application.guardianName} ({application.guardianRelation})
-            </strong>
+        {/* Applicant & Guardian Summary (Editable when Edit mode toggled) */}
+        <div className="rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-3.5 text-xs dark:border-[#272B4D] dark:bg-[#10142C] space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#76799C] dark:text-[#9DA6CC]">
+              Applicant &amp; Guardian Details
+            </span>
+            {canWrite && (
+              <button
+                type="button"
+                onClick={() => setEditProfileFields((prev) => !prev)}
+                className="text-[11px] font-bold text-[#663CF6] hover:underline cursor-pointer dark:text-[#A78BFA]"
+              >
+                {editProfileFields ? "Done Editing Fields" : "Edit Contact & Grade"}
+              </button>
+            )}
           </div>
-          <div>
-            <span className="text-[#76799C] dark:text-[#9DA6CC]">Phone:</span>{" "}
-            <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.guardianPhone}</strong>
-          </div>
-          <div>
-            <span className="text-[#76799C] dark:text-[#9DA6CC]">Email:</span>{" "}
-            <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.guardianEmail || "Not provided"}</strong>
-          </div>
-          <div>
-            <span className="text-[#76799C] dark:text-[#9DA6CC]">Previous School:</span>{" "}
-            <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.previousSchool || "Not provided"}</strong>
-          </div>
+
+          {editProfileFields && canWrite ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label htmlFor="detail-grade" className="block text-[11px] font-bold text-[#4D5072] mb-1 dark:text-[#B4BDD9]">
+                  Grade Applied
+                </label>
+                <select
+                  id="detail-grade"
+                  value={gradeApplied}
+                  onChange={(e) => setGradeApplied(e.target.value)}
+                  className="w-full rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
+                >
+                  {gradeOptions.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="detail-guardian-name" className="block text-[11px] font-bold text-[#4D5072] mb-1 dark:text-[#B4BDD9]">
+                  Guardian Name
+                </label>
+                <input
+                  id="detail-guardian-name"
+                  type="text"
+                  required
+                  value={guardianName}
+                  onChange={(e) => setGuardianName(e.target.value)}
+                  className="w-full rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs text-[#08093B] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
+                />
+              </div>
+              <div>
+                <label htmlFor="detail-guardian-phone" className="block text-[11px] font-bold text-[#4D5072] mb-1 dark:text-[#B4BDD9]">
+                  Guardian Phone
+                </label>
+                <input
+                  id="detail-guardian-phone"
+                  type="tel"
+                  required
+                  value={guardianPhone}
+                  onChange={(e) => setGuardianPhone(e.target.value)}
+                  className="w-full rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs text-[#08093B] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
+                />
+              </div>
+              <div>
+                <label htmlFor="detail-guardian-email" className="block text-[11px] font-bold text-[#4D5072] mb-1 dark:text-[#B4BDD9]">
+                  Guardian Email
+                </label>
+                <input
+                  id="detail-guardian-email"
+                  type="email"
+                  value={guardianEmail}
+                  onChange={(e) => setGuardianEmail(e.target.value)}
+                  className="w-full rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs text-[#08093B] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="detail-prev-school" className="block text-[11px] font-bold text-[#4D5072] mb-1 dark:text-[#B4BDD9]">
+                  Previous School
+                </label>
+                <input
+                  id="detail-prev-school"
+                  type="text"
+                  value={previousSchool}
+                  onChange={(e) => setPreviousSchool(e.target.value)}
+                  className="w-full rounded-[8px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs text-[#08093B] dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <span className="text-[#76799C] dark:text-[#9DA6CC]">Guardian:</span>{" "}
+                <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                  {application.guardianName} ({application.guardianRelation})
+                </strong>
+              </div>
+              <div>
+                <span className="text-[#76799C] dark:text-[#9DA6CC]">Phone:</span>{" "}
+                <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.guardianPhone}</strong>
+              </div>
+              <div>
+                <span className="text-[#76799C] dark:text-[#9DA6CC]">Email:</span>{" "}
+                <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.guardianEmail || "Not provided"}</strong>
+              </div>
+              <div>
+                <span className="text-[#76799C] dark:text-[#9DA6CC]">Previous School:</span>{" "}
+                <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.previousSchool || "Not provided"}</strong>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Status & Verification Controls */}
