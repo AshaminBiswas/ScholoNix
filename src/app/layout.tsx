@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { siteConfig } from "@/config/site";
 import { ConsoleCleaner } from "@/components/ui/console-cleaner";
 import "./globals.css";
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         />
         <ConsoleCleaner />
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
