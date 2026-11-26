@@ -3,7 +3,6 @@
 import React, { useMemo, useState } from "react";
 import {
   Plus,
-  Upload,
   Download,
   ChevronDown,
   FileText,
@@ -86,7 +85,6 @@ interface ApplicationsManagementViewProps {
     notes: string;
   }) => Promise<void>;
   onOpenNewApplicationModal: () => void;
-  onOpenImportModal: () => void;
   onDownloadReport: () => void;
   onDownloadImportTemplate: () => void;
 }
@@ -145,7 +143,6 @@ export function ApplicationsManagementView({
   onBulkUpdateApplications,
   onCreateApplication,
   onOpenNewApplicationModal,
-  onOpenImportModal,
   onDownloadReport,
   onDownloadImportTemplate,
 }: ApplicationsManagementViewProps) {
@@ -350,27 +347,15 @@ export function ApplicationsManagementView({
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           {data.permissions.canWrite && (
-            <>
-              <button
-                id="admissions-new-application-btn"
-                type="button"
-                onClick={onOpenNewApplicationModal}
-                className="inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:opacity-95 cursor-pointer"
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                <span>New Application</span>
-              </button>
-
-              <button
-                id="admissions-import-applications-btn"
-                type="button"
-                onClick={onOpenImportModal}
-                className="inline-flex items-center gap-1.5 rounded-[12px] border border-[#D6DBF0] bg-white px-4 py-2.5 text-xs font-bold text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#F3F5FF] dark:hover:border-[#8B5CF6] dark:hover:text-[#C4B5FD]"
-              >
-                <Upload className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" aria-hidden="true" />
-                <span>Import Applications</span>
-              </button>
-            </>
+            <button
+              id="admissions-new-application-btn"
+              type="button"
+              onClick={onOpenNewApplicationModal}
+              className="inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:opacity-95 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              <span>New Application</span>
+            </button>
           )}
 
           {data.permissions.canExport && (
@@ -442,7 +427,7 @@ export function ApplicationsManagementView({
       <div
         role="group"
         aria-label="Application management workflows"
-        className="flex flex-wrap items-center gap-2"
+        className="flex flex-nowrap items-center gap-2 overflow-x-auto no-scrollbar py-1.5 -my-1.5 lg:flex-wrap lg:overflow-visible lg:py-0 lg:my-0"
       >
         {workflowButtons.map(({ key, label, Icon }) => {
           const active = subView === key;
@@ -452,13 +437,13 @@ export function ApplicationsManagementView({
               type="button"
               aria-pressed={active}
               onClick={() => handleWorkflowSwitch(key)}
-              className={`inline-flex items-center gap-2 rounded-[12px] px-4 py-2 text-xs font-bold transition cursor-pointer ${
+              className={`inline-flex shrink-0 whitespace-nowrap items-center gap-2 rounded-[12px] px-4 py-2 text-xs font-bold transition cursor-pointer ${
                 active
                   ? "bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] text-white shadow-md shadow-[#663CF6]/20"
                   : "border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] dark:border-[#272B4D] dark:bg-[#141731] dark:text-[#B4BDD9] dark:hover:border-[#8B5CF6] dark:hover:text-[#D9CEFF]"
               }`}
             >
-              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               <span>{label}</span>
             </button>
           );
@@ -1325,18 +1310,6 @@ export function ApplicationsManagementView({
                   <Plus className="h-5 w-5 text-[#4F27E8] dark:text-[#C4B5FD]" aria-hidden="true" />
                   <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
                     New Application
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={!data.permissions.canWrite}
-                  onClick={onOpenImportModal}
-                  className="flex flex-col items-center justify-center gap-2 rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] px-3 py-4 text-center transition hover:border-[#663CF6] hover:bg-white hover:shadow-xs disabled:opacity-50 cursor-pointer dark:border-[#2A2F56] dark:bg-[#10142C] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1A1E3E]"
-                >
-                  <Upload className="h-5 w-5 text-[#4F27E8] dark:text-[#C4B5FD]" aria-hidden="true" />
-                  <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
-                    Import Applications
                   </span>
                 </button>
 

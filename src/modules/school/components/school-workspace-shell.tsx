@@ -557,47 +557,8 @@ export function SchoolWorkspaceShell({
         <main className="min-w-0 overflow-x-hidden p-3 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full flex flex-col justify-between">
           <div className="space-y-6">{children}</div>
 
-          {/* Shared In-Portal Support Banner & Footer */}
-          <div className="space-y-6 pt-2">
-            <div className="relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#663CF6] via-[#7C3AED] to-[#4F27E8] p-6 text-white shadow-lg">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4 text-center sm:text-left">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-white/15 backdrop-blur-md text-white">
-                    <HelpCircle className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-extrabold text-white">Need Help or Have Suggestions?</h3>
-                    <p className="mt-0.5 text-xs text-purple-100">
-                      Access {school.name} help guides, contact support, or submit feedback inside your workspace.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center gap-3 shrink-0">
-                  <Link
-                    href={helpHref}
-                    className="inline-flex items-center gap-1.5 rounded-[12px] bg-white px-4 py-2 text-xs font-bold text-[#4F27E8] shadow-sm transition hover:bg-[#F6F5FD] dark:bg-[#141731] dark:text-[#E2D9FF] dark:hover:bg-[#1E2247]"
-                  >
-                    <span>Help Guides</span>
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => openSupportModal("support")}
-                    className="inline-flex items-center gap-1.5 rounded-[12px] bg-white/20 backdrop-blur-md px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-white/30 cursor-pointer"
-                  >
-                    <span>Contact Support</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openSupportModal("feedback")}
-                    className="inline-flex items-center gap-1.5 rounded-[12px] bg-white/20 backdrop-blur-md px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-white/30 cursor-pointer"
-                  >
-                    <span>Share Feedback</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
+          {/* Shared In-Portal Footer */}
+          <div className="pt-2">
             <footer className="border-t border-[#DFE3F5] pt-6 pb-4 text-xs text-[#76799C] flex flex-col sm:flex-row items-center justify-between gap-3 dark:border-[#232746] dark:text-[#9DA6CC]">
               <p>
                 &copy; {new Date().getFullYear()} ScholoNix · {school.name} Workspace

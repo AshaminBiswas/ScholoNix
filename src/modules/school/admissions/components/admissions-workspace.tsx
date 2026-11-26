@@ -34,13 +34,11 @@ import { AdmissionsKpisAndCharts } from "./admissions-kpis-and-charts";
 import { AdmissionsTable } from "./admissions-table";
 import { AdmissionsActivityAndNotes } from "./admissions-activity-and-notes";
 import { ApplicationsManagementView } from "./applications-management-view";
-import { ImportApplicationsModal } from "./import-applications-modal";
 import {
   ApplicationDetailModal,
   NewApplicationModal,
   NewEnquiryModal,
 } from "./admissions-modals";
-import type { CreateApplicationInput } from "@/modules/school/admissions/schemas";
 
 interface AdmissionsWorkspaceProps {
   school: SchoolShellSchool;
@@ -85,7 +83,6 @@ export function AdmissionsWorkspace({
 
   // Modals state
   const [newAppOpen, setNewAppOpen] = useState(false);
-  const [importModalOpen, setImportModalOpen] = useState(false);
   const [newEnqOpen, setNewEnqOpen] = useState(false);
   const [inspectApp, setInspectApp] = useState<AdmissionApplicationRecord | null>(null);
   const [inspectAppMode, setInspectAppMode] = useState<"view" | "edit">("view");
@@ -284,26 +281,6 @@ export function AdmissionsWorkspace({
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  };
-
-  const handleImportApplications = async (applications: CreateApplicationInput[]) => {
-    const res = await fetch(
-      `/api/school/admissions/applications/import?schoolSlug=${encodeURIComponent(school.slug)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applications }),
-      },
-    );
-    const json = await res.json();
-    if (!res.ok || !json.success) {
-      throw new Error(json?.error?.message || "Unable to import applications.");
-    }
-    showToast(
-      "success",
-      `Imported ${json.importedCount} admission application${json.importedCount === 1 ? "" : "s"}.`,
-    );
-    await fetchOverview(filters, { bypassClientCache: true });
   };
 
   const handleBulkUpdateApplications = async (
@@ -777,7 +754,6 @@ export function AdmissionsWorkspace({
           onBulkUpdateApplications={handleBulkUpdateApplications}
           onCreateApplication={handleCreateApplication}
           onOpenNewApplicationModal={() => setNewAppOpen(true)}
-          onOpenImportModal={() => setImportModalOpen(true)}
           onDownloadReport={handleDownloadReport}
           onDownloadImportTemplate={handleDownloadImportTemplate}
         />
@@ -1112,14 +1088,6 @@ export function AdmissionsWorkspace({
         defaultAcademicYear={data.settings.currentAcademicYear}
         academicYears={data.availableAcademicYears}
         onSubmit={handleCreateEnquiry}
-      />
-
-      <ImportApplicationsModal
-        open={importModalOpen}
-        onClose={() => setImportModalOpen(false)}
-        defaultAcademicYear={data.settings.currentAcademicYear}
-        availableGrades={data.availableGrades}
-        onImport={handleImportApplications}
       />
 
       <ApplicationDetailModal

@@ -234,7 +234,7 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     fetchSpy.mockRestore();
   });
 
-  it("renders Application Management view with 5 KPI cards, workflow pills, view toggle, analytics, and import modal", async () => {
+  it("renders Application Management view with 5 KPI cards, horizontally scrollable workflow pills, view toggle, and analytics without Import Applications buttons", async () => {
     const actor = userEvent.setup();
     const populatedOverview: AdmissionsOverviewData = {
       ...emptyOverview,
@@ -295,12 +295,17 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Application Management", level: 1 })).toBeTruthy();
-    expect(document.querySelector("#admissions-import-applications-btn")).not.toBeNull();
-    expect(screen.getAllByRole("button", { name: "Import Applications" })).toHaveLength(2);
+    expect(document.querySelector("#admissions-import-applications-btn")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Import Applications" })).toBeNull();
     expect(screen.getByRole("button", { name: "Download" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Document Verification" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Shortlisting" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Admission Approvals" })).toBeTruthy();
+
+    const workflowGroup = screen.getByRole("group", { name: "Application management workflows" });
+    expect(workflowGroup.className).toContain("overflow-x-auto");
+    expect(workflowGroup.className).toContain("flex-nowrap");
+    expect(workflowGroup.className).toContain("no-scrollbar");
 
     expect(screen.getByRole("heading", { name: "Filter Applications" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Application Progress" })).toBeTruthy();
@@ -317,11 +322,6 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     expect(screen.getAllByText("Synthetic Aarav").length).toBeGreaterThanOrEqual(1);
     await actor.click(screen.getByRole("button", { name: "Table list view" }));
     expect(screen.getByRole("table")).toBeTruthy();
-
-    // Open Import Applications dialog via header button
-    await actor.click(document.querySelector("#admissions-import-applications-btn") as HTMLButtonElement);
-    expect(screen.getByText(/Import Applications \(CSV\)/i)).toBeTruthy();
-    await actor.click(screen.getByRole("button", { name: "Close import modal" }));
 
     // Switch inline workflow to Application Form and back
     const appFormButtons = screen.getAllByRole("button", { name: "Application Form" });

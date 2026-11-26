@@ -54,6 +54,7 @@ describe("SchoolWorkspaceShell single-tenant & in-portal help links", () => {
 
     const helpBtn = document.querySelector("#school-portal-help-btn");
     expect(helpBtn).toBeNull();
+    expect(screen.queryByText("Need Help or Have Suggestions?")).toBeNull();
 
     const inPortalHelpLinks = Array.from(document.querySelectorAll("a")).filter(
       (el) => el.getAttribute("href") === "/synthetic-demo-academy/help",
