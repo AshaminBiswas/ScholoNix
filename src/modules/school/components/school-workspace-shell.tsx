@@ -435,6 +435,7 @@ export function SchoolWorkspaceShell({
                           key={subItem.tab}
                           href={buildSchoolRoute(school.slug, `admissions?tab=${subItem.tab}`)}
                           prefetch={true}
+                          aria-current={isSubActive ? "page" : undefined}
                           onClick={(e) => {
                             setMobileSidebarOpen(false);
                             if (

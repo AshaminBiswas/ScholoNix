@@ -109,21 +109,21 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Admissions", level: 1 })).toBeTruthy();
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
     expect(screen.getByText(/No admission applications found/i)).toBeTruthy();
     expect(screen.getByText(/No admission activity yet/i)).toBeTruthy();
     expect(screen.getByText(/All caught up/i)).toBeTruthy();
     expect(document.querySelector("#school-portal-help-btn")).toBeNull();
 
-    // Switch to Enquiries tab
-    await actor.click(screen.getByRole("tab", { name: "Enquiries" }));
+    // Switch via sidebar Admissions dropdown links
+    await actor.click(screen.getByRole("link", { name: "Enquiries" }));
     expect(screen.getByText(/No enquiries recorded yet/i)).toBeTruthy();
 
-    // Switch to Admitted Students tab
-    await actor.click(screen.getByRole("tab", { name: "Admitted Students" }));
+    await actor.click(screen.getByRole("link", { name: "Admitted Students" }));
     expect(screen.getByText(/No admitted students yet/i)).toBeTruthy();
 
-    // Switch to Settings tab
-    await actor.click(screen.getByRole("tab", { name: "Settings" }));
+    await actor.click(screen.getByRole("link", { name: "Admission Settings" }));
     expect(screen.getByRole("heading", { name: "Admission Settings" })).toBeTruthy();
   });
 
@@ -162,15 +162,19 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     // Submenu is open automatically while on admissions routes
     await actor.click(screen.getByRole("link", { name: "Enquiries" }));
     expect(screen.getByText(/No enquiries recorded yet/i)).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Enquiries" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("link", { name: "Enquiries" }).getAttribute("aria-current")).toBe("page");
 
     await actor.click(screen.getByRole("link", { name: "Admitted Students" }));
     expect(screen.getByText(/No admitted students yet/i)).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Admitted Students" }).getAttribute("aria-selected")).toBe("true");
+    expect(
+      screen.getByRole("link", { name: "Admitted Students" }).getAttribute("aria-current"),
+    ).toBe("page");
 
     await actor.click(screen.getByRole("link", { name: "Admission Settings" }));
     expect(screen.getByRole("heading", { name: "Admission Settings" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Settings" }).getAttribute("aria-selected")).toBe("true");
+    expect(
+      screen.getByRole("link", { name: "Admission Settings" }).getAttribute("aria-current"),
+    ).toBe("page");
 
     // Client-side instant switching must not issue slow network round-trips
     expect(fetchSpy).not.toHaveBeenCalled();

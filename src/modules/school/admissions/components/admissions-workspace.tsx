@@ -1,17 +1,9 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Home,
-  ChevronRight,
   Plus,
   Download,
-  LayoutGrid,
-  FileText,
-  MessageSquare,
-  UserCheck,
-  Settings,
   Calendar,
   Loader2,
   ArrowRight,
@@ -21,7 +13,6 @@ import {
 } from "lucide-react";
 import {
   SchoolWorkspaceShell,
-  buildSchoolRoute,
   type SchoolShellSchool,
   type SchoolShellUser,
 } from "@/modules/school/components/school-workspace-shell";
@@ -54,18 +45,6 @@ interface AdmissionsWorkspaceProps {
   initialData: AdmissionsOverviewData;
   initialTab: AdmissionsTab;
 }
-
-const TAB_CONFIG: Array<{
-  id: AdmissionsTab;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}> = [
-  { id: "overview", label: "Overview", icon: LayoutGrid },
-  { id: "applications", label: "Applications", icon: FileText },
-  { id: "enquiries", label: "Enquiries", icon: MessageSquare },
-  { id: "admitted", label: "Admitted Students", icon: UserCheck },
-  { id: "settings", label: "Settings", icon: Settings },
-];
 
 function buildFilterQueryString(filters: AdmissionsOverviewFilters, schoolSlug: string): string {
   const sp = new URLSearchParams();
@@ -447,11 +426,6 @@ export function AdmissionsWorkspace({
     );
   };
 
-  const activeTabLabel = useMemo(
-    () => TAB_CONFIG.find((t) => t.id === activeTab)?.label || "Overview",
-    [activeTab],
-  );
-
   return (
     <SchoolWorkspaceShell
       school={school}
@@ -464,65 +438,41 @@ export function AdmissionsWorkspace({
         handleTabSelect("applications");
       }}
     >
-      {/* Breadcrumb & Page Header */}
-      <div className="space-y-4">
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-[#76799C]">
-          <Link
-            href={buildSchoolRoute(school.slug)}
-            className="inline-flex items-center gap-1 hover:text-[#663CF6] font-medium"
-          >
-            <Home className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Dashboard</span>
-          </Link>
-          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-          <button
-            type="button"
-            onClick={() => handleTabSelect("overview")}
-            className="font-semibold text-[#663CF6] hover:underline cursor-pointer"
-          >
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#08093B] tracking-tight">
             Admissions
-          </button>
-          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-          <span className="font-semibold text-[#08093B]" aria-current="page">
-            {activeTabLabel}
-          </span>
-        </nav>
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm font-medium text-[#4D5072]">
+            Manage enquiries, applications, document verification, and student admissions in one place.
+          </p>
+        </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#08093B] tracking-tight">
-              Admissions
-            </h1>
-            <p className="mt-1 text-xs sm:text-sm font-medium text-[#4D5072]">
-              Manage enquiries, applications, document verification, and student admissions in one place.
-            </p>
-          </div>
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {data.permissions.canWrite && (
+            <button
+              id="admissions-new-application-btn"
+              type="button"
+              onClick={() => setNewAppOpen(true)}
+              className="inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:opacity-95 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              <span>New Application</span>
+            </button>
+          )}
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            {data.permissions.canWrite && (
-              <button
-                id="admissions-new-application-btn"
-                type="button"
-                onClick={() => setNewAppOpen(true)}
-                className="inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:opacity-95 cursor-pointer"
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                <span>New Application</span>
-              </button>
-            )}
-
-            {data.permissions.canExport && (
-              <button
-                id="admissions-download-report-btn"
-                type="button"
-                onClick={handleDownloadReport}
-                className="inline-flex items-center gap-2 rounded-[12px] border border-[#D6DBF0] bg-white px-4 py-2.5 text-xs font-bold text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer"
-              >
-                <Download className="h-4 w-4 text-[#663CF6]" aria-hidden="true" />
-                <span>Download Report</span>
-              </button>
-            )}
-          </div>
+          {data.permissions.canExport && (
+            <button
+              id="admissions-download-report-btn"
+              type="button"
+              onClick={handleDownloadReport}
+              className="inline-flex items-center gap-2 rounded-[12px] border border-[#D6DBF0] bg-white px-4 py-2.5 text-xs font-bold text-[#08093B] shadow-xs transition hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer"
+            >
+              <Download className="h-4 w-4 text-[#663CF6]" aria-hidden="true" />
+              <span>Download Report</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -553,46 +503,6 @@ export function AdmissionsWorkspace({
           </button>
         </div>
       )}
-
-      {/* =====================================================================
-          SUB-NAVIGATION TAB BAR (Single non-wrapping horizontal strip)
-          ===================================================================== */}
-      <div className="rounded-[18px] border border-[#D6DBF0] bg-white/80 p-1.5 shadow-xs">
-        <div
-          role="tablist"
-          aria-label="Admissions workspace sections"
-          className="flex items-center gap-1.5 overflow-x-auto no-scrollbar"
-        >
-          {TAB_CONFIG.map((tab) => {
-            const Icon = tab.icon;
-            const selected = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                id={`admissions-tab-${tab.id}`}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => handleTabSelect(tab.id)}
-                className={`relative flex-none inline-flex items-center gap-2 rounded-[12px] px-4 py-2 text-xs font-bold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
-                  selected
-                    ? "bg-[#663CF6] text-white shadow-sm"
-                    : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6]"
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>{tab.label}</span>
-                {selected && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-x-3 bottom-0.5 h-0.5 rounded-full bg-white/80"
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {/* =====================================================================
           FILTER CONTROL BAR (Shared across Overview / Applications / Admitted)
@@ -701,10 +611,10 @@ export function AdmissionsWorkspace({
       )}
 
       {/* =====================================================================
-          TAB PANELS
+          ADMISSIONS SECTION PANELS
           ===================================================================== */}
       {activeTab === "overview" && (
-        <div role="tabpanel" aria-labelledby="admissions-tab-overview" className="space-y-6">
+        <div className="space-y-6">
           <AdmissionsKpisAndCharts
             data={data}
             granularity={filters.granularity}
@@ -745,7 +655,7 @@ export function AdmissionsWorkspace({
       )}
 
       {activeTab === "applications" && (
-        <div role="tabpanel" aria-labelledby="admissions-tab-applications" className="space-y-4">
+        <div className="space-y-4">
           <AdmissionsTable
             applications={data.applications}
             pagination={data.pagination}
@@ -768,7 +678,7 @@ export function AdmissionsWorkspace({
       )}
 
       {activeTab === "enquiries" && (
-        <div role="tabpanel" aria-labelledby="admissions-tab-enquiries" className="space-y-4">
+        <div className="space-y-4">
           <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -880,7 +790,7 @@ export function AdmissionsWorkspace({
       )}
 
       {activeTab === "admitted" && (
-        <div role="tabpanel" aria-labelledby="admissions-tab-admitted" className="space-y-4">
+        <div className="space-y-4">
           <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -958,7 +868,7 @@ export function AdmissionsWorkspace({
       )}
 
       {activeTab === "settings" && (
-        <div role="tabpanel" aria-labelledby="admissions-tab-settings" className="space-y-4">
+        <div className="space-y-4">
           <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-6 shadow-xs max-w-3xl">
             <div className="flex items-center gap-2.5 mb-4">
               <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6]">
