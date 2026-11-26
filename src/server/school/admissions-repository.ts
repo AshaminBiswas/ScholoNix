@@ -11,6 +11,7 @@ import { logger } from "@/lib/logger";
 import {
   DEFAULT_ADMISSION_GRADES,
   DEFAULT_DOCUMENT_CHECKLIST,
+  mergeExtendedSettings,
   type AdmissionAcademicDetailsPayload,
   type AdmissionActivityRecord,
   type AdmissionApplicationRecord,
@@ -356,6 +357,7 @@ function mapPrismaSetting(row: any): StoredSetting {
       : null,
     applicationPrefix: row.applicationPrefix,
     enabledGrades: Array.isArray(row.enabledGrades) ? row.enabledGrades : [...DEFAULT_ADMISSION_GRADES],
+    extendedConfig: mergeExtendedSettings(row.extendedConfig),
     nextApplicationSeq: row.nextApplicationSeq,
     nextEnquirySeq: row.nextEnquirySeq,
     nextAdmissionSeq: row.nextAdmissionSeq,
@@ -511,11 +513,14 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         applicationDeadline: null,
         applicationPrefix: "APP",
         enabledGrades: [...DEFAULT_ADMISSION_GRADES],
+        extendedConfig: mergeExtendedSettings(null),
         nextApplicationSeq: 1,
         nextEnquirySeq: 1,
         nextAdmissionSeq: 1,
         updatedAt: new Date().toISOString(),
       };
+    } else if (!store.settings[schoolId]!.extendedConfig) {
+      store.settings[schoolId]!.extendedConfig = mergeExtendedSettings(null);
     }
     return store.settings[schoolId]!;
   }
@@ -565,6 +570,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                   applicationDeadline: null,
                   applicationPrefix: "APP",
                   enabledGrades: [...DEFAULT_ADMISSION_GRADES],
+                  extendedConfig: mergeExtendedSettings(null),
                   updatedAt: new Date().toISOString(),
                 };
 
@@ -1506,18 +1512,26 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         : null;
     const nowIso = new Date().toISOString();
 
+    const nextExtendedConfig =
+      input.extendedConfig !== undefined
+        ? mergeExtendedSettings(input.extendedConfig)
+        : undefined;
+
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("updateSettings", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const updated = await tx.admissionSetting.upsert({
+            const updated = await (tx.admissionSetting as any).upsert({
               where: { schoolId },
               update: {
                 currentAcademicYear: input.currentAcademicYear,
                 applicationDeadline: deadlineDate,
                 applicationPrefix: input.applicationPrefix,
                 enabledGrades: input.enabledGrades,
+                ...(nextExtendedConfig !== undefined
+                  ? { extendedConfig: nextExtendedConfig }
+                  : {}),
               },
               create: {
                 schoolId,
@@ -1525,6 +1539,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                 applicationDeadline: deadlineDate,
                 applicationPrefix: input.applicationPrefix,
                 enabledGrades: input.enabledGrades,
+                extendedConfig: nextExtendedConfig ?? mergeExtendedSettings(null),
               },
             });
 
@@ -1552,6 +1567,11 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     setting.applicationDeadline = deadlineDate ? deadlineDate.toISOString() : null;
     setting.applicationPrefix = input.applicationPrefix;
     setting.enabledGrades = input.enabledGrades;
+    if (nextExtendedConfig !== undefined) {
+      setting.extendedConfig = nextExtendedConfig;
+    } else if (!setting.extendedConfig) {
+      setting.extendedConfig = mergeExtendedSettings(null);
+    }
     setting.updatedAt = nowIso;
 
     store.activities.unshift({

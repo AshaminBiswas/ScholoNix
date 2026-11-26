@@ -1,4 +1,6 @@
 import "server-only";
+import fs from "node:fs";
+import path from "node:path";
 import {
   PDFDocument,
   PageSizes,
@@ -20,6 +22,7 @@ export interface PdfSchoolProfile {
   id: string;
   name: string;
   slug: string;
+  logoUrl?: string | null;
   uniqueId?: string | null;
   affiliationBoard?: string | null;
   city?: string | null;
@@ -137,6 +140,12 @@ function formatDateIst(iso: string | null | undefined, includeTime = false): str
         timeZone: "Asia/Kolkata",
       };
   return sanitizePdfText(new Intl.DateTimeFormat("en-IN", opts).format(parsed));
+}
+
+function formatBytesLabel(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 export function buildPdfFilename(application: AdmissionApplicationRecord): string {
@@ -427,6 +436,111 @@ class PdfA4Composer {
   }
 }
 
+async function embedImageBuffer(pdfDoc: PDFDocument, buf: Buffer): Promise<PDFImage | null> {
+  if (buf.length < 8) return null;
+  try {
+    // PNG magic bytes
+    if (
+      buf[0] === 0x89 &&
+      buf[1] === 0x50 &&
+      buf[2] === 0x4e &&
+      buf[3] === 0x47
+    ) {
+      return await pdfDoc.embedPng(buf);
+    }
+    // JPEG magic bytes
+    if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
+      return await pdfDoc.embedJpg(buf);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function isSafeRemoteLogoUrl(rawUrl: string): URL | null {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== "https:") return null;
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === "localhost" ||
+      host.endsWith(".local") ||
+      host === "127.0.0.1" ||
+      host.startsWith("10.") ||
+      host.startsWith("192.168.") ||
+      host.startsWith("169.254.") ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+    ) {
+      return null;
+    }
+    if (host === "ik.imagekit.io" && !parsed.searchParams.has("tr")) {
+      parsed.searchParams.set("tr", "f-png");
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+async function tryEmbedSchoolLogo(
+  pdfDoc: PDFDocument,
+  logoUrl?: string | null,
+): Promise<PDFImage | null> {
+  const raw = logoUrl?.trim();
+  if (!raw) return null;
+
+  if (raw.startsWith("data:image/")) {
+    const commaIdx = raw.indexOf(",");
+    if (commaIdx > 0) {
+      const meta = raw.slice(0, commaIdx).toLowerCase();
+      const payload = raw.slice(commaIdx + 1);
+      if (meta.includes(";base64")) {
+        const buf = Buffer.from(payload, "base64");
+        return embedImageBuffer(pdfDoc, buf);
+      }
+    }
+    return null;
+  }
+
+  if (raw.startsWith("/") && !raw.startsWith("//")) {
+    const publicRoot = path.resolve(process.cwd(), "public");
+    const targetPath = path.resolve(publicRoot, raw.replace(/^\/+/, ""));
+    if (targetPath.startsWith(`${publicRoot}${path.sep}`) && fs.existsSync(targetPath)) {
+      try {
+        return await embedImageBuffer(pdfDoc, fs.readFileSync(targetPath));
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  const safeRemote = isSafeRemoteLogoUrl(raw);
+  if (safeRemote) {
+    try {
+      const res = await fetch(safeRemote.toString(), {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!res.ok) return null;
+      const arr = await res.arrayBuffer();
+      if (arr.byteLength > 3 * 1024 * 1024) return null;
+      return await embedImageBuffer(pdfDoc, Buffer.from(arr));
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function getSchoolInitials(name: string): string {
+  const parts = sanitizePdfText(name, "SC").split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "SC";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase();
+}
+
 async function tryEmbedStudentPhoto(
   pdfDoc: PDFDocument,
   schoolId: string,
@@ -467,12 +581,15 @@ export async function buildApplicationDossierPdf(params: {
   const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   const composer = new PdfA4Composer(pdfDoc, regular, bold, school, application);
-  const studentPhoto = await tryEmbedStudentPhoto(pdfDoc, school.id, application.studentPhotoKey);
+  const [schoolLogo, studentPhoto] = await Promise.all([
+    tryEmbedSchoolLogo(pdfDoc, school.logoUrl),
+    tryEmbedStudentPhoto(pdfDoc, school.id, application.studentPhotoKey),
+  ]);
 
   // =========================================================================
-  // PAGE 1 TOP INSTITUTIONAL HEADER + PHOTO + REFERENCE STRIP
+  // PAGE 1 TOP INSTITUTIONAL HEADER + SCHOOL LOGO + PHOTO + REFERENCE STRIP
   // =========================================================================
-  const headerH = 74;
+  const headerH = 78;
   composer.page.drawRectangle({
     x: MARGIN_X,
     y: composer.y - headerH,
@@ -481,10 +598,61 @@ export async function buildApplicationDossierPdf(params: {
     color: BRAND_PRIMARY,
   });
 
-  composer.page.drawText(sanitizePdfText(school.name), {
-    x: MARGIN_X + 16,
-    y: composer.y - 24,
-    size: 16,
+  // School Logo Badge (Left)
+  const logoBoxSize = 54;
+  const logoBoxX = MARGIN_X + 14;
+  const logoBoxY = composer.y - headerH + (headerH - logoBoxSize) / 2;
+  composer.page.drawRectangle({
+    x: logoBoxX,
+    y: logoBoxY,
+    width: logoBoxSize,
+    height: logoBoxSize,
+    color: WHITE,
+    borderColor: BRAND_BORDER,
+    borderWidth: 0.75,
+  });
+
+  if (schoolLogo) {
+    const pad = 4;
+    const maxDim = logoBoxSize - pad * 2;
+    const dims = schoolLogo.scaleToFit(maxDim, maxDim);
+    composer.page.drawImage(schoolLogo, {
+      x: logoBoxX + (logoBoxSize - dims.width) / 2,
+      y: logoBoxY + (logoBoxSize - dims.height) / 2,
+      width: dims.width,
+      height: dims.height,
+    });
+  } else {
+    composer.page.drawRectangle({
+      x: logoBoxX + 4,
+      y: logoBoxY + 4,
+      width: logoBoxSize - 8,
+      height: logoBoxSize - 8,
+      color: BRAND_SOFT,
+    });
+    const initials = getSchoolInitials(school.name);
+    const iw = bold.widthOfTextAtSize(initials, 16);
+    composer.page.drawText(initials, {
+      x: logoBoxX + (logoBoxSize - iw) / 2,
+      y: logoBoxY + logoBoxSize / 2 - 5.5,
+      size: 16,
+      font: bold,
+      color: BRAND_PRIMARY,
+    });
+  }
+
+  const textStartX = logoBoxX + logoBoxSize + 14;
+  const maxSchoolNameW = MARGIN_X + CONTENT_WIDTH - textStartX - 16;
+  const cleanSchoolName = sanitizePdfText(school.name);
+  let titleSize = 16;
+  while (titleSize > 11 && bold.widthOfTextAtSize(cleanSchoolName, titleSize) > maxSchoolNameW) {
+    titleSize -= 1;
+  }
+
+  composer.page.drawText(cleanSchoolName, {
+    x: textStartX,
+    y: composer.y - 25,
+    size: titleSize,
     font: bold,
     color: WHITE,
   });
@@ -495,31 +663,41 @@ export async function buildApplicationDossierPdf(params: {
     school.uniqueId ? `School ID: ${school.uniqueId}` : null,
   ].filter(Boolean);
   composer.page.drawText(sanitizePdfText(schoolSubParts.join("  |  ")), {
-    x: MARGIN_X + 16,
-    y: composer.y - 40,
+    x: textStartX,
+    y: composer.y - 42,
     size: 8.5,
     font: regular,
     color: rgb(0.9, 0.89, 1),
   });
 
-  composer.page.drawText("OFFICIAL ADMISSION APPLICATION DOSSIER", {
-    x: MARGIN_X + 16,
-    y: composer.y - 59,
-    size: 10.5,
+  const dossierLabel = "OFFICIAL ADMISSION APPLICATION DOSSIER";
+  composer.page.drawText(dossierLabel, {
+    x: textStartX,
+    y: composer.y - 61,
+    size: 9.5,
     font: bold,
     color: WHITE,
   });
 
   const schoolContactLine = [school.contactEmail, school.contactPhone].filter(Boolean).join("  |  ");
   if (schoolContactLine) {
-    const cw = regular.widthOfTextAtSize(sanitizePdfText(schoolContactLine), 7.5);
-    composer.page.drawText(sanitizePdfText(schoolContactLine), {
-      x: MARGIN_X + CONTENT_WIDTH - 16 - cw,
-      y: composer.y - 59,
-      size: 7.5,
-      font: regular,
-      color: rgb(0.9, 0.89, 1),
-    });
+    const safeContact = sanitizePdfText(schoolContactLine);
+    const labelEndX = textStartX + bold.widthOfTextAtSize(dossierLabel, 9.5) + 12;
+    const maxContactW = Math.max(0, MARGIN_X + CONTENT_WIDTH - 14 - labelEndX);
+    let contactSize = 7.5;
+    while (contactSize > 6 && regular.widthOfTextAtSize(safeContact, contactSize) > maxContactW) {
+      contactSize -= 0.5;
+    }
+    const cw = regular.widthOfTextAtSize(safeContact, contactSize);
+    if (cw <= maxContactW) {
+      composer.page.drawText(safeContact, {
+        x: MARGIN_X + CONTENT_WIDTH - 14 - cw,
+        y: composer.y - 61,
+        size: contactSize,
+        font: regular,
+        color: rgb(0.9, 0.89, 1),
+      });
+    }
   }
 
   composer.y -= headerH + 14;
@@ -819,9 +997,32 @@ export async function buildApplicationDossierPdf(params: {
   }
 
   // =========================================================================
-  // SECTION 4: DECLARATION, REVIEW NOTES & OFFICIAL SIGNATURES
+  // SECTION 4: UPLOADED DOCUMENTS MANIFEST (Checklist requirement table omitted)
   // =========================================================================
-  composer.drawSectionTitle("4. Declaration & Official Authorization");
+  composer.drawSectionTitle("4. Submitted Documents & Verification Status");
+  const uploadedDocs = application.uploadedDocuments ?? [];
+  if (uploadedDocs.length > 0) {
+    composer.drawTable(
+      ["Uploaded Document", "Original Filename", "File Size", "Uploaded At"],
+      [150, 178.28, 70, 125],
+      uploadedDocs.map((doc) => [
+        doc.label,
+        doc.fileName,
+        formatBytesLabel(doc.sizeBytes),
+        formatDateIst(doc.uploadedAt, true),
+      ]),
+    );
+  } else {
+    composer.drawKeyValueGrid(
+      [{ label: "Uploaded Documents", value: "No documents uploaded for this application." }],
+      1,
+    );
+  }
+
+  // =========================================================================
+  // SECTION 5: DECLARATION, REVIEW NOTES & OFFICIAL SIGNATURES
+  // =========================================================================
+  composer.drawSectionTitle("5. Declaration & Official Authorization");
   const declLines = wrapTextToLines(
     "I hereby declare that all information provided in this admission application is true, complete, and accurate to the best of my knowledge. I understand that submission of incorrect or falsified records may result in cancellation of admission at any stage.",
     regular,

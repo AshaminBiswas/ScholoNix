@@ -5,11 +5,9 @@ import {
   Plus,
   Download,
   Calendar,
-  Loader2,
   ArrowRight,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
 } from "lucide-react";
 import {
   SchoolWorkspaceShell,
@@ -18,7 +16,6 @@ import {
 } from "@/modules/school/components/school-workspace-shell";
 import {
   ENQUIRY_STATUS_META,
-  DEFAULT_ADMISSION_GRADES,
   type AdmissionApplicationRecord,
   type AdmissionApplicationStatusType,
   type AdmissionEnquiryStatusType,
@@ -33,6 +30,10 @@ import { AdmissionsKpisAndCharts } from "./admissions-kpis-and-charts";
 import { AdmissionsTable } from "./admissions-table";
 import { AdmissionsActivityAndNotes } from "./admissions-activity-and-notes";
 import { ApplicationsManagementView } from "./applications-management-view";
+import {
+  AdmissionSettingsPanel,
+  type AdmissionSettingsSavePayload,
+} from "./admission-settings-panel";
 import {
   ApplicationDetailModal,
   NewEnquiryModal,
@@ -85,19 +86,6 @@ export function AdmissionsWorkspace({
   const [editingApp, setEditingApp] = useState<AdmissionApplicationRecord | null>(null);
   const [searchFocusNonce, setSearchFocusNonce] = useState(0);
 
-  // Settings form state synced from server data
-  const [settingsAcademicYear, setSettingsAcademicYear] = useState(
-    initialData.settings.currentAcademicYear,
-  );
-  const [settingsDeadline, setSettingsDeadline] = useState(
-    initialData.settings.applicationDeadline
-      ? initialData.settings.applicationDeadline.slice(0, 10)
-      : "",
-  );
-  const [settingsPrefix, setSettingsPrefix] = useState(initialData.settings.applicationPrefix);
-  const [settingsGrades, setSettingsGrades] = useState<string[]>(initialData.settings.enabledGrades);
-  const [savingSettings, setSavingSettings] = useState(false);
-
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filtersRef = useRef<AdmissionsOverviewFilters>(initialData.filters);
   const clientQueryCacheRef = useRef<Map<string, AdmissionsOverviewData>>(new Map());
@@ -105,14 +93,6 @@ export function AdmissionsWorkspace({
 
   const applyOverviewSnapshot = useCallback((nextData: AdmissionsOverviewData) => {
     setData(nextData);
-    setSettingsAcademicYear(nextData.settings.currentAcademicYear);
-    setSettingsDeadline(
-      nextData.settings.applicationDeadline
-        ? nextData.settings.applicationDeadline.slice(0, 10)
-        : "",
-    );
-    setSettingsPrefix(nextData.settings.applicationPrefix);
-    setSettingsGrades(nextData.settings.enabledGrades);
   }, []);
 
   // Seed client query cache with initial server-rendered data
@@ -502,40 +482,23 @@ export function AdmissionsWorkspace({
     if (res.ok) await fetchOverview(filters, { bypassClientCache: true });
   };
 
-  const handleSaveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingSettings(true);
-    try {
-      const res = await fetch(
-        `/api/school/admissions/settings?schoolSlug=${encodeURIComponent(school.slug)}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            currentAcademicYear: settingsAcademicYear,
-            applicationDeadline: settingsDeadline || null,
-            applicationPrefix: settingsPrefix,
-            enabledGrades: settingsGrades,
-          }),
-        },
-      );
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json?.error?.message || "Unable to update settings.");
-      }
-      showToast("success", "Admission settings saved.");
-      await fetchOverview(filters, { bypassClientCache: true });
-    } catch (err: unknown) {
-      showToast("error", err instanceof Error ? err.message : "Failed to save settings.");
-    } finally {
-      setSavingSettings(false);
-    }
-  };
-
-  const toggleSettingGrade = (grade: string) => {
-    setSettingsGrades((prev) =>
-      prev.includes(grade) ? prev.filter((g) => g !== grade) : [...prev, grade],
+  const handleSaveSettings = async (payload: AdmissionSettingsSavePayload) => {
+    const res = await fetch(
+      `/api/school/admissions/settings?schoolSlug=${encodeURIComponent(school.slug)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
     );
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      const message = json?.error?.message || "Unable to update settings.";
+      showToast("error", message);
+      throw new Error(message);
+    }
+    showToast("success", "Admission settings saved.");
+    await fetchOverview(filters, { bypassClientCache: true });
   };
 
   return (
@@ -978,125 +941,12 @@ export function AdmissionsWorkspace({
       )}
 
       {activeTab === "settings" && (
-        <div className="space-y-4">
-          <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-6 shadow-xs max-w-3xl dark:border-[#272B4D] dark:bg-[#141731]">
-            <div className="flex items-center gap-2.5 mb-4">
-              <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <div>
-                <h2 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Admission Settings</h2>
-                <p className="text-xs text-[#76799C] dark:text-[#9DA6CC]">
-                  Configure active admission cycle, last date reminder, code prefix, and open grades for {school.name}.
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleSaveSettings} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label
-                    htmlFor="settings-ay"
-                    className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]"
-                  >
-                    Current Academic Year
-                  </label>
-                  <input
-                    id="settings-ay"
-                    type="text"
-                    required
-                    disabled={!data.permissions.canManageSettings}
-                    value={settingsAcademicYear}
-                    onChange={(e) => setSettingsAcademicYear(e.target.value)}
-                    placeholder="2026 – 2027"
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="settings-deadline"
-                    className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]"
-                  >
-                    Application Last Date
-                  </label>
-                  <input
-                    id="settings-deadline"
-                    type="date"
-                    disabled={!data.permissions.canManageSettings}
-                    value={settingsDeadline}
-                    onChange={(e) => setSettingsDeadline(e.target.value)}
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="settings-prefix"
-                    className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]"
-                  >
-                    Application ID Prefix
-                  </label>
-                  <input
-                    id="settings-prefix"
-                    type="text"
-                    required
-                    disabled={!data.permissions.canManageSettings}
-                    value={settingsPrefix}
-                    onChange={(e) => setSettingsPrefix(e.target.value.toUpperCase())}
-                    maxLength={8}
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-bold text-[#08093B] mb-2 dark:text-[#F3F5FF]">
-                  Grades Open for Admission
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {DEFAULT_ADMISSION_GRADES.map((grade) => {
-                    const checked = settingsGrades.includes(grade);
-                    return (
-                      <label
-                        key={grade}
-                        className={`flex items-center gap-2 rounded-[10px] border px-3 py-2 text-xs font-semibold cursor-pointer transition ${
-                          checked
-                            ? "border-[#663CF6] bg-[#FAF8FE] text-[#663CF6] dark:border-[#8B5CF6] dark:bg-[#231D4B] dark:text-[#D9CEFF]"
-                            : "border-[#DFE3F5] bg-white text-[#4D5072] dark:border-[#2A2F58] dark:bg-[#10142C] dark:text-[#9DA6CC]"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          disabled={!data.permissions.canManageSettings}
-                          checked={checked}
-                          onChange={() => toggleSettingGrade(grade)}
-                          className="h-3.5 w-3.5 accent-[#663CF6]"
-                        />
-                        <span>{grade}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {data.permissions.canManageSettings && (
-                <div className="pt-2 flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={savingSettings || settingsGrades.length === 0}
-                    className="inline-flex items-center gap-1.5 rounded-[12px] bg-[#663CF6] px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#4F27E8] disabled:opacity-60 cursor-pointer"
-                  >
-                    {savingSettings && (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                    )}
-                    <span>{savingSettings ? "Saving..." : "Save Settings"}</span>
-                  </button>
-                </div>
-              )}
-            </form>
-          </section>
-        </div>
+        <AdmissionSettingsPanel
+          schoolName={school.name}
+          settings={data.settings}
+          canManageSettings={data.permissions.canManageSettings}
+          onSaveSettings={handleSaveSettings}
+        />
       )}
 
       {/* Modals */}

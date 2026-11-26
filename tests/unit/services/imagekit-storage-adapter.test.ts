@@ -182,6 +182,7 @@ describe("ImageKit storage adapter & resilient PDF delivery", () => {
         id: "11111111-1111-4111-8111-111111111111",
         name: "Synthetic ImageKit School",
         slug: "sc_imagekit_test",
+        logoUrl: "/favicon-32x32.png",
         affiliationBoard: "CBSE",
         city: "Pune",
         state: "Maharashtra",

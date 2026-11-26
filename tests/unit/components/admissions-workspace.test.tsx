@@ -125,6 +125,14 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
 
     await actor.click(screen.getByRole("link", { name: "Admission Settings" }));
     expect(screen.getByRole("heading", { name: "Admission Settings" })).toBeTruthy();
+    // Preserved core controls alongside new customizable sections
+    expect(screen.getByLabelText(/Current Academic Year/i)).toBeTruthy();
+    expect(screen.getByLabelText(/Application ID Prefix/i)).toBeTruthy();
+    expect(screen.getByText(/Grades Open for Admission/i)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Seat & Quota Settings" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Document Requirements" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Admission Approval Workflow" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Additional Settings" })).toBeTruthy();
   });
 
   it("does not render New Application button on Admissions Overview", () => {

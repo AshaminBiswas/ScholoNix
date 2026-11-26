@@ -165,12 +165,72 @@ export interface AdmissionEnquiryRecord {
   updatedAt: string;
 }
 
+export type AdmissionModeValue = "ONLINE_OFFLINE" | "ONLINE_ONLY" | "OFFLINE_ONLY";
+
+export type AdmissionApprovalProcessValue = "MULTI_LEVEL" | "SINGLE_LEVEL" | "AUTO_APPROVE";
+
+export type AdmissionCriteriaTypeValue = "AGE_BASED" | "MERIT_BASED" | "AGE_AND_MERIT";
+
+export interface AdmissionDocumentRequirementItem {
+  id: string;
+  label: string;
+  mandatory: boolean;
+}
+
+export interface AdmissionSeatQuotaItem {
+  id: string;
+  name: string;
+  percentage: number;
+}
+
+export interface AdmissionCustomFieldItem {
+  id: string;
+  label: string;
+  type: "text" | "number" | "date" | "select";
+  required: boolean;
+}
+
+export interface AdmissionExtendedSettings {
+  admissionMode: AdmissionModeValue;
+  gradeRangeFrom: string;
+  gradeRangeTo: string;
+  admissionEnabled: boolean;
+  startDate: string | null;
+  lateAdmissionEnabled: boolean;
+  lateFeeAmount: number;
+  onlineFormEnabled: boolean;
+  allowGradeSelection: boolean;
+  allowMultipleApplications: boolean;
+  applicationFeeEnabled: boolean;
+  applicationFeeAmount: number;
+  documentRequirements: AdmissionDocumentRequirementItem[];
+  approvalProcess: AdmissionApprovalProcessValue;
+  criteriaEnabled: boolean;
+  criteriaType: AdmissionCriteriaTypeValue;
+  minAgeYears: number;
+  maxAgeYears: number;
+  ageAsOfDate: string;
+  minPercentage: number;
+  totalSeatsPerClass: number;
+  quotas: AdmissionSeatQuotaItem[];
+  sendConfirmationNotification: boolean;
+  sendVerificationUpdates: boolean;
+  notifyApprovalRejection: boolean;
+  enableOfferLetter: boolean;
+  emailTemplate: string;
+  smsTemplate: string;
+  crmIntegrationEnabled: boolean;
+  referralCodeEnabled: boolean;
+  customFields: AdmissionCustomFieldItem[];
+}
+
 export interface AdmissionSettingRecord {
   schoolId: string;
   currentAcademicYear: string;
   applicationDeadline: string | null;
   applicationPrefix: string;
   enabledGrades: string[];
+  extendedConfig?: AdmissionExtendedSettings;
   updatedAt: string;
 }
 
@@ -312,6 +372,77 @@ export const DEFAULT_DOCUMENT_CHECKLIST: AdmissionDocumentChecklistItem[] = [
   { key: "address_proof", label: "Address Proof", submitted: false, verified: false },
   { key: "student_photo", label: "Passport Size Photo", submitted: false, verified: false },
 ];
+
+export function createDefaultExtendedSettings(): AdmissionExtendedSettings {
+  return {
+    admissionMode: "ONLINE_OFFLINE",
+    gradeRangeFrom: "Nursery",
+    gradeRangeTo: "Class XII",
+    admissionEnabled: true,
+    startDate: null,
+    lateAdmissionEnabled: true,
+    lateFeeAmount: 500,
+    onlineFormEnabled: true,
+    allowGradeSelection: true,
+    allowMultipleApplications: false,
+    applicationFeeEnabled: true,
+    applicationFeeAmount: 1000,
+    documentRequirements: [
+      { id: "student_aadhaar", label: "Student Aadhar Card", mandatory: true },
+      { id: "birth_certificate", label: "Birth Certificate", mandatory: true },
+      { id: "parent_aadhaar", label: "Parent/Guardian Aadhar Card", mandatory: true },
+      { id: "previous_tc", label: "Previous School TC", mandatory: false },
+      { id: "address_proof", label: "Address Proof", mandatory: true },
+    ],
+    approvalProcess: "MULTI_LEVEL",
+    criteriaEnabled: true,
+    criteriaType: "AGE_BASED",
+    minAgeYears: 3,
+    maxAgeYears: 18,
+    ageAsOfDate: `${new Date().getFullYear()}-03-31`,
+    minPercentage: 50,
+    totalSeatsPerClass: 60,
+    quotas: [
+      { id: "general", name: "General", percentage: 70 },
+      { id: "sibling", name: "Sibling", percentage: 10 },
+      { id: "staff_ward", name: "Staff Ward", percentage: 5 },
+      { id: "management", name: "Management", percentage: 15 },
+    ],
+    sendConfirmationNotification: true,
+    sendVerificationUpdates: true,
+    notifyApprovalRejection: true,
+    enableOfferLetter: true,
+    emailTemplate: "Admission Confirmation",
+    smsTemplate: "Application Received",
+    crmIntegrationEnabled: true,
+    referralCodeEnabled: false,
+    customFields: [],
+  };
+}
+
+export function mergeExtendedSettings(
+  raw?: Partial<AdmissionExtendedSettings> | null,
+): AdmissionExtendedSettings {
+  const defaults = createDefaultExtendedSettings();
+  if (!raw || typeof raw !== "object") {
+    return defaults;
+  }
+  return {
+    ...defaults,
+    ...raw,
+    documentRequirements:
+      Array.isArray(raw.documentRequirements) && raw.documentRequirements.length > 0
+        ? raw.documentRequirements.map((d) => ({ ...d }))
+        : defaults.documentRequirements,
+    quotas:
+      Array.isArray(raw.quotas) && raw.quotas.length > 0
+        ? raw.quotas.map((q) => ({ ...q }))
+        : defaults.quotas,
+    customFields: Array.isArray(raw.customFields)
+      ? raw.customFields.map((f) => ({ ...f }))
+      : defaults.customFields,
+  };
+}
 
 export const ADMISSION_STATUS_META: Record<
   AdmissionApplicationStatusType,

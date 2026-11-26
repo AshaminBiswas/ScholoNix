@@ -62,6 +62,7 @@ export interface SchoolRecord {
   state?: string | null;
   pinCode?: string | null;
   country: string;
+  logoUrl?: string | null;
   status: string;
   plan?: string | null;
   createdAt: Date;

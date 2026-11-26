@@ -309,15 +309,95 @@ export const updateApplicationSchema = z.object({
   declarationAccepted: z.boolean().optional(),
 });
 
+const optionalDateSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
+  .optional()
+  .nullable()
+  .or(z.literal(""));
+
+export const admissionExtendedSettingsSchema = z
+  .object({
+    admissionMode: z.enum(["ONLINE_OFFLINE", "ONLINE_ONLY", "OFFLINE_ONLY"]).default("ONLINE_OFFLINE"),
+    gradeRangeFrom: z.string().trim().min(1).max(60).default("Nursery"),
+    gradeRangeTo: z.string().trim().min(1).max(60).default("Class XII"),
+    admissionEnabled: z.boolean().default(true),
+    startDate: optionalDateSchema,
+    lateAdmissionEnabled: z.boolean().default(true),
+    lateFeeAmount: z.number().finite().min(0).max(500_000).default(500),
+    onlineFormEnabled: z.boolean().default(true),
+    allowGradeSelection: z.boolean().default(true),
+    allowMultipleApplications: z.boolean().default(false),
+    applicationFeeEnabled: z.boolean().default(true),
+    applicationFeeAmount: z.number().finite().min(0).max(500_000).default(1000),
+    documentRequirements: z
+      .array(
+        z.object({
+          id: z.string().trim().min(1).max(60),
+          label: z.string().trim().min(1, "Document label is required").max(120),
+          mandatory: z.boolean().default(true),
+        }),
+      )
+      .max(25),
+    approvalProcess: z.enum(["MULTI_LEVEL", "SINGLE_LEVEL", "AUTO_APPROVE"]).default("MULTI_LEVEL"),
+    criteriaEnabled: z.boolean().default(true),
+    criteriaType: z.enum(["AGE_BASED", "MERIT_BASED", "AGE_AND_MERIT"]).default("AGE_BASED"),
+    minAgeYears: z.number().finite().min(0).max(30).default(3),
+    maxAgeYears: z.number().finite().min(1).max(40).default(18),
+    ageAsOfDate: optionalDateSchema.transform((v) => v || `${new Date().getFullYear()}-03-31`),
+    minPercentage: z.number().finite().min(0).max(100).default(50),
+    totalSeatsPerClass: z.number().int().min(1).max(2000).default(60),
+    quotas: z
+      .array(
+        z.object({
+          id: z.string().trim().min(1).max(60),
+          name: z.string().trim().min(1, "Quota name is required").max(80),
+          percentage: z.number().finite().min(0).max(100),
+        }),
+      )
+      .max(20),
+    sendConfirmationNotification: z.boolean().default(true),
+    sendVerificationUpdates: z.boolean().default(true),
+    notifyApprovalRejection: z.boolean().default(true),
+    enableOfferLetter: z.boolean().default(true),
+    emailTemplate: z.string().trim().min(1).max(100).default("Admission Confirmation"),
+    smsTemplate: z.string().trim().min(1).max(100).default("Application Received"),
+    crmIntegrationEnabled: z.boolean().default(true),
+    referralCodeEnabled: z.boolean().default(false),
+    customFields: z
+      .array(
+        z.object({
+          id: z.string().trim().min(1).max(60),
+          label: z.string().trim().min(1, "Field label is required").max(100),
+          type: z.enum(["text", "number", "date", "select"]).default("text"),
+          required: z.boolean().default(false),
+        }),
+      )
+      .max(25)
+      .default([]),
+  })
+  .superRefine((val, ctx) => {
+    const quotaTotal = val.quotas.reduce((sum, q) => sum + q.percentage, 0);
+    if (quotaTotal > 100.01) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Total seat quota percentages cannot exceed 100%.",
+        path: ["quotas"],
+      });
+    }
+    if (val.maxAgeYears < val.minAgeYears) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Maximum Age must be greater than or equal to Minimum Age.",
+        path: ["maxAgeYears"],
+      });
+    }
+  });
+
 export const updateAdmissionsSettingsSchema = z.object({
   currentAcademicYear: z.string().trim().min(4).max(30),
-  applicationDeadline: z
-    .string()
-    .trim()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Deadline must be YYYY-MM-DD")
-    .optional()
-    .nullable()
-    .or(z.literal("")),
+  applicationDeadline: optionalDateSchema,
   applicationPrefix: z
     .string()
     .trim()
@@ -327,6 +407,7 @@ export const updateAdmissionsSettingsSchema = z.object({
     .array(z.string().trim().min(1).max(60))
     .min(1, "Select at least one admission grade")
     .max(25),
+  extendedConfig: admissionExtendedSettingsSchema.optional(),
 });
 
 export const createReminderSchema = z.object({

@@ -307,6 +307,7 @@ model AdmissionSetting {
   nextEnquirySeq      Int       @default(1) @map("next_enquiry_seq")
   nextAdmissionSeq    Int       @default(1) @map("next_admission_seq")
   enabledGrades       String[]  @map("enabled_grades")
+  extendedConfig      Json?     @map("extended_config")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
