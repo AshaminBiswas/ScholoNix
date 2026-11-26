@@ -86,7 +86,15 @@ export const serverEnvSchema = z.object({
   MSG91_OTP_TEMPLATE_ID: z.string().optional(),
   MSG91_TEMPLATE_ID: z.string().optional(),
 
-  // Object storage (S3-compatible, optional in local dev)
+  // Object storage & media CDN (ImageKit active, S3/Cloudflare R2-ready)
+  STORAGE_PROVIDER: z.enum(["auto", "imagekit", "local", "r2"]).default("auto"),
+  IMAGEKIT_PUBLIC_KEY: z.string().optional(),
+  IMAGEKIT_PRIVATE_KEY: z.string().optional(),
+  IMAGEKIT_URL_ENDPOINT: z.string().url().optional().or(z.literal("")),
+  IMAGEKIT_BASE_FOLDER: z.string().default("/scholonix"),
+  NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY: z.string().optional(),
+  NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT: z.string().url().optional().or(z.literal("")),
+
   OBJECT_STORAGE_ENDPOINT: z.string().optional(),
   OBJECT_STORAGE_REGION: z.string().default("us-east-1"),
   OBJECT_STORAGE_BUCKET: z.string().optional(),

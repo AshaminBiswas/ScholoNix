@@ -11,6 +11,8 @@ const clientEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional().or(z.literal("")),
   NEXT_PUBLIC_GLITCHTIP_TRACES_SAMPLE_RATE: z.string().optional().or(z.literal("")),
+  NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY: z.string().optional(),
+  NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT: z.string().url().optional().or(z.literal("")),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
@@ -28,6 +30,8 @@ export function getClientEnv(): ClientEnv {
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     NEXT_PUBLIC_GLITCHTIP_TRACES_SAMPLE_RATE:
       process.env.NEXT_PUBLIC_GLITCHTIP_TRACES_SAMPLE_RATE,
+    NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY: process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY,
+    NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT: process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT,
   });
 
   if (!parsed.success) {

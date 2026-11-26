@@ -33,6 +33,8 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
+    "@imagekit/next": "^2.1.6",
+    "@imagekit/nodejs": "^7.15.0",
     "@prisma/client": "^6.6.0",
     "@radix-ui/react-label": "^2.1.17",
     "@radix-ui/react-slot": "^1.5.0",

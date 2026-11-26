@@ -5,6 +5,7 @@ import { siteConfig } from "@/config/site";
 import { ConsoleCleaner } from "@/components/ui/console-cleaner";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { THEME_INIT_SCRIPT } from "@/components/theme/theme-config";
+import { AppImageKitProvider } from "@/components/media/imagekit-provider";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -56,7 +57,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
           }}
         />
         <ConsoleCleaner />
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AppImageKitProvider>{children}</AppImageKitProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

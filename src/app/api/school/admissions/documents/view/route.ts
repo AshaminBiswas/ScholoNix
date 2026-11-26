@@ -21,6 +21,20 @@ export async function GET(req: NextRequest) {
       throw new ValidationError("Document key is required.");
     }
 
+    if (url.searchParams.get("delivery") === "redirect") {
+      const signedUrl = await admissionsDocumentStorage.getSignedDocumentUrl(
+        ctx.schoolId,
+        storageKey,
+        { expiresInSeconds: 180 },
+      );
+      if (signedUrl) {
+        return NextResponse.redirect(signedUrl, {
+          status: 302,
+          headers: { "Cache-Control": "private, no-store" },
+        });
+      }
+    }
+
     const doc = await admissionsDocumentStorage.readDocument(ctx.schoolId, storageKey);
     const safeName = doc.fileName.replace(/["\r\n]/g, "_");
 

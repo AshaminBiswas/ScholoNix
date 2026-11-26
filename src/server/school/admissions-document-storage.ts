@@ -1,31 +1,34 @@
 import "server-only";
-import fs from "fs";
-import path from "path";
-import { randomUUID } from "crypto";
-import { createClient } from "@supabase/supabase-js";
-import { AuthorizationError, NotFoundError, ServiceUnavailableError, ValidationError } from "@/lib/errors";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import {
+  AuthorizationError,
+  NotFoundError,
+  ServiceUnavailableError,
+  ValidationError,
+} from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import type {
   AdmissionDocumentType,
   AdmissionUploadedDocument,
 } from "@/modules/school/admissions/types";
+import { createLocalStorageAdapter } from "@/server/storage/local-adapter";
+import {
+  getObjectStorageAdapter,
+  type SignedUrlOptions,
+} from "@/server/storage/storage-registry";
 
 const ALLOWED_PHOTO_MIMES = new Set(["image/jpeg", "image/png"]);
 const ALLOWED_DOC_MIMES = new Set(["application/pdf", "image/jpeg", "image/png"]);
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 const MAX_DOC_BYTES = 5 * 1024 * 1024;
 
-const SUPABASE_BUCKET = process.env.ADMISSIONS_STORAGE_BUCKET || "admissions-documents";
-const LOCAL_UPLOAD_ROOT = path.join(process.cwd(), ".data", "uploads");
-
-interface StoredUploadObject {
+export interface StoredUploadObject {
   buffer: Buffer;
   mimeType: string;
   fileName: string;
   versionTag?: string;
 }
-
-const memoryUploads = new Map<string, StoredUploadObject>();
 
 const DOC_TYPE_LABELS: Record<AdmissionDocumentType, string> = {
   student_photo: "Student Photograph",
@@ -85,17 +88,7 @@ function matchesMagicBytes(buf: Buffer, mimeType: string): boolean {
   return false;
 }
 
-function getSupabaseStorageAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!url || !serviceKey || process.env.NODE_ENV === "test") {
-    return null;
-  }
-  return createClient(url, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
-
+/** Validates that a storageKey belongs strictly to the requesting school tenant. */
 export function assertTenantDocumentStorageKey(schoolId: string, storageKey: string): void {
   const normalized = storageKey.replace(/\\/g, "/");
   if (
@@ -105,6 +98,16 @@ export function assertTenantDocumentStorageKey(schoolId: string, storageKey: str
   ) {
     throw new AuthorizationError("Access denied: document belongs to another tenant or is invalid.");
   }
+}
+
+function buildPdfStorageKey(schoolId: string, applicationId: string): {
+  cleanAppId: string;
+  storageKey: string;
+} {
+  const cleanAppId = applicationId.replace(/[^a-zA-Z0-9_-]/g, "");
+  const storageKey = `${schoolId}/admissions/pdf/${cleanAppId}.pdf`;
+  assertTenantDocumentStorageKey(schoolId, storageKey);
+  return { cleanAppId, storageKey };
 }
 
 export const admissionsDocumentStorage = {
@@ -148,56 +151,31 @@ export const admissionsDocumentStorage = {
     const storageKey = `${schoolId}/admissions/${objectId}.${ext}`;
     const resolvedLabel = params.label?.trim() || DOC_TYPE_LABELS[docType];
 
-    if (process.env.NODE_ENV === "test") {
-      memoryUploads.set(storageKey, {
+    const adapter = getObjectStorageAdapter();
+    try {
+      await adapter.putObject({
+        storageKey,
         buffer,
         mimeType,
         fileName: safeFileName,
+        isPrivate: true,
+        overwrite: false,
+        tags: [`school:${schoolId}`, `doc:${docType}`],
       });
-    } else {
-      const supabase = getSupabaseStorageAdmin();
-      let storedInSupabase = false;
-      if (supabase) {
-        try {
-          const { error } = await supabase.storage
-            .from(SUPABASE_BUCKET)
-            .upload(storageKey, buffer, {
-              contentType: mimeType,
-              upsert: false,
-            });
-          if (!error) {
-            storedInSupabase = true;
-          }
-        } catch {
-          // Fall back to local runtime storage when bucket is unavailable in dev
-        }
-      }
-
-      if (!storedInSupabase) {
-        try {
-          const targetPath = path.join(LOCAL_UPLOAD_ROOT, storageKey);
-          fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-          fs.writeFileSync(targetPath, buffer);
-          fs.writeFileSync(
-            `${targetPath}.meta.json`,
-            JSON.stringify({ mimeType, fileName: safeFileName }),
-            "utf8",
-          );
-        } catch (fsErr) {
-          logger.error(
-            {
-              event: "ADMISSION_DOCUMENT_LOCAL_WRITE_FAILED",
-              schoolId,
-              storageKey,
-              error: fsErr instanceof Error ? fsErr.message : String(fsErr),
-            },
-            "[AdmissionsDocumentStorage] Failed writing upload to local disk",
-          );
-          throw new ServiceUnavailableError(
-            "Document storage is temporarily unavailable. Please try again or check storage configuration.",
-          );
-        }
-      }
+    } catch (storageErr) {
+      logger.error(
+        {
+          event: "ADMISSION_DOCUMENT_STORE_FAILED",
+          provider: adapter.provider,
+          schoolId,
+          storageKey,
+          error: storageErr instanceof Error ? storageErr.message : String(storageErr),
+        },
+        "[AdmissionsDocumentStorage] Failed storing uploaded document",
+      );
+      throw new ServiceUnavailableError(
+        "Document storage is temporarily unavailable. Please try again or check storage configuration.",
+      );
     }
 
     return {
@@ -217,58 +195,31 @@ export const admissionsDocumentStorage = {
     storageKey: string,
   ): Promise<StoredUploadObject> => {
     assertTenantDocumentStorageKey(schoolId, storageKey);
-
-    if (process.env.NODE_ENV === "test") {
-      const found = memoryUploads.get(storageKey);
-      if (!found) {
-        throw new NotFoundError("Admission document");
-      }
-      return found;
+    const adapter = getObjectStorageAdapter();
+    const found = await adapter.getObject(storageKey);
+    if (found) {
+      return {
+        buffer: found.buffer,
+        mimeType: found.mimeType,
+        fileName: found.fileName,
+        versionTag: found.versionTag,
+      };
     }
 
-    const supabase = getSupabaseStorageAdmin();
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.storage
-          .from(SUPABASE_BUCKET)
-          .download(storageKey);
-        if (!error && data) {
-          const arrayBuf = await data.arrayBuffer();
-          return {
-            buffer: Buffer.from(arrayBuf),
-            mimeType: data.type || "application/octet-stream",
-            fileName: path.basename(storageKey),
-          };
-        }
-      } catch {
-        // Fallback to local runtime directory
-      }
-    }
-
-    const targetPath = path.resolve(LOCAL_UPLOAD_ROOT, storageKey);
-    const rootResolved = path.resolve(LOCAL_UPLOAD_ROOT, schoolId);
-    if (!targetPath.startsWith(rootResolved) || !fs.existsSync(targetPath)) {
-      throw new NotFoundError("Admission document");
-    }
-
-    const buffer = fs.readFileSync(targetPath);
-    let mimeType = "application/octet-stream";
-    let fileName = path.basename(targetPath);
-    const metaPath = `${targetPath}.meta.json`;
-    if (fs.existsSync(metaPath)) {
-      try {
-        const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as {
-          mimeType?: string;
-          fileName?: string;
+    // Legacy transition fallback: inspect local disk in non-test environments if primary is cloud
+    if (process.env.NODE_ENV !== "test" && adapter.provider !== "local") {
+      const legacyLocal = await createLocalStorageAdapter().getObject(storageKey);
+      if (legacyLocal) {
+        return {
+          buffer: legacyLocal.buffer,
+          mimeType: legacyLocal.mimeType,
+          fileName: legacyLocal.fileName,
+          versionTag: legacyLocal.versionTag,
         };
-        if (meta.mimeType) mimeType = meta.mimeType;
-        if (meta.fileName) fileName = meta.fileName;
-      } catch {
-        // ignore corrupted meta
       }
     }
 
-    return { buffer, mimeType, fileName };
+    throw new NotFoundError("Admission document");
   },
 
   readDocumentIfExists: async (
@@ -282,132 +233,101 @@ export const admissionsDocumentStorage = {
     }
   },
 
+  getSignedDocumentUrl: async (
+    schoolId: string,
+    storageKey: string,
+    options?: SignedUrlOptions,
+  ): Promise<string | null> => {
+    assertTenantDocumentStorageKey(schoolId, storageKey);
+    const adapter = getObjectStorageAdapter();
+    if (!adapter.getSignedUrl) return null;
+    return adapter.getSignedUrl(storageKey, options);
+  },
+
   saveGeneratedPdf: async (
     schoolId: string,
     applicationId: string,
     buffer: Buffer,
     versionTag?: string,
   ): Promise<string> => {
-    const cleanAppId = applicationId.replace(/[^a-zA-Z0-9_-]/g, "");
-    const storageKey = `${schoolId}/admissions/pdf/${cleanAppId}.pdf`;
-    assertTenantDocumentStorageKey(schoolId, storageKey);
+    const { cleanAppId, storageKey } = buildPdfStorageKey(schoolId, applicationId);
+    const adapter = getObjectStorageAdapter();
 
-    if (process.env.NODE_ENV === "test") {
-      memoryUploads.set(storageKey, {
+    try {
+      await adapter.putObject({
+        storageKey,
         buffer,
         mimeType: "application/pdf",
         fileName: `${cleanAppId}.pdf`,
+        isPrivate: true,
+        overwrite: true,
         versionTag,
+        tags: [`school:${schoolId}`, "doc:application_pdf"],
       });
       return storageKey;
+    } catch (storageErr) {
+      logger.error(
+        {
+          event: "ADMISSION_PDF_STORE_FAILED",
+          provider: adapter.provider,
+          schoolId,
+          storageKey,
+          error: storageErr instanceof Error ? storageErr.message : String(storageErr),
+        },
+        "[AdmissionsDocumentStorage] Failed storing generated PDF",
+      );
+      throw new ServiceUnavailableError("Generated PDF storage is temporarily unavailable.");
     }
-
-    const supabase = getSupabaseStorageAdmin();
-    let storedInSupabase = false;
-    if (supabase) {
-      try {
-        const { error } = await supabase.storage
-          .from(SUPABASE_BUCKET)
-          .upload(storageKey, buffer, {
-            contentType: "application/pdf",
-            upsert: true,
-          });
-        if (!error) {
-          storedInSupabase = true;
-        }
-      } catch {
-        // Fallback to local runtime storage when bucket is unavailable
-      }
-    }
-
-    if (!storedInSupabase) {
-      try {
-        const targetPath = path.join(LOCAL_UPLOAD_ROOT, storageKey);
-        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-        fs.writeFileSync(targetPath, buffer);
-        fs.writeFileSync(
-          `${targetPath}.meta.json`,
-          JSON.stringify({
-            mimeType: "application/pdf",
-            fileName: `${cleanAppId}.pdf`,
-            versionTag,
-          }),
-          "utf8",
-        );
-      } catch (fsErr) {
-        logger.error(
-          {
-            event: "ADMISSION_PDF_LOCAL_WRITE_FAILED",
-            schoolId,
-            storageKey,
-            error: fsErr instanceof Error ? fsErr.message : String(fsErr),
-          },
-          "[AdmissionsDocumentStorage] Failed writing generated PDF to disk",
-        );
-        throw new ServiceUnavailableError(
-          "Generated PDF storage is temporarily unavailable.",
-        );
-      }
-    }
-
-    return storageKey;
   },
 
   readGeneratedPdf: async (
     schoolId: string,
     applicationId: string,
   ): Promise<StoredUploadObject | null> => {
-    const cleanAppId = applicationId.replace(/[^a-zA-Z0-9_-]/g, "");
-    const storageKey = `${schoolId}/admissions/pdf/${cleanAppId}.pdf`;
-    assertTenantDocumentStorageKey(schoolId, storageKey);
+    const { storageKey } = buildPdfStorageKey(schoolId, applicationId);
+    const adapter = getObjectStorageAdapter();
 
-    if (process.env.NODE_ENV === "test") {
-      return memoryUploads.get(storageKey) ?? null;
-    }
-
-    const targetPath = path.resolve(LOCAL_UPLOAD_ROOT, storageKey);
-    const rootResolved = path.resolve(LOCAL_UPLOAD_ROOT, schoolId);
-    if (targetPath.startsWith(rootResolved) && fs.existsSync(targetPath)) {
-      try {
-        const buffer = fs.readFileSync(targetPath);
-        let versionTag: string | undefined;
-        const metaPath = `${targetPath}.meta.json`;
-        if (fs.existsSync(metaPath)) {
-          const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as {
-            versionTag?: string;
-          };
-          versionTag = meta.versionTag;
-        }
+    try {
+      const found = await adapter.getObject(storageKey);
+      if (found) {
         return {
-          buffer,
-          mimeType: "application/pdf",
-          fileName: `${cleanAppId}.pdf`,
-          versionTag,
+          buffer: found.buffer,
+          mimeType: found.mimeType || "application/pdf",
+          fileName: found.fileName,
+          versionTag: found.versionTag,
         };
-      } catch {
-        // Fall through to Supabase or regeneration
       }
+    } catch {
+      // Regenerate seamlessly on demand if remote lookup fails
     }
 
-    const supabase = getSupabaseStorageAdmin();
-    if (supabase) {
+    if (process.env.NODE_ENV !== "test" && adapter.provider !== "local") {
       try {
-        const { data, error } = await supabase.storage
-          .from(SUPABASE_BUCKET)
-          .download(storageKey);
-        if (!error && data) {
-          const arrayBuf = await data.arrayBuffer();
+        const legacyLocal = await createLocalStorageAdapter().getObject(storageKey);
+        if (legacyLocal) {
           return {
-            buffer: Buffer.from(arrayBuf),
-            mimeType: "application/pdf",
-            fileName: `${cleanAppId}.pdf`,
+            buffer: legacyLocal.buffer,
+            mimeType: legacyLocal.mimeType || "application/pdf",
+            fileName: legacyLocal.fileName,
+            versionTag: legacyLocal.versionTag,
           };
         }
       } catch {
-        // Regenerate on demand
+        // Ignore legacy fallback read errors
       }
     }
 
     return null;
+  },
+
+  getSignedPdfUrl: async (
+    schoolId: string,
+    applicationId: string,
+    options?: SignedUrlOptions,
+  ): Promise<string | null> => {
+    const { storageKey } = buildPdfStorageKey(schoolId, applicationId);
+    const adapter = getObjectStorageAdapter();
+    if (!adapter.getSignedUrl) return null;
+    return adapter.getSignedUrl(storageKey, options);
   },
 };

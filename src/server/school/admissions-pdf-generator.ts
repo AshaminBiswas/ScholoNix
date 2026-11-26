@@ -996,25 +996,58 @@ export const admissionsPdfService = {
   async getOrGenerateApplicationPdf(params: {
     school: PdfSchoolProfile;
     application: AdmissionApplicationRecord;
-  }): Promise<{ buffer: Buffer; pageCount: number; filename: string }> {
+  }): Promise<{ buffer: Buffer; pageCount: number; filename: string; signedUrl?: string | null }> {
     const cached = await admissionsDocumentStorage.readGeneratedPdf(
       params.school.id,
       params.application.id,
     );
     if (cached && cached.versionTag && cached.versionTag === params.application.updatedAt) {
       const parsed = await PDFDocument.load(cached.buffer).catch(() => null);
+      const signedUrl = await admissionsDocumentStorage
+        .getSignedPdfUrl(params.school.id, params.application.id, { expiresInSeconds: 180 })
+        .catch(() => null);
       return {
         buffer: cached.buffer,
         pageCount: parsed ? parsed.getPageCount() : 1,
         filename: buildPdfFilename(params.application),
+        signedUrl,
       };
     }
 
-    const generated = await this.generateAndStoreApplicationPdf(params);
+    const generated = await buildApplicationDossierPdf(params);
+    let persisted = false;
+    try {
+      await admissionsDocumentStorage.saveGeneratedPdf(
+        params.school.id,
+        params.application.id,
+        generated.buffer,
+        params.application.updatedAt,
+      );
+      persisted = true;
+    } catch (storageErr) {
+      // Never block user PDF download if external cache storage is temporarily unreachable
+      logger.warn(
+        {
+          event: "ADMISSION_PDF_CACHE_WRITE_FAILED",
+          schoolId: params.school.id,
+          applicationId: params.application.id,
+          error: storageErr instanceof Error ? storageErr.message : String(storageErr),
+        },
+        "[AdmissionsPdfService] Serving freshly built A4 PDF after storage cache write failed",
+      );
+    }
+
+    const signedUrl = persisted
+      ? await admissionsDocumentStorage
+          .getSignedPdfUrl(params.school.id, params.application.id, { expiresInSeconds: 180 })
+          .catch(() => null)
+      : null;
+
     return {
       buffer: generated.buffer,
       pageCount: generated.pageCount,
       filename: generated.filename,
+      signedUrl,
     };
   },
 };

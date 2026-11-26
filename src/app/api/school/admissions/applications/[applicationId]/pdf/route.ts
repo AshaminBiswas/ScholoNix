@@ -18,11 +18,25 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const { applicationId } = await context.params;
     const url = new URL(req.url);
     const isInline = url.searchParams.get("disposition") === "inline";
+    const wantsRedirect = url.searchParams.get("delivery") === "redirect";
 
-    const { buffer, filename, pageCount } = await admissionsService.getApplicationPdf(
+    const { buffer, filename, pageCount, signedUrl } = await admissionsService.getApplicationPdf(
       resolved.ctx,
       applicationId,
     );
+
+    if (wantsRedirect && signedUrl) {
+      const redirectUrl = new URL(signedUrl);
+      if (!isInline) {
+        redirectUrl.searchParams.set("ik-attachment", "true");
+      }
+      return NextResponse.redirect(redirectUrl.toString(), {
+        status: 302,
+        headers: {
+          "Cache-Control": "private, no-store",
+        },
+      });
+    }
 
     const safeName = filename.replace(/["\r\n]/g, "_");
     const disposition = isInline ? "inline" : "attachment";

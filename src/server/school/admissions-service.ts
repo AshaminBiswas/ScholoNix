@@ -301,7 +301,7 @@ export const admissionsService = {
   async getApplicationPdf(
     ctx: AdmissionsActorContext,
     applicationId: string,
-  ): Promise<{ buffer: Buffer; pageCount: number; filename: string }> {
+  ): Promise<{ buffer: Buffer; pageCount: number; filename: string; signedUrl?: string | null }> {
     authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:read");
 
     return runScoped(ctx, async () => {
