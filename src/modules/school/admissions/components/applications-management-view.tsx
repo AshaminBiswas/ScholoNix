@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from "react";
 import {
-  Plus,
   Download,
   ChevronDown,
   FileText,
@@ -25,7 +24,6 @@ import {
   CheckCircle2,
   TrendingUp,
   TrendingDown,
-  Loader2,
   Printer,
   FileSpreadsheet,
 } from "lucide-react";
@@ -38,7 +36,12 @@ import {
   type AdmissionsOverviewFilters,
   type DocumentVerificationStatusType,
 } from "@/modules/school/admissions/types";
+import type {
+  CreateApplicationInput,
+  UpdateApplicationInput,
+} from "@/modules/school/admissions/schemas";
 import { AdmissionsTable } from "./admissions-table";
+import { ApplicationFormWizard } from "./application-form/application-form-wizard";
 
 export type ApplicationsSubViewMode =
   | "applications"
@@ -48,6 +51,8 @@ export type ApplicationsSubViewMode =
   | "approvals";
 
 interface ApplicationsManagementViewProps {
+  schoolName: string;
+  schoolSlug: string;
   data: AdmissionsOverviewData;
   filters: AdmissionsOverviewFilters;
   searchInput: string;
@@ -62,7 +67,7 @@ interface ApplicationsManagementViewProps {
       status?: AdmissionApplicationStatusType;
       verificationStatus?: DocumentVerificationStatusType;
     },
-  ) => Promise<void>;
+  ) => Promise<unknown>;
   onBulkUpdateApplications: (
     applicationIds: string[],
     payload: {
@@ -70,21 +75,11 @@ interface ApplicationsManagementViewProps {
       verificationStatus?: DocumentVerificationStatusType;
     },
   ) => Promise<void>;
-  onCreateApplication: (payload: {
-    studentName: string;
-    gender: "Male" | "Female" | "Other" | "";
-    dateOfBirth: string;
-    gradeApplied: string;
-    academicYear: string;
-    guardianName: string;
-    guardianRelation: string;
-    guardianPhone: string;
-    guardianEmail: string;
-    previousSchool: string;
-    status: "UNDER_REVIEW" | "DOCUMENTS_PENDING" | "SHORTLISTED";
-    notes: string;
-  }) => Promise<void>;
-  onOpenNewApplicationModal: () => void;
+  onCreateApplication: (payload: CreateApplicationInput) => Promise<AdmissionApplicationRecord>;
+  onUpdateApplication: (
+    applicationId: string,
+    payload: UpdateApplicationInput,
+  ) => Promise<AdmissionApplicationRecord>;
   onDownloadReport: () => void;
   onDownloadImportTemplate: () => void;
 }
@@ -131,6 +126,8 @@ function formatDeltaBadge(delta: number | null) {
 }
 
 export function ApplicationsManagementView({
+  schoolName,
+  schoolSlug,
   data,
   filters,
   searchInput,
@@ -142,7 +139,7 @@ export function ApplicationsManagementView({
   onQuickUpdateApplication,
   onBulkUpdateApplications,
   onCreateApplication,
-  onOpenNewApplicationModal,
+  onUpdateApplication,
   onDownloadReport,
   onDownloadImportTemplate,
 }: ApplicationsManagementViewProps) {
@@ -150,24 +147,6 @@ export function ApplicationsManagementView({
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [showAllGrades, setShowAllGrades] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
-
-  // Embedded Application Form state
-  const [formStudentName, setFormStudentName] = useState("");
-  const [formGender, setFormGender] = useState<"" | "Male" | "Female" | "Other">("");
-  const [formDob, setFormDob] = useState("");
-  const [formGrade, setFormGrade] = useState(data.availableGrades[0] || "Class I");
-  const [formAy, setFormAy] = useState(data.settings.currentAcademicYear);
-  const [formStatus, setFormStatus] = useState<
-    "UNDER_REVIEW" | "DOCUMENTS_PENDING" | "SHORTLISTED"
-  >("UNDER_REVIEW");
-  const [formGuardianName, setFormGuardianName] = useState("");
-  const [formGuardianRelation, setFormGuardianRelation] = useState("Parent");
-  const [formGuardianPhone, setFormGuardianPhone] = useState("");
-  const [formGuardianEmail, setFormGuardianEmail] = useState("");
-  const [formPrevSchool, setFormPrevSchool] = useState("");
-  const [formNotes, setFormNotes] = useState("");
-  const [formSubmitting, setFormSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const statusCounts = useMemo(() => {
     const map = new Map(data.statusBreakdown.map((s) => [s.status, s]));
@@ -280,40 +259,6 @@ export function ApplicationsManagementView({
     }
   };
 
-  const handleEmbeddedFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    setFormSubmitting(true);
-    try {
-      await onCreateApplication({
-        studentName: formStudentName,
-        gender: formGender,
-        dateOfBirth: formDob,
-        gradeApplied: formGrade,
-        academicYear: formAy,
-        guardianName: formGuardianName,
-        guardianRelation: formGuardianRelation,
-        guardianPhone: formGuardianPhone,
-        guardianEmail: formGuardianEmail,
-        previousSchool: formPrevSchool,
-        status: formStatus,
-        notes: formNotes,
-      });
-      setFormStudentName("");
-      setFormDob("");
-      setFormGuardianName("");
-      setFormGuardianPhone("");
-      setFormGuardianEmail("");
-      setFormPrevSchool("");
-      setFormNotes("");
-      setSubView("applications");
-    } catch (err: unknown) {
-      setFormError(err instanceof Error ? err.message : "Unable to submit application.");
-    } finally {
-      setFormSubmitting(false);
-    }
-  };
-
   const handleSearchFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSearchSubmit(searchInput);
@@ -347,18 +292,6 @@ export function ApplicationsManagementView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          {data.permissions.canWrite && (
-            <button
-              id="admissions-new-application-btn"
-              type="button"
-              onClick={onOpenNewApplicationModal}
-              className="inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:opacity-95 cursor-pointer"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              <span>New Application</span>
-            </button>
-          )}
-
           {data.permissions.canExport && (
             <div className="relative">
               <button
@@ -452,254 +385,21 @@ export function ApplicationsManagementView({
       </div>
 
       {/* =====================================================================
-          3. APPLICATION FORM SUB-VIEW OR FULL PIPELINE + ANALYTICS
+          3. 4-STEP APPLICATION FORM WIZARD OR FULL PIPELINE + ANALYTICS
           ===================================================================== */}
       {subView === "form" ? (
-        <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-6 shadow-xs space-y-5 dark:border-[#272B4D] dark:bg-[#141731]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#DFE3F5] pb-4 dark:border-[#232746]">
-            <div>
-              <h2 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-                Student Application Form
-              </h2>
-              <p className="text-xs text-[#76799C] dark:text-[#9DA6CC]">
-                Enter student and guardian details to register a new admission application.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSubView("applications")}
-              className="rounded-[10px] border border-[#CAD0EB] bg-white px-3.5 py-1.5 text-xs font-bold text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C5CCF0]"
-            >
-              Back to Applications
-            </button>
-          </div>
-
-          {!data.permissions.canWrite ? (
-            <p className="rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-300">
-              Your current role has read-only access and cannot submit new applications.
-            </p>
-          ) : (
-            <form onSubmit={handleEmbeddedFormSubmit} className="space-y-4 max-w-4xl">
-              {formError && (
-                <div
-                  role="alert"
-                  className="rounded-[12px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
-                >
-                  {formError}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label htmlFor="inline-app-student" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Student Name *
-                  </label>
-                  <input
-                    id="inline-app-student"
-                    type="text"
-                    required
-                    minLength={2}
-                    value={formStudentName}
-                    onChange={(e) => setFormStudentName(e.target.value)}
-                    placeholder="Full student name"
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="inline-app-grade" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Grade Applied *
-                  </label>
-                  <select
-                    id="inline-app-grade"
-                    value={formGrade}
-                    onChange={(e) => setFormGrade(e.target.value)}
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  >
-                    {data.availableGrades.map((g) => (
-                      <option key={g} value={g}>
-                        {g}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="inline-app-ay" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Academic Year *
-                  </label>
-                  <select
-                    id="inline-app-ay"
-                    value={formAy}
-                    onChange={(e) => setFormAy(e.target.value)}
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  >
-                    {data.availableAcademicYears.map((ay) => (
-                      <option key={ay} value={ay}>
-                        {ay}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label htmlFor="inline-app-gender" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Gender
-                  </label>
-                  <select
-                    id="inline-app-gender"
-                    value={formGender}
-                    onChange={(e) => setFormGender(e.target.value as "" | "Male" | "Female" | "Other")}
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  >
-                    <option value="">Prefer not to say</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="inline-app-dob" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Date of Birth
-                  </label>
-                  <input
-                    id="inline-app-dob"
-                    type="date"
-                    value={formDob}
-                    onChange={(e) => setFormDob(e.target.value)}
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="inline-app-status" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Initial Stage
-                  </label>
-                  <select
-                    id="inline-app-status"
-                    value={formStatus}
-                    onChange={(e) =>
-                      setFormStatus(
-                        e.target.value as "UNDER_REVIEW" | "DOCUMENTS_PENDING" | "SHORTLISTED",
-                      )
-                    }
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  >
-                    <option value="UNDER_REVIEW">Under Review</option>
-                    <option value="DOCUMENTS_PENDING">Documents Pending</option>
-                    <option value="SHORTLISTED">Shortlisted</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label htmlFor="inline-app-guardian" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Guardian Name *
-                  </label>
-                  <input
-                    id="inline-app-guardian"
-                    type="text"
-                    required
-                    minLength={2}
-                    value={formGuardianName}
-                    onChange={(e) => setFormGuardianName(e.target.value)}
-                    placeholder="Parent / Guardian name"
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="inline-app-relation" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Relationship *
-                  </label>
-                  <input
-                    id="inline-app-relation"
-                    type="text"
-                    required
-                    value={formGuardianRelation}
-                    onChange={(e) => setFormGuardianRelation(e.target.value)}
-                    placeholder="Father / Mother / Guardian"
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="inline-app-phone" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Guardian Phone *
-                  </label>
-                  <input
-                    id="inline-app-phone"
-                    type="tel"
-                    required
-                    minLength={7}
-                    value={formGuardianPhone}
-                    onChange={(e) => setFormGuardianPhone(e.target.value)}
-                    placeholder="+91 9876543210"
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="inline-app-email" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Guardian Email
-                  </label>
-                  <input
-                    id="inline-app-email"
-                    type="email"
-                    value={formGuardianEmail}
-                    onChange={(e) => setFormGuardianEmail(e.target.value)}
-                    placeholder="parent@example.com"
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="inline-app-prev-school" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Previous School
-                  </label>
-                  <input
-                    id="inline-app-prev-school"
-                    type="text"
-                    value={formPrevSchool}
-                    onChange={(e) => setFormPrevSchool(e.target.value)}
-                    placeholder="Optional previous school name"
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="inline-app-notes" className="block text-xs font-bold text-[#08093B] mb-1 dark:text-[#F3F5FF]">
-                    Review Notes
-                  </label>
-                  <input
-                    id="inline-app-notes"
-                    type="text"
-                    value={formNotes}
-                    onChange={(e) => setFormNotes(e.target.value)}
-                    placeholder="Initial verification or interview notes"
-                    className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs text-[#08093B] focus:border-[#663CF6] focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setSubView("applications")}
-                  className="rounded-[10px] border border-[#CAD0EB] px-4 py-2 text-xs font-bold text-[#4D5072] hover:bg-[#F8FAFC] cursor-pointer dark:border-[#30365C] dark:text-[#C5CCF0] dark:hover:bg-[#1E2245]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={formSubmitting}
-                  className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#663CF6] px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#4F27E8] disabled:opacity-60 cursor-pointer"
-                >
-                  {formSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-                  <span>{formSubmitting ? "Submitting..." : "Submit Application"}</span>
-                </button>
-              </div>
-            </form>
-          )}
-        </section>
+        <ApplicationFormWizard
+          schoolName={schoolName}
+          schoolSlug={schoolSlug}
+          availableGrades={data.availableGrades}
+          availableAcademicYears={data.availableAcademicYears}
+          defaultAcademicYear={data.settings.currentAcademicYear}
+          drafts={data.drafts || []}
+          canWrite={data.permissions.canWrite}
+          onViewApplications={() => setSubView("applications")}
+          onCreateApplication={onCreateApplication}
+          onUpdateApplication={onUpdateApplication}
+        />
       ) : (
         <>
           {/* =================================================================
@@ -1020,7 +720,6 @@ export function ApplicationsManagementView({
             onEditApplication={(app) => onInspectApplication(app, "edit")}
             onQuickUpdateApplication={onQuickUpdateApplication}
             onBulkUpdateApplications={onBulkUpdateApplications}
-            onOpenNewApplication={onOpenNewApplicationModal}
             canWrite={data.permissions.canWrite}
             canVerify={data.permissions.canVerify}
             title="All Applications"
@@ -1302,18 +1001,6 @@ export function ApplicationsManagementView({
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  disabled={!data.permissions.canWrite}
-                  onClick={onOpenNewApplicationModal}
-                  className="flex flex-col items-center justify-center gap-2 rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] px-3 py-4 text-center transition hover:border-[#663CF6] hover:bg-white hover:shadow-xs disabled:opacity-50 cursor-pointer dark:border-[#2A2F56] dark:bg-[#10142C] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1A1E3E]"
-                >
-                  <Plus className="h-5 w-5 text-[#4F27E8] dark:text-[#C4B5FD]" aria-hidden="true" />
-                  <span className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
-                    New Application
-                  </span>
-                </button>
-
                 <button
                   type="button"
                   onClick={() => handleWorkflowSwitch("form")}

@@ -292,6 +292,11 @@ enum AdmissionReminderPriority {
   WARNING
 }
 
+enum AdmissionType {
+  FRESH
+  TRANSFER
+}
+
 model AdmissionSetting {
   id                  String    @id @default(uuid()) @db.Uuid
   schoolId            String    @unique @map("school_id") @db.Uuid
@@ -357,6 +362,18 @@ model AdmissionApplication {
   verificationStatus DocumentVerificationStatus @default(PENDING) @map("verification_status")
   verificationNotes  String?                    @map("verification_notes") @db.Text
   documentsChecklist Json                       @map("documents_checklist") @db.JsonB
+  admissionType      AdmissionType              @default(FRESH) @map("admission_type")
+  isDraft            Boolean                    @default(false) @map("is_draft")
+  currentStep        Int                        @default(1) @map("current_step")
+  studentPhotoKey    String?                    @map("student_photo_key") @db.VarChar(500)
+  nationality        String?                    @db.VarChar(80)
+  bloodGroup         String?                    @map("blood_group") @db.VarChar(20)
+  studentIdNumber    String?                    @map("student_id_number") @db.VarChar(60)
+  studentDetails     Json?                      @map("student_details") @db.JsonB
+  guardianDetails    Json?                      @map("guardian_details") @db.JsonB
+  academicDetails    Json?                      @map("academic_details") @db.JsonB
+  uploadedDocuments  Json?                      @map("uploaded_documents") @db.JsonB
+  declarationAccepted Boolean                   @default(false) @map("declaration_accepted")
   appliedAt          DateTime                   @default(now()) @map("applied_at") @db.Timestamptz(6)
   shortlistedAt      DateTime?                  @map("shortlisted_at") @db.Timestamptz(6)
   admittedAt         DateTime?                  @map("admitted_at") @db.Timestamptz(6)
@@ -372,6 +389,7 @@ model AdmissionApplication {
   @@unique([schoolId, applicationCode])
   @@unique([schoolId, admissionNumber])
   @@index([schoolId, academicYear, status, appliedAt])
+  @@index([schoolId, isDraft, updatedAt])
   @@index([schoolId, academicYear, gradeApplied])
   @@index([schoolId, appliedAt])
   @@map("admission_applications")

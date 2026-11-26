@@ -100,6 +100,17 @@ export function SchoolWorkspaceShell({
   const profileHref = buildSchoolRoute(school.slug, "profile");
   const helpHref = buildSchoolRoute(school.slug, "help");
 
+  // Warm the primary peer workspace route once so Dashboard <-> Admissions switching stays responsive
+  // without triggering 5 concurrent SSR prefetches for every Admissions sub-tab.
+  useEffect(() => {
+    if (typeof router.prefetch !== "function") return;
+    if (activeNav === "admissions") {
+      router.prefetch(dashboardHref);
+    } else {
+      router.prefetch(buildSchoolRoute(school.slug, "admissions?tab=overview"));
+    }
+  }, [activeNav, dashboardHref, router, school.slug]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -444,12 +455,23 @@ export function SchoolWorkspaceShell({
                       const isSubActive =
                         activeNav === "admissions" &&
                         (activeAdmissionsTab ?? "overview") === subItem.tab;
+                      const href = buildSchoolRoute(school.slug, `admissions?tab=${subItem.tab}`);
                       return (
                         <Link
                           key={subItem.tab}
-                          href={buildSchoolRoute(school.slug, `admissions?tab=${subItem.tab}`)}
-                          prefetch={true}
+                          href={href}
+                          prefetch={false}
                           aria-current={isSubActive ? "page" : undefined}
+                          onMouseEnter={() => {
+                            if (activeNav !== "admissions" && typeof router.prefetch === "function") {
+                              router.prefetch(href);
+                            }
+                          }}
+                          onFocus={() => {
+                            if (activeNav !== "admissions" && typeof router.prefetch === "function") {
+                              router.prefetch(href);
+                            }
+                          }}
                           onClick={(e) => {
                             setMobileSidebarOpen(false);
                             if (

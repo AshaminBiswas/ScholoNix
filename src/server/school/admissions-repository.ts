@@ -11,14 +11,20 @@ import { logger } from "@/lib/logger";
 import {
   DEFAULT_ADMISSION_GRADES,
   DEFAULT_DOCUMENT_CHECKLIST,
+  type AdmissionAcademicDetailsPayload,
   type AdmissionActivityRecord,
   type AdmissionApplicationRecord,
   type AdmissionApplicationStatusType,
   type AdmissionDocumentChecklistItem,
   type AdmissionEnquiryRecord,
+  type AdmissionGuardianDetailsPayload,
   type AdmissionReminderRecord,
   type AdmissionSettingRecord,
+  type AdmissionStudentDetailsPayload,
+  type AdmissionTypeValue,
+  type AdmissionUploadedDocument,
 } from "@/modules/school/admissions/types";
+import { assertTenantDocumentStorageKey } from "./admissions-document-storage";
 import type {
   BulkUpdateApplicationsInput,
   CreateApplicationInput,
@@ -223,6 +229,87 @@ function cloneDefaultChecklist(): AdmissionDocumentChecklistItem[] {
   return DEFAULT_DOCUMENT_CHECKLIST.map((item) => ({ ...item }));
 }
 
+function normalizeWizardAcademicDetails(
+  academicDetails?: AdmissionAcademicDetailsPayload | null,
+): AdmissionAcademicDetailsPayload | null {
+  if (!academicDetails) return null;
+  const totalMarks =
+    typeof academicDetails.totalMarks === "number" && academicDetails.totalMarks > 0
+      ? academicDetails.totalMarks
+      : null;
+  const marksObtained =
+    typeof academicDetails.marksObtained === "number" && academicDetails.marksObtained >= 0
+      ? academicDetails.marksObtained
+      : null;
+  const percentage =
+    totalMarks && marksObtained !== null
+      ? Math.round((marksObtained / totalMarks) * 1000) / 10
+      : null;
+
+  const previousAcademics = Array.isArray(academicDetails.previousAcademics)
+    ? academicDetails.previousAcademics.map((row) => ({
+        ...row,
+        percentage:
+          row.totalMarks > 0
+            ? Math.round((row.marksObtained / row.totalMarks) * 1000) / 10
+            : 0,
+      }))
+    : undefined;
+
+  return {
+    ...academicDetails,
+    totalMarks,
+    marksObtained,
+    percentage,
+    previousAcademics,
+  };
+}
+
+function validateWizardDocumentKeys(
+  schoolId: string,
+  studentPhotoKey?: string | null,
+  uploadedDocuments?: AdmissionUploadedDocument[],
+): void {
+  if (studentPhotoKey) {
+    assertTenantDocumentStorageKey(schoolId, studentPhotoKey);
+  }
+  if (Array.isArray(uploadedDocuments)) {
+    for (const doc of uploadedDocuments) {
+      assertTenantDocumentStorageKey(schoolId, doc.storageKey);
+    }
+  }
+}
+
+function buildChecklistFromUploads(
+  uploadedDocuments?: AdmissionUploadedDocument[],
+): AdmissionDocumentChecklistItem[] {
+  const base = cloneDefaultChecklist();
+  if (!Array.isArray(uploadedDocuments) || uploadedDocuments.length === 0) {
+    return base;
+  }
+  const uploadedTypes = new Set(uploadedDocuments.map((d) => d.docType));
+  return base.map((item) => {
+    if (item.key === "birth_certificate" && uploadedTypes.has("birth_certificate")) {
+      return { ...item, submitted: true };
+    }
+    if (item.key === "previous_report_card" && uploadedTypes.has("last_marksheet")) {
+      return { ...item, submitted: true };
+    }
+    if (
+      item.key === "address_proof" &&
+      (uploadedTypes.has("student_aadhaar") ||
+        uploadedTypes.has("father_aadhaar") ||
+        uploadedTypes.has("mother_aadhaar"))
+    ) {
+      return { ...item, submitted: true };
+    }
+    if (item.key === "student_photo" && uploadedTypes.has("student_photo")) {
+      return { ...item, submitted: true };
+    }
+    return item;
+  });
+}
+
 function extractYearTag(academicYear: string): string {
   const match = academicYear.match(/(\d{4})/);
   return match ? match[1]! : String(new Date().getFullYear());
@@ -246,6 +333,9 @@ function mapPrismaSetting(row: any): StoredSetting {
 
 function mapPrismaApplication(row: any): AdmissionApplicationRecord {
   const checklistRaw = Array.isArray(row.documentsChecklist) ? row.documentsChecklist : cloneDefaultChecklist();
+  const uploadedDocsRaw = Array.isArray(row.uploadedDocuments)
+    ? (row.uploadedDocuments as AdmissionUploadedDocument[])
+    : [];
   return {
     id: row.id,
     schoolId: row.schoolId,
@@ -266,6 +356,18 @@ function mapPrismaApplication(row: any): AdmissionApplicationRecord {
     verificationStatus: row.verificationStatus,
     verificationNotes: row.verificationNotes ?? null,
     documentsChecklist: checklistRaw,
+    admissionType: (row.admissionType as AdmissionTypeValue) ?? "FRESH",
+    isDraft: Boolean(row.isDraft),
+    currentStep: typeof row.currentStep === "number" ? row.currentStep : 1,
+    studentPhotoKey: row.studentPhotoKey ?? null,
+    nationality: row.nationality ?? null,
+    bloodGroup: row.bloodGroup ?? null,
+    studentIdNumber: row.studentIdNumber ?? null,
+    studentDetails: (row.studentDetails as AdmissionStudentDetailsPayload) ?? null,
+    guardianDetails: (row.guardianDetails as AdmissionGuardianDetailsPayload) ?? null,
+    academicDetails: (row.academicDetails as AdmissionAcademicDetailsPayload) ?? null,
+    uploadedDocuments: uploadedDocsRaw,
+    declarationAccepted: Boolean(row.declarationAccepted),
     appliedAt: new Date(row.appliedAt).toISOString(),
     shortlistedAt: row.shortlistedAt ? new Date(row.shortlistedAt).toISOString() : null,
     admittedAt: row.admittedAt ? new Date(row.admittedAt).toISOString() : null,
@@ -402,24 +504,26 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         const fresh = await runPrismaOp("getTenantSnapshot", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const settingRow = await tx.admissionSetting.findUnique({ where: { schoolId } });
-            const appRows = await tx.admissionApplication.findMany({
-              where: { schoolId },
-              orderBy: { appliedAt: "desc" },
-            });
-            const enqRows = await tx.admissionEnquiry.findMany({
-              where: { schoolId },
-              orderBy: { createdAt: "desc" },
-            });
-            const reminderRows = await tx.admissionReminder.findMany({
-              where: { schoolId },
-              orderBy: { createdAt: "desc" },
-            });
-            const activityRows = await tx.admissionActivity.findMany({
-              where: { schoolId },
-              orderBy: { createdAt: "desc" },
-              take: 30,
-            });
+            const [settingRow, appRows, enqRows, reminderRows, activityRows] = await Promise.all([
+              tx.admissionSetting.findUnique({ where: { schoolId } }),
+              tx.admissionApplication.findMany({
+                where: { schoolId },
+                orderBy: { appliedAt: "desc" },
+              }),
+              tx.admissionEnquiry.findMany({
+                where: { schoolId },
+                orderBy: { createdAt: "desc" },
+              }),
+              tx.admissionReminder.findMany({
+                where: { schoolId },
+                orderBy: { createdAt: "desc" },
+              }),
+              tx.admissionActivity.findMany({
+                where: { schoolId },
+                orderBy: { createdAt: "desc" },
+                take: 30,
+              }),
+            ]);
 
             const settings: AdmissionSettingRecord = settingRow
               ? mapPrismaSetting(settingRow)
@@ -490,6 +594,15 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     const schoolId = this.requireSchoolId(explicitSchoolId);
     const now = new Date();
     const nowIso = now.toISOString();
+    validateWizardDocumentKeys(schoolId, input.studentPhotoKey, input.uploadedDocuments);
+    const normalizedAcademicDetails = normalizeWizardAcademicDetails(input.academicDetails);
+    const resolvedPreviousSchool =
+      input.previousSchool?.trim() ||
+      normalizedAcademicDetails?.previousSchoolName?.trim() ||
+      null;
+    const checklist = buildChecklistFromUploads(input.uploadedDocuments);
+    const isDraft = Boolean(input.isDraft);
+    const admissionType: AdmissionTypeValue = input.admissionType ?? "FRESH";
 
     if (await canUsePrisma()) {
       try {
@@ -538,21 +651,33 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                 gradeApplied: input.gradeApplied,
                 academicYear: input.academicYear,
                 guardianName: input.guardianName,
-                guardianRelation: input.guardianRelation,
+                guardianRelation: input.guardianRelation ?? "Parent",
                 guardianPhone: input.guardianPhone,
                 guardianEmail: input.guardianEmail || null,
-                previousSchool: input.previousSchool || null,
-                status: input.status,
+                previousSchool: resolvedPreviousSchool,
+                status: input.status ?? "UNDER_REVIEW",
                 verificationStatus: "PENDING",
                 verificationNotes: input.notes || null,
-                documentsChecklist: cloneDefaultChecklist() as any,
+                documentsChecklist: checklist as any,
+                admissionType,
+                isDraft,
+                currentStep: input.currentStep ?? 1,
+                studentPhotoKey: input.studentPhotoKey || null,
+                nationality: input.nationality || null,
+                bloodGroup: input.bloodGroup || null,
+                studentIdNumber: input.studentIdNumber || null,
+                studentDetails: (input.studentDetails ?? null) as any,
+                guardianDetails: (input.guardianDetails ?? null) as any,
+                academicDetails: (normalizedAcademicDetails ?? null) as any,
+                uploadedDocuments: (input.uploadedDocuments ?? []) as any,
+                declarationAccepted: Boolean(input.declarationAccepted),
                 appliedAt: now,
-                shortlistedAt: input.status === "SHORTLISTED" ? now : null,
+                shortlistedAt: !isDraft && input.status === "SHORTLISTED" ? now : null,
                 reviewedByUserId: actor.id,
-              },
+              } as any,
             });
 
-            if (input.enquiryId) {
+            if (input.enquiryId && !isDraft) {
               await tx.admissionEnquiry.update({
                 where: { id: input.enquiryId },
                 data: {
@@ -562,17 +687,19 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               });
             }
 
-            await tx.admissionActivity.create({
-              data: {
-                schoolId,
-                applicationId: created.id,
-                enquiryId: input.enquiryId ?? null,
-                actorId: actor.id,
-                actorName: actor.name,
-                action: "APPLICATION_CREATED",
-                summary: `New application ${applicationCode} received for ${input.studentName} (${input.gradeApplied}).`,
-              },
-            });
+            if (!isDraft) {
+              await tx.admissionActivity.create({
+                data: {
+                  schoolId,
+                  applicationId: created.id,
+                  enquiryId: input.enquiryId ?? null,
+                  actorId: actor.id,
+                  actorName: actor.name,
+                  action: "APPLICATION_CREATED",
+                  summary: `New application ${applicationCode} received for ${input.studentName} (${input.gradeApplied}).`,
+                },
+              });
+            }
 
             return mapPrismaApplication(created);
           });
@@ -614,16 +741,74 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
       gradeApplied: input.gradeApplied,
       academicYear: input.academicYear,
       guardianName: input.guardianName,
-      guardianRelation: input.guardianRelation,
+      guardianRelation: input.guardianRelation ?? "Parent",
       guardianPhone: input.guardianPhone,
       guardianEmail: input.guardianEmail || null,
-      previousSchool: input.previousSchool || null,
-      status: input.status,
+      previousSchool: resolvedPreviousSchool,
+      status: input.status ?? "UNDER_REVIEW",
       verificationStatus: "PENDING",
       verificationNotes: input.notes || null,
-      documentsChecklist: cloneDefaultChecklist(),
+      documentsChecklist: checklist,
+      admissionType,
+      isDraft,
+      currentStep: input.currentStep ?? 1,
+      studentPhotoKey: input.studentPhotoKey || null,
+      nationality: input.nationality || null,
+      bloodGroup: input.bloodGroup || null,
+      studentIdNumber: input.studentIdNumber || null,
+      studentDetails: input.studentDetails
+        ? {
+            email: input.studentDetails.email ?? "",
+            phone: input.studentDetails.phone ?? "",
+            address: {
+              addressLine1: input.studentDetails.address?.addressLine1 ?? "",
+              addressLine2: input.studentDetails.address?.addressLine2 ?? "",
+              city: input.studentDetails.address?.city ?? "",
+              state: input.studentDetails.address?.state ?? "",
+              postalCode: input.studentDetails.address?.postalCode ?? "",
+            },
+          }
+        : null,
+      guardianDetails: input.guardianDetails
+        ? {
+            primary: {
+              fullName: input.guardianDetails.primary.fullName ?? "",
+              relationship: input.guardianDetails.primary.relationship ?? "Father",
+              occupation: input.guardianDetails.primary.occupation ?? "",
+              annualIncome: input.guardianDetails.primary.annualIncome ?? "",
+              email: input.guardianDetails.primary.email ?? "",
+              phone: input.guardianDetails.primary.phone ?? "",
+            },
+            secondary: input.guardianDetails.secondary
+              ? {
+                  fullName: input.guardianDetails.secondary.fullName ?? "",
+                  relationship: input.guardianDetails.secondary.relationship ?? "Mother",
+                  occupation: input.guardianDetails.secondary.occupation ?? "",
+                  annualIncome: input.guardianDetails.secondary.annualIncome ?? "",
+                  email: input.guardianDetails.secondary.email ?? "",
+                  phone: input.guardianDetails.secondary.phone ?? "",
+                }
+              : null,
+            sameAsStudentAddress: Boolean(input.guardianDetails.sameAsStudentAddress),
+            address: input.guardianDetails.address
+              ? {
+                  addressLine1: input.guardianDetails.address.addressLine1 ?? "",
+                  addressLine2: input.guardianDetails.address.addressLine2 ?? "",
+                  city: input.guardianDetails.address.city ?? "",
+                  state: input.guardianDetails.address.state ?? "",
+                  postalCode: input.guardianDetails.address.postalCode ?? "",
+                }
+              : null,
+            emergencyContactNumber: input.guardianDetails.emergencyContactNumber ?? "",
+            preferredCommunicationMode:
+              input.guardianDetails.preferredCommunicationMode ?? "Phone",
+          }
+        : null,
+      academicDetails: normalizedAcademicDetails,
+      uploadedDocuments: input.uploadedDocuments ?? [],
+      declarationAccepted: Boolean(input.declarationAccepted),
       appliedAt: nowIso,
-      shortlistedAt: input.status === "SHORTLISTED" ? nowIso : null,
+      shortlistedAt: !isDraft && input.status === "SHORTLISTED" ? nowIso : null,
       admittedAt: null,
       rejectedAt: null,
       verifiedAt: null,
@@ -633,7 +818,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
 
     store.applications[record.id] = record;
 
-    if (input.enquiryId && store.enquiries[input.enquiryId]) {
+    if (input.enquiryId && !isDraft && store.enquiries[input.enquiryId]) {
       store.enquiries[input.enquiryId] = {
         ...store.enquiries[input.enquiryId]!,
         status: "CONVERTED",
@@ -642,17 +827,19 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
       };
     }
 
-    store.activities.unshift({
-      id: randomUUID(),
-      schoolId,
-      applicationId: record.id,
-      enquiryId: input.enquiryId ?? null,
-      actorId: actor.id,
-      actorName: actor.name,
-      action: "APPLICATION_CREATED",
-      summary: `New application ${applicationCode} received for ${input.studentName} (${input.gradeApplied}).`,
-      createdAt: nowIso,
-    });
+    if (!isDraft) {
+      store.activities.unshift({
+        id: randomUUID(),
+        schoolId,
+        applicationId: record.id,
+        enquiryId: input.enquiryId ?? null,
+        actorId: actor.id,
+        actorName: actor.name,
+        action: "APPLICATION_CREATED",
+        summary: `New application ${applicationCode} received for ${input.studentName} (${input.gradeApplied}).`,
+        createdAt: nowIso,
+      });
+    }
 
     saveStore(store);
     return record;
@@ -701,6 +888,11 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     const schoolId = this.requireSchoolId(explicitSchoolId);
     const now = new Date();
     const nowIso = now.toISOString();
+    validateWizardDocumentKeys(schoolId, input.studentPhotoKey, input.uploadedDocuments);
+    const normalizedAcademicDetails =
+      input.academicDetails !== undefined
+        ? normalizeWizardAcademicDetails(input.academicDetails)
+        : undefined;
 
     if (await canUsePrisma()) {
       try {
@@ -735,6 +927,29 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
             }
 
             const nextVerification = input.verificationStatus ?? existingRow.verificationStatus;
+            const existingWizardRow = existingRow as typeof existingRow & {
+              admissionType?: AdmissionTypeValue;
+              isDraft?: boolean;
+              currentStep?: number;
+              studentPhotoKey?: string | null;
+              nationality?: string | null;
+              bloodGroup?: string | null;
+              studentIdNumber?: string | null;
+              studentDetails?: unknown;
+              guardianDetails?: unknown;
+              academicDetails?: unknown;
+              uploadedDocuments?: unknown;
+              declarationAccepted?: boolean;
+            };
+            const nextIsDraft =
+              input.isDraft !== undefined ? input.isDraft : Boolean(existingWizardRow.isDraft);
+            const transitioningFromDraft = Boolean(existingWizardRow.isDraft) && !nextIsDraft;
+            const nextChecklist =
+              input.documentsChecklist !== undefined
+                ? (input.documentsChecklist as any)
+                : input.uploadedDocuments !== undefined
+                  ? (buildChecklistFromUploads(input.uploadedDocuments) as any)
+                  : existingRow.documentsChecklist;
 
             const updatedRow = await tx.admissionApplication.update({
               where: { id: existingRow.id },
@@ -746,12 +961,19 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                   input.verificationNotes !== undefined
                     ? input.verificationNotes
                     : existingRow.verificationNotes,
-                documentsChecklist:
-                  input.documentsChecklist !== undefined
-                    ? (input.documentsChecklist as any)
-                    : existingRow.documentsChecklist,
+                documentsChecklist: nextChecklist,
+                studentName: input.studentName ?? existingRow.studentName,
+                gender: input.gender !== undefined ? input.gender || null : existingRow.gender,
+                dateOfBirth:
+                  input.dateOfBirth !== undefined
+                    ? input.dateOfBirth
+                      ? new Date(`${input.dateOfBirth}T00:00:00.000Z`)
+                      : null
+                    : existingRow.dateOfBirth,
                 gradeApplied: input.gradeApplied ?? existingRow.gradeApplied,
+                academicYear: input.academicYear ?? existingRow.academicYear,
                 guardianName: input.guardianName ?? existingRow.guardianName,
+                guardianRelation: input.guardianRelation ?? existingRow.guardianRelation,
                 guardianPhone: input.guardianPhone ?? existingRow.guardianPhone,
                 guardianEmail:
                   input.guardianEmail !== undefined
@@ -760,7 +982,43 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                 previousSchool:
                   input.previousSchool !== undefined
                     ? input.previousSchool
-                    : existingRow.previousSchool,
+                    : normalizedAcademicDetails?.previousSchoolName || existingRow.previousSchool,
+                admissionType: input.admissionType ?? existingWizardRow.admissionType,
+                isDraft: nextIsDraft,
+                currentStep: input.currentStep ?? existingWizardRow.currentStep,
+                studentPhotoKey:
+                  input.studentPhotoKey !== undefined
+                    ? input.studentPhotoKey
+                    : existingWizardRow.studentPhotoKey,
+                nationality:
+                  input.nationality !== undefined ? input.nationality : existingWizardRow.nationality,
+                bloodGroup:
+                  input.bloodGroup !== undefined ? input.bloodGroup : existingWizardRow.bloodGroup,
+                studentIdNumber:
+                  input.studentIdNumber !== undefined
+                    ? input.studentIdNumber
+                    : existingWizardRow.studentIdNumber,
+                studentDetails:
+                  input.studentDetails !== undefined
+                    ? (input.studentDetails as any)
+                    : existingWizardRow.studentDetails,
+                guardianDetails:
+                  input.guardianDetails !== undefined
+                    ? (input.guardianDetails as any)
+                    : existingWizardRow.guardianDetails,
+                academicDetails:
+                  normalizedAcademicDetails !== undefined
+                    ? (normalizedAcademicDetails as any)
+                    : existingWizardRow.academicDetails,
+                uploadedDocuments:
+                  input.uploadedDocuments !== undefined
+                    ? (input.uploadedDocuments as any)
+                    : existingWizardRow.uploadedDocuments,
+                declarationAccepted:
+                  input.declarationAccepted !== undefined
+                    ? input.declarationAccepted
+                    : existingWizardRow.declarationAccepted,
+                appliedAt: transitioningFromDraft ? now : existingRow.appliedAt,
                 shortlistedAt:
                   nextStatus === "SHORTLISTED" && !existingRow.shortlistedAt
                     ? now
@@ -778,37 +1036,45 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                     ? now
                     : existingRow.verifiedAt,
                 reviewedByUserId: actor.id,
-              },
+              } as any,
             });
 
             const after = mapPrismaApplication(updatedRow);
             const summaryParts: string[] = [];
-            if (before.status !== after.status) {
+            if (transitioningFromDraft) {
               summaryParts.push(
-                after.status === "ADMITTED"
-                  ? `${after.studentName} has been Admitted (${after.admissionNumber}).`
-                  : `${after.studentName}'s application moved to ${after.status.replace(/_/g, " ")}.`,
+                `New application ${after.applicationCode} submitted for ${after.studentName} (${after.gradeApplied}).`,
               );
-            }
-            if (before.verificationStatus !== after.verificationStatus) {
-              summaryParts.push(
-                `Document verification for ${after.studentName} marked ${after.verificationStatus}.`,
-              );
-            }
-            if (summaryParts.length === 0) {
-              summaryParts.push(`Updated application details for ${after.studentName} (${after.applicationCode}).`);
+            } else {
+              if (before.status !== after.status) {
+                summaryParts.push(
+                  after.status === "ADMITTED"
+                    ? `${after.studentName} has been Admitted (${after.admissionNumber}).`
+                    : `${after.studentName}'s application moved to ${after.status.replace(/_/g, " ")}.`,
+                );
+              }
+              if (before.verificationStatus !== after.verificationStatus) {
+                summaryParts.push(
+                  `Document verification for ${after.studentName} marked ${after.verificationStatus}.`,
+                );
+              }
+              if (summaryParts.length === 0) {
+                summaryParts.push(`Updated application details for ${after.studentName} (${after.applicationCode}).`);
+              }
             }
 
-            await tx.admissionActivity.create({
-              data: {
-                schoolId,
-                applicationId: after.id,
-                actorId: actor.id,
-                actorName: actor.name,
-                action: "APPLICATION_UPDATED",
-                summary: summaryParts.join(" "),
-              },
-            });
+            if (!nextIsDraft) {
+              await tx.admissionActivity.create({
+                data: {
+                  schoolId,
+                  applicationId: after.id,
+                  actorId: actor.id,
+                  actorName: actor.name,
+                  action: transitioningFromDraft ? "APPLICATION_CREATED" : "APPLICATION_UPDATED",
+                  summary: summaryParts.join(" "),
+                },
+              });
+            }
 
             return { before, after };
           });
@@ -836,6 +1102,8 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     }
 
     const nextVerification = input.verificationStatus ?? existing.verificationStatus;
+    const nextIsDraft = input.isDraft !== undefined ? input.isDraft : Boolean(existing.isDraft);
+    const transitioningFromDraft = Boolean(existing.isDraft) && !nextIsDraft;
     const after: AdmissionApplicationRecord = {
       ...existing,
       status: nextStatus,
@@ -846,14 +1114,48 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
       documentsChecklist:
         input.documentsChecklist !== undefined
           ? input.documentsChecklist
-          : existing.documentsChecklist,
+          : input.uploadedDocuments !== undefined
+            ? buildChecklistFromUploads(input.uploadedDocuments)
+            : existing.documentsChecklist,
+      studentName: input.studentName ?? existing.studentName,
+      gender: input.gender !== undefined ? input.gender || null : existing.gender,
+      dateOfBirth:
+        input.dateOfBirth !== undefined ? input.dateOfBirth || null : existing.dateOfBirth,
       gradeApplied: input.gradeApplied ?? existing.gradeApplied,
+      academicYear: input.academicYear ?? existing.academicYear,
       guardianName: input.guardianName ?? existing.guardianName,
+      guardianRelation: input.guardianRelation ?? existing.guardianRelation,
       guardianPhone: input.guardianPhone ?? existing.guardianPhone,
       guardianEmail:
         input.guardianEmail !== undefined ? input.guardianEmail || null : existing.guardianEmail,
       previousSchool:
-        input.previousSchool !== undefined ? input.previousSchool : existing.previousSchool,
+        input.previousSchool !== undefined
+          ? input.previousSchool
+          : normalizedAcademicDetails?.previousSchoolName || existing.previousSchool,
+      admissionType: input.admissionType ?? existing.admissionType ?? "FRESH",
+      isDraft: nextIsDraft,
+      currentStep: input.currentStep ?? existing.currentStep ?? 1,
+      studentPhotoKey:
+        input.studentPhotoKey !== undefined ? input.studentPhotoKey : existing.studentPhotoKey,
+      nationality: input.nationality !== undefined ? input.nationality : existing.nationality,
+      bloodGroup: input.bloodGroup !== undefined ? input.bloodGroup : existing.bloodGroup,
+      studentIdNumber:
+        input.studentIdNumber !== undefined ? input.studentIdNumber : existing.studentIdNumber,
+      studentDetails:
+        input.studentDetails !== undefined ? input.studentDetails : existing.studentDetails,
+      guardianDetails:
+        input.guardianDetails !== undefined ? input.guardianDetails : existing.guardianDetails,
+      academicDetails:
+        normalizedAcademicDetails !== undefined
+          ? normalizedAcademicDetails
+          : existing.academicDetails,
+      uploadedDocuments:
+        input.uploadedDocuments !== undefined ? input.uploadedDocuments : existing.uploadedDocuments,
+      declarationAccepted:
+        input.declarationAccepted !== undefined
+          ? input.declarationAccepted
+          : existing.declarationAccepted,
+      appliedAt: transitioningFromDraft ? nowIso : existing.appliedAt,
       shortlistedAt:
         nextStatus === "SHORTLISTED" && !existing.shortlistedAt ? nowIso : existing.shortlistedAt,
       admittedAt:
@@ -868,33 +1170,41 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     store.applications[applicationId] = after;
 
     const summaryParts: string[] = [];
-    if (before.status !== after.status) {
+    if (transitioningFromDraft) {
       summaryParts.push(
-        after.status === "ADMITTED"
-          ? `${after.studentName} has been Admitted (${after.admissionNumber}).`
-          : `${after.studentName}'s application moved to ${after.status.replace(/_/g, " ")}.`,
+        `New application ${after.applicationCode} submitted for ${after.studentName} (${after.gradeApplied}).`,
       );
-    }
-    if (before.verificationStatus !== after.verificationStatus) {
-      summaryParts.push(
-        `Document verification for ${after.studentName} marked ${after.verificationStatus}.`,
-      );
-    }
-    if (summaryParts.length === 0) {
-      summaryParts.push(`Updated application details for ${after.studentName} (${after.applicationCode}).`);
+    } else {
+      if (before.status !== after.status) {
+        summaryParts.push(
+          after.status === "ADMITTED"
+            ? `${after.studentName} has been Admitted (${after.admissionNumber}).`
+            : `${after.studentName}'s application moved to ${after.status.replace(/_/g, " ")}.`,
+        );
+      }
+      if (before.verificationStatus !== after.verificationStatus) {
+        summaryParts.push(
+          `Document verification for ${after.studentName} marked ${after.verificationStatus}.`,
+        );
+      }
+      if (summaryParts.length === 0) {
+        summaryParts.push(`Updated application details for ${after.studentName} (${after.applicationCode}).`);
+      }
     }
 
-    store.activities.unshift({
-      id: randomUUID(),
-      schoolId,
-      applicationId: after.id,
-      enquiryId: null,
-      actorId: actor.id,
-      actorName: actor.name,
-      action: "APPLICATION_UPDATED",
-      summary: summaryParts.join(" "),
-      createdAt: nowIso,
-    });
+    if (!nextIsDraft) {
+      store.activities.unshift({
+        id: randomUUID(),
+        schoolId,
+        applicationId: after.id,
+        enquiryId: null,
+        actorId: actor.id,
+        actorName: actor.name,
+        action: transitioningFromDraft ? "APPLICATION_CREATED" : "APPLICATION_UPDATED",
+        summary: summaryParts.join(" "),
+        createdAt: nowIso,
+      });
+    }
 
     saveStore(store);
     return { before, after };
@@ -1353,11 +1663,11 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                   gradeApplied: item.gradeApplied,
                   academicYear: item.academicYear,
                   guardianName: item.guardianName,
-                  guardianRelation: item.guardianRelation,
+                  guardianRelation: item.guardianRelation ?? "Parent",
                   guardianPhone: item.guardianPhone,
                   guardianEmail: item.guardianEmail || null,
                   previousSchool: item.previousSchool || null,
-                  status: item.status,
+                  status: item.status ?? "UNDER_REVIEW",
                   verificationStatus: "PENDING",
                   verificationNotes: item.notes || null,
                   documentsChecklist: cloneDefaultChecklist() as any,
@@ -1407,11 +1717,14 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         gradeApplied: item.gradeApplied,
         academicYear: item.academicYear,
         guardianName: item.guardianName,
-        guardianRelation: item.guardianRelation,
+        guardianRelation: item.guardianRelation ?? "Parent",
         guardianPhone: item.guardianPhone,
         guardianEmail: item.guardianEmail || null,
         previousSchool: item.previousSchool || null,
-        status: item.status,
+        admissionType: item.admissionType ?? "FRESH",
+        isDraft: false,
+        currentStep: 1,
+        status: item.status ?? "UNDER_REVIEW",
         verificationStatus: "PENDING",
         verificationNotes: item.notes || null,
         documentsChecklist: cloneDefaultChecklist(),

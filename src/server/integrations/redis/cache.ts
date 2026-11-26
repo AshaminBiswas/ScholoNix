@@ -37,6 +37,72 @@ function parseUpstashValue<T>(data: unknown): T | null {
 }
 
 const REDIS_OP_TIMEOUT_MS = 1500;
+const L1_CACHE_MAX_ENTRIES = 500;
+const L1_CACHE_MAX_TTL_SECONDS = 10;
+const REDIS_CIRCUIT_COOLDOWN_MS = 30_000;
+
+interface L1Entry {
+  value: unknown;
+  expiresAtMs: number;
+}
+
+const globalForCache = globalThis as unknown as {
+  __scholonixL1Cache?: Map<string, L1Entry>;
+  __scholonixRedisDisabledUntilMs?: number;
+};
+
+function isTestRuntime(): boolean {
+  return process.env.NODE_ENV === "test" || Boolean(process.env.VITEST);
+}
+
+function getL1Store(): Map<string, L1Entry> | null {
+  if (isTestRuntime()) return null;
+  if (!globalForCache.__scholonixL1Cache) {
+    globalForCache.__scholonixL1Cache = new Map();
+  }
+  return globalForCache.__scholonixL1Cache;
+}
+
+function getL1Cached<T>(fullKey: string): T | null {
+  const store = getL1Store();
+  if (!store) return null;
+  const entry = store.get(fullKey);
+  if (!entry) return null;
+  if (entry.expiresAtMs <= Date.now()) {
+    store.delete(fullKey);
+    return null;
+  }
+  return entry.value as T;
+}
+
+function setL1Cached<T>(fullKey: string, value: T, ttlSeconds: number): void {
+  const store = getL1Store();
+  if (!store || ttlSeconds <= 0) return;
+  const effectiveTtlSec = Math.min(ttlSeconds, L1_CACHE_MAX_TTL_SECONDS);
+  if (store.size >= L1_CACHE_MAX_ENTRIES && !store.has(fullKey)) {
+    const oldestKey = store.keys().next().value;
+    if (oldestKey) store.delete(oldestKey);
+  }
+  store.set(fullKey, {
+    value,
+    expiresAtMs: Date.now() + effectiveTtlSec * 1000,
+  });
+}
+
+function delL1Cached(fullKey: string): void {
+  const store = getL1Store();
+  store?.delete(fullKey);
+}
+
+function isLocalRedisCircuitOpen(): boolean {
+  if (isTestRuntime() || upstashRedis) return false;
+  return (globalForCache.__scholonixRedisDisabledUntilMs ?? 0) > Date.now();
+}
+
+function tripLocalRedisCircuit(): void {
+  if (isTestRuntime() || upstashRedis) return;
+  globalForCache.__scholonixRedisDisabledUntilMs = Date.now() + REDIS_CIRCUIT_COOLDOWN_MS;
+}
 
 async function withFastRedisTimeout<T>(promise: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -53,20 +119,32 @@ async function withFastRedisTimeout<T>(promise: Promise<T>): Promise<T> {
 }
 
 async function getCachedByFullKey<T>(fullKey: string): Promise<T | null> {
+  const l1Hit = getL1Cached<T>(fullKey);
+  if (l1Hit !== null) {
+    return l1Hit;
+  }
+
   try {
     if (upstashRedis) {
       const data = await withFastRedisTimeout(upstashRedis.get<T>(fullKey));
-      return parseUpstashValue<T>(data);
+      const parsed = parseUpstashValue<T>(data);
+      if (parsed !== null) {
+        setL1Cached(fullKey, parsed, L1_CACHE_MAX_TTL_SECONDS);
+      }
+      return parsed;
     }
 
-    if (process.env.NODE_ENV === "test") {
+    if (process.env.NODE_ENV === "test" || isLocalRedisCircuitOpen()) {
       return null;
     }
 
     const data = await withFastRedisTimeout(redis.get(fullKey));
     if (data === null) return null;
-    return JSON.parse(data) as T;
+    const parsed = JSON.parse(data) as T;
+    setL1Cached(fullKey, parsed, L1_CACHE_MAX_TTL_SECONDS);
+    return parsed;
   } catch {
+    tripLocalRedisCircuit();
     return null;
   }
 }
@@ -76,35 +154,41 @@ async function setCachedByFullKey<T>(
   value: T,
   ttlSeconds: number,
 ): Promise<void> {
+  setL1Cached(fullKey, value, ttlSeconds);
+
   try {
     if (upstashRedis) {
       await withFastRedisTimeout(upstashRedis.set(fullKey, value, { ex: ttlSeconds }));
       return;
     }
 
-    if (process.env.NODE_ENV === "test") {
+    if (process.env.NODE_ENV === "test" || isLocalRedisCircuitOpen()) {
       return;
     }
 
     await withFastRedisTimeout(redis.set(fullKey, JSON.stringify(value), "EX", ttlSeconds));
   } catch {
+    tripLocalRedisCircuit();
     // Graceful degradation when cache fails
   }
 }
 
 async function delCachedByFullKey(fullKey: string): Promise<void> {
+  delL1Cached(fullKey);
+
   try {
     if (upstashRedis) {
       await withFastRedisTimeout(upstashRedis.del(fullKey));
       return;
     }
 
-    if (process.env.NODE_ENV === "test") {
+    if (process.env.NODE_ENV === "test" || isLocalRedisCircuitOpen()) {
       return;
     }
 
     await withFastRedisTimeout(redis.del(fullKey));
   } catch {
+    tripLocalRedisCircuit();
     // Graceful degradation
   }
 }

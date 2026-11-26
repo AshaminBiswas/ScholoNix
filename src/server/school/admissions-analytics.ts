@@ -391,8 +391,12 @@ export function computeAdmissionsOverviewAnalytics(params: {
     now = new Date(),
   } = params;
 
-  // Defense-in-depth strict tenant filtering
-  const tenantApplications = allApplications.filter((a) => a.schoolId === schoolId);
+  // Defense-in-depth strict tenant filtering; drafts are kept separate from submitted KPIs & pipeline
+  const allTenantApplications = allApplications.filter((a) => a.schoolId === schoolId);
+  const drafts = allTenantApplications
+    .filter((a) => Boolean(a.isDraft))
+    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+  const tenantApplications = allTenantApplications.filter((a) => !a.isDraft);
   const tenantEnquiries = allEnquiries.filter((e) => e.schoolId === schoolId);
   const tenantReminders = customReminders.filter((r) => r.schoolId === schoolId);
   const tenantActivities = activities
@@ -577,6 +581,7 @@ export function computeAdmissionsOverviewAnalytics(params: {
     byGrade: buildGradeCounts(cohortApplications, settings.enabledGrades),
     statusBreakdown: buildStatusBreakdown(cohortApplications),
     applications: pagedApplications,
+    drafts,
     pagination: {
       total: totalFiltered,
       page,

@@ -127,8 +127,7 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     expect(screen.getByRole("heading", { name: "Admission Settings" })).toBeTruthy();
   });
 
-  it("opens New Application modal cleanly when triggered", async () => {
-    const actor = userEvent.setup();
+  it("does not render New Application button on Admissions Overview", () => {
     render(
       <AdmissionsWorkspace
         school={school}
@@ -138,17 +137,14 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
       />,
     );
 
-    const newAppBtn = document.querySelector("#admissions-new-application-btn") as HTMLButtonElement;
-    expect(newAppBtn).not.toBeNull();
-    await actor.click(newAppBtn);
-
-    expect(screen.getByText("New Admission Application")).toBeTruthy();
-    expect(screen.getByLabelText(/Student Name/i)).toBeTruthy();
+    expect(document.querySelector("#admissions-new-application-btn")).toBeNull();
+    expect(screen.queryByRole("button", { name: "New Application" })).toBeNull();
   });
 
   it("switches tabs instantaneously via left sidebar Admissions dropdown links without refetching", async () => {
     const actor = userEvent.setup();
     const fetchSpy = vi.spyOn(globalThis, "fetch");
+    window.history.replaceState({ __NA: true, tree: ["root"] }, "", "/synthetic-horizon-school/admissions?tab=overview");
 
     render(
       <AdmissionsWorkspace
@@ -163,6 +159,7 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     await actor.click(screen.getByRole("link", { name: "Enquiries" }));
     expect(screen.getByText(/No enquiries recorded yet/i)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Enquiries" }).getAttribute("aria-current")).toBe("page");
+    expect(window.history.state).toEqual({ __NA: true, tree: ["root"] });
 
     await actor.click(screen.getByRole("link", { name: "Admitted Students" }));
     expect(screen.getByText(/No admitted students yet/i)).toBeTruthy();
@@ -297,6 +294,8 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     expect(screen.getByRole("heading", { name: "Application Management", level: 1 })).toBeTruthy();
     expect(document.querySelector("#admissions-import-applications-btn")).toBeNull();
     expect(screen.queryByRole("button", { name: "Import Applications" })).toBeNull();
+    expect(document.querySelector("#admissions-new-application-btn")).toBeNull();
+    expect(screen.queryByRole("button", { name: "New Application" })).toBeNull();
     expect(screen.getByRole("button", { name: "Download" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Document Verification" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Shortlisting" })).toBeTruthy();
@@ -323,11 +322,12 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     await actor.click(screen.getByRole("button", { name: "Table list view" }));
     expect(screen.getByRole("table")).toBeTruthy();
 
-    // Switch inline workflow to Application Form and back
+    // Switch inline workflow to 4-step Application Form wizard and back
     const appFormButtons = screen.getAllByRole("button", { name: "Application Form" });
     await actor.click(appFormButtons[0]!);
-    expect(screen.getByRole("heading", { name: "Student Application Form" })).toBeTruthy();
-    await actor.click(screen.getByRole("button", { name: "Back to Applications" }));
+    expect(screen.getByRole("heading", { name: "Application Form", level: 2 })).toBeTruthy();
+    expect(screen.getByText("25%")).toBeTruthy();
+    await actor.click(screen.getByRole("button", { name: /View Applications/i }));
     expect(screen.getByText("Filter Applications")).toBeTruthy();
   });
 });

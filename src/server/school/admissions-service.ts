@@ -226,13 +226,15 @@ export const admissionsService = {
       await logAuditEvent({
         schoolId: ctx.schoolId,
         actorId: ctx.userId,
-        action: "ADMISSION_APPLICATION_CREATED",
+        action: created.isDraft ? "ADMISSION_DRAFT_SAVED" : "ADMISSION_APPLICATION_CREATED",
         entityType: "AdmissionApplication",
         entityId: created.id,
         details: {
           applicationCode: created.applicationCode,
           gradeApplied: created.gradeApplied,
           academicYear: created.academicYear,
+          admissionType: created.admissionType ?? "FRESH",
+          isDraft: Boolean(created.isDraft),
           enquiryId: created.enquiryId,
         },
         ipAddress: ctx.ipAddress,
@@ -279,12 +281,13 @@ export const admissionsService = {
       await logAuditEvent({
         schoolId: ctx.schoolId,
         actorId: ctx.userId,
-        action: "ADMISSION_APPLICATION_UPDATED",
+        action: after.isDraft ? "ADMISSION_DRAFT_SAVED" : "ADMISSION_APPLICATION_UPDATED",
         entityType: "AdmissionApplication",
         entityId: after.id,
         details: {
           applicationCode: after.applicationCode,
           admissionNumber: after.admissionNumber,
+          isDraft: Boolean(after.isDraft),
           previousStatus: before.status,
           nextStatus: after.status,
           previousVerification: before.verificationStatus,

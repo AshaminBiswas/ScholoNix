@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Plus,
   CheckCircle2,
   Clock3,
   XCircle,
@@ -49,7 +48,7 @@ interface AdmissionsTableProps {
       status?: AdmissionApplicationStatusType;
       verificationStatus?: DocumentVerificationStatusType;
     },
-  ) => Promise<void>;
+  ) => Promise<unknown>;
   onBulkUpdateApplications?: (
     applicationIds: string[],
     payload: {
@@ -57,7 +56,6 @@ interface AdmissionsTableProps {
       verificationStatus?: DocumentVerificationStatusType;
     },
   ) => Promise<void>;
-  onOpenNewApplication?: () => void;
   canWrite: boolean;
   canVerify: boolean;
   title?: string;
@@ -95,7 +93,6 @@ export function AdmissionsTable({
   onEditApplication,
   onQuickUpdateApplication,
   onBulkUpdateApplications,
-  onOpenNewApplication,
   canWrite,
   canVerify,
   title = "Applications",
@@ -484,16 +481,6 @@ export function AdmissionsTable({
                 ? "Try adjusting your search query or filters."
                 : "Create your first admission application to begin tracking applicants."}
             </p>
-            {onOpenNewApplication && canWrite && !searchQuery && (
-              <button
-                type="button"
-                onClick={onOpenNewApplication}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-[12px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#4F27E8] cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>New Application</span>
-              </button>
-            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
@@ -690,16 +677,6 @@ export function AdmissionsTable({
                         ? "Try adjusting your search query or filters."
                         : "Create your first admission application to begin tracking applicants."}
                     </p>
-                    {onOpenNewApplication && canWrite && !searchQuery && (
-                      <button
-                        type="button"
-                        onClick={onOpenNewApplication}
-                        className="mt-4 inline-flex items-center gap-1.5 rounded-[12px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#4F27E8] cursor-pointer"
-                      >
-                        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>New Application</span>
-                      </button>
-                    )}
                   </td>
                 </tr>
               ) : (

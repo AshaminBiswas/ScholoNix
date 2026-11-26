@@ -94,7 +94,7 @@ interface NewApplicationModalProps {
     previousSchool: string;
     status: "UNDER_REVIEW" | "DOCUMENTS_PENDING" | "SHORTLISTED";
     notes: string;
-  }) => Promise<void>;
+  }) => Promise<unknown>;
 }
 
 export function NewApplicationModal({
@@ -687,6 +687,7 @@ export function NewEnquiryModal({
 
 interface ApplicationDetailModalProps {
   application: AdmissionApplicationRecord | null;
+  schoolSlug?: string;
   onClose: () => void;
   canWrite: boolean;
   canVerify: boolean;
@@ -705,11 +706,12 @@ interface ApplicationDetailModalProps {
       guardianEmail?: string;
       previousSchool?: string;
     },
-  ) => Promise<void>;
+  ) => Promise<unknown>;
 }
 
 export function ApplicationDetailModal({
   application,
+  schoolSlug,
   onClose,
   canWrite,
   canVerify,
@@ -945,9 +947,53 @@ export function ApplicationDetailModal({
                 <span className="text-[#76799C] dark:text-[#9DA6CC]">Previous School:</span>{" "}
                 <strong className="text-[#08093B] dark:text-[#F3F5FF]">{application.previousSchool || "Not provided"}</strong>
               </div>
+              {application.admissionType && (
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Admission Type:</span>{" "}
+                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                    {application.admissionType === "TRANSFER" ? "Transfer" : "Fresh Admission"}
+                  </strong>
+                </div>
+              )}
+              {application.guardianDetails?.emergencyContactNumber && (
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Emergency Contact:</span>{" "}
+                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                    {application.guardianDetails.emergencyContactNumber} (
+                    {application.guardianDetails.preferredCommunicationMode})
+                  </strong>
+                </div>
+              )}
             </div>
           )}
         </div>
+
+        {/* Uploaded Documents (when submitted via wizard) */}
+        {application.uploadedDocuments && application.uploadedDocuments.length > 0 && schoolSlug && (
+          <div className="space-y-2">
+            <p className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">
+              Uploaded Files ({application.uploadedDocuments.length})
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {application.uploadedDocuments.map((doc) => (
+                <a
+                  key={doc.key}
+                  href={`/api/school/admissions/documents/view?schoolSlug=${encodeURIComponent(schoolSlug)}&key=${encodeURIComponent(doc.storageKey)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-2 rounded-[10px] border border-[#DFE3F5] bg-[#FAF8FE] px-3 py-2 text-xs hover:border-[#663CF6] dark:border-[#272B4D] dark:bg-[#10142C]"
+                >
+                  <span className="font-bold text-[#08093B] truncate dark:text-[#F3F5FF]">
+                    {doc.label}
+                  </span>
+                  <span className="shrink-0 font-bold text-[#663CF6] dark:text-[#A78BFA]">
+                    View
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Status & Verification Controls */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

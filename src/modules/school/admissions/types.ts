@@ -22,6 +22,82 @@ export type AdmissionsDatePreset = "all" | "year" | "30d" | "90d" | "custom";
 
 export type AdmissionsTrendGranularity = "month" | "week";
 
+export type AdmissionTypeValue = "FRESH" | "TRANSFER";
+
+export type AdmissionCommunicationMode = "Phone" | "Email" | "SMS" | "WhatsApp";
+
+export type AdmissionDocumentType =
+  | "student_photo"
+  | "father_aadhaar"
+  | "mother_aadhaar"
+  | "birth_certificate"
+  | "student_aadhaar"
+  | "last_marksheet";
+
+export interface AdmissionUploadedDocument {
+  key: string;
+  docType: AdmissionDocumentType;
+  label: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storageKey: string;
+  uploadedAt: string;
+}
+
+export interface AdmissionAddressPayload {
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+}
+
+export interface AdmissionStudentDetailsPayload {
+  email?: string;
+  phone?: string;
+  address: AdmissionAddressPayload;
+}
+
+export interface AdmissionGuardianPersonPayload {
+  fullName: string;
+  relationship: string;
+  occupation?: string;
+  annualIncome?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface AdmissionGuardianDetailsPayload {
+  primary: AdmissionGuardianPersonPayload;
+  secondary?: AdmissionGuardianPersonPayload | null;
+  sameAsStudentAddress: boolean;
+  address?: AdmissionAddressPayload | null;
+  emergencyContactNumber: string;
+  preferredCommunicationMode: AdmissionCommunicationMode;
+}
+
+export interface AdmissionPreviousAcademicRow {
+  id: string;
+  academicYear: string;
+  standard: string;
+  marksObtained: number;
+  totalMarks: number;
+  percentage: number;
+}
+
+export interface AdmissionAcademicDetailsPayload {
+  previousSchoolName?: string;
+  boardCurriculum?: string;
+  lastStandardStudied?: string;
+  yearOfCompletion?: string;
+  schoolAddress?: string;
+  totalMarks?: number | null;
+  marksObtained?: number | null;
+  percentage?: number | null;
+  previousAcademics?: AdmissionPreviousAcademicRow[];
+}
+
 export interface AdmissionDocumentChecklistItem {
   key: string;
   label: string;
@@ -49,6 +125,18 @@ export interface AdmissionApplicationRecord {
   verificationStatus: DocumentVerificationStatusType;
   verificationNotes: string | null;
   documentsChecklist: AdmissionDocumentChecklistItem[];
+  admissionType?: AdmissionTypeValue;
+  isDraft?: boolean;
+  currentStep?: number;
+  studentPhotoKey?: string | null;
+  nationality?: string | null;
+  bloodGroup?: string | null;
+  studentIdNumber?: string | null;
+  studentDetails?: AdmissionStudentDetailsPayload | null;
+  guardianDetails?: AdmissionGuardianDetailsPayload | null;
+  academicDetails?: AdmissionAcademicDetailsPayload | null;
+  uploadedDocuments?: AdmissionUploadedDocument[];
+  declarationAccepted?: boolean;
   appliedAt: string;
   shortlistedAt: string | null;
   admittedAt: string | null;
@@ -179,6 +267,7 @@ export interface AdmissionsOverviewData {
   byGrade: AdmissionsGradeCount[];
   statusBreakdown: AdmissionsStatusSlice[];
   applications: AdmissionApplicationRecord[];
+  drafts?: AdmissionApplicationRecord[];
   pagination: {
     total: number;
     page: number;

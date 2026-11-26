@@ -21,7 +21,6 @@ import {
   DEFAULT_ADMISSION_GRADES,
   type AdmissionApplicationRecord,
   type AdmissionApplicationStatusType,
-  type AdmissionDocumentChecklistItem,
   type AdmissionEnquiryStatusType,
   type AdmissionsDatePreset,
   type AdmissionsOverviewData,
@@ -36,7 +35,6 @@ import { AdmissionsActivityAndNotes } from "./admissions-activity-and-notes";
 import { ApplicationsManagementView } from "./applications-management-view";
 import {
   ApplicationDetailModal,
-  NewApplicationModal,
   NewEnquiryModal,
 } from "./admissions-modals";
 
@@ -82,7 +80,6 @@ export function AdmissionsWorkspace({
   } | null>(null);
 
   // Modals state
-  const [newAppOpen, setNewAppOpen] = useState(false);
   const [newEnqOpen, setNewEnqOpen] = useState(false);
   const [inspectApp, setInspectApp] = useState<AdmissionApplicationRecord | null>(null);
   const [inspectAppMode, setInspectAppMode] = useState<"view" | "edit">("view");
@@ -123,10 +120,27 @@ export function AdmissionsWorkspace({
     clientQueryCacheRef.current.set(initialQs, initialData);
   }, [initialData, school.slug]);
 
-  // Sync tab when sidebar links update URL query via initialTab
+  // Sync tab when sidebar links update URL query via initialTab or browser Back/Forward
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const tabParam = new URLSearchParams(window.location.search).get("tab");
+      if (
+        tabParam === "overview" ||
+        tabParam === "applications" ||
+        tabParam === "enquiries" ||
+        tabParam === "admitted" ||
+        tabParam === "settings"
+      ) {
+        setActiveTab(tabParam);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const fetchOverview = useCallback(
     async (
@@ -258,7 +272,7 @@ export function AdmissionsWorkspace({
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("tab", tab);
-      window.history.replaceState({}, "", url.toString());
+      window.history.replaceState(window.history.state, "", url.toString());
     }
   }, []);
 
@@ -311,20 +325,9 @@ export function AdmissionsWorkspace({
     await fetchOverview(filters, { bypassClientCache: true });
   };
 
-  const handleCreateApplication = async (payload: {
-    studentName: string;
-    gender: "Male" | "Female" | "Other" | "";
-    dateOfBirth: string;
-    gradeApplied: string;
-    academicYear: string;
-    guardianName: string;
-    guardianRelation: string;
-    guardianPhone: string;
-    guardianEmail: string;
-    previousSchool: string;
-    status: "UNDER_REVIEW" | "DOCUMENTS_PENDING" | "SHORTLISTED";
-    notes: string;
-  }) => {
+  const handleCreateApplication = async (
+    payload: Record<string, unknown>,
+  ): Promise<AdmissionApplicationRecord> => {
     const res = await fetch(
       `/api/school/admissions/applications?schoolSlug=${encodeURIComponent(school.slug)}`,
       {
@@ -339,25 +342,18 @@ export function AdmissionsWorkspace({
     }
     showToast(
       "success",
-      `Application ${json.application.applicationCode} created for ${json.application.studentName}.`,
+      json.application?.isDraft
+        ? `Draft ${json.application.applicationCode} saved for ${json.application.studentName}.`
+        : `Application ${json.application.applicationCode} created for ${json.application.studentName}.`,
     );
     await fetchOverview(filters, { bypassClientCache: true });
+    return json.application as AdmissionApplicationRecord;
   };
 
   const handleQuickUpdateApplication = async (
     applicationId: string,
-    payload: {
-      status?: AdmissionApplicationStatusType;
-      verificationStatus?: DocumentVerificationStatusType;
-      verificationNotes?: string;
-      documentsChecklist?: AdmissionDocumentChecklistItem[];
-      gradeApplied?: string;
-      guardianName?: string;
-      guardianPhone?: string;
-      guardianEmail?: string;
-      previousSchool?: string;
-    },
-  ) => {
+    payload: Record<string, unknown>,
+  ): Promise<AdmissionApplicationRecord> => {
     const res = await fetch(
       `/api/school/admissions/applications/${encodeURIComponent(applicationId)}?schoolSlug=${encodeURIComponent(school.slug)}`,
       {
@@ -372,8 +368,14 @@ export function AdmissionsWorkspace({
       showToast("error", msg);
       throw new Error(msg);
     }
-    showToast("success", `Updated ${json.application.studentName} (${json.application.applicationCode}).`);
+    showToast(
+      "success",
+      json.application?.isDraft
+        ? `Updated draft ${json.application.applicationCode}.`
+        : `Updated ${json.application.studentName} (${json.application.applicationCode}).`,
+    );
     await fetchOverview(filters, { bypassClientCache: true });
+    return json.application as AdmissionApplicationRecord;
   };
 
   const handleCreateEnquiry = async (payload: {
@@ -532,18 +534,6 @@ export function AdmissionsWorkspace({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            {data.permissions.canWrite && (
-              <button
-                id="admissions-new-application-btn"
-                type="button"
-                onClick={() => setNewAppOpen(true)}
-                className="inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:opacity-95 cursor-pointer"
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                <span>New Application</span>
-              </button>
-            )}
-
             {data.permissions.canExport && (
               <button
                 id="admissions-download-report-btn"
@@ -720,7 +710,6 @@ export function AdmissionsWorkspace({
             onPageSizeChange={(pageSize) => applyFilterUpdate({ pageSize, page: 1 })}
             onInspectApplication={(app) => setInspectApp(app)}
             onQuickUpdateApplication={handleQuickUpdateApplication}
-            onOpenNewApplication={() => setNewAppOpen(true)}
             canWrite={data.permissions.canWrite}
             canVerify={data.permissions.canVerify}
           />
@@ -739,6 +728,8 @@ export function AdmissionsWorkspace({
 
       {activeTab === "applications" && (
         <ApplicationsManagementView
+          schoolName={school.name}
+          schoolSlug={school.slug}
           data={data}
           filters={filters}
           searchInput={searchInput}
@@ -753,7 +744,7 @@ export function AdmissionsWorkspace({
           onQuickUpdateApplication={handleQuickUpdateApplication}
           onBulkUpdateApplications={handleBulkUpdateApplications}
           onCreateApplication={handleCreateApplication}
-          onOpenNewApplicationModal={() => setNewAppOpen(true)}
+          onUpdateApplication={handleQuickUpdateApplication}
           onDownloadReport={handleDownloadReport}
           onDownloadImportTemplate={handleDownloadImportTemplate}
         />
@@ -1072,15 +1063,6 @@ export function AdmissionsWorkspace({
       )}
 
       {/* Modals */}
-      <NewApplicationModal
-        open={newAppOpen}
-        onClose={() => setNewAppOpen(false)}
-        grades={data.availableGrades}
-        defaultAcademicYear={data.settings.currentAcademicYear}
-        academicYears={data.availableAcademicYears}
-        onSubmit={handleCreateApplication}
-      />
-
       <NewEnquiryModal
         open={newEnqOpen}
         onClose={() => setNewEnqOpen(false)}
@@ -1092,6 +1074,7 @@ export function AdmissionsWorkspace({
 
       <ApplicationDetailModal
         application={inspectApp}
+        schoolSlug={school.slug}
         onClose={() => setInspectApp(null)}
         canWrite={data.permissions.canWrite}
         canVerify={data.permissions.canVerify}
