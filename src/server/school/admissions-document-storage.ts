@@ -3,7 +3,8 @@ import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
-import { AuthorizationError, NotFoundError, ValidationError } from "@/lib/errors";
+import { AuthorizationError, NotFoundError, ServiceUnavailableError, ValidationError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import type {
   AdmissionDocumentType,
   AdmissionUploadedDocument,
@@ -43,6 +44,20 @@ function getExtensionForMime(mimeType: string): string {
   if (mimeType === "image/jpeg") return "jpg";
   if (mimeType === "image/png") return "png";
   return "pdf";
+}
+
+function normalizeDeclaredMime(rawMimeType: string, fileName: string): string {
+  const normalized = rawMimeType.split(";")[0]?.trim().toLowerCase() || "";
+  if (normalized === "image/jpg" || normalized === "image/pjpeg") return "image/jpeg";
+  if (normalized === "image/x-png") return "image/png";
+  if (normalized === "application/x-pdf") return "application/pdf";
+  if (!normalized || normalized === "application/octet-stream") {
+    const ext = path.extname(fileName || "").toLowerCase();
+    if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+    if (ext === ".png") return "image/png";
+    if (ext === ".pdf") return "application/pdf";
+  }
+  return normalized;
 }
 
 function matchesMagicBytes(buf: Buffer, mimeType: string): boolean {
@@ -100,7 +115,8 @@ export const admissionsDocumentStorage = {
     buffer: Buffer;
     label?: string;
   }): Promise<AdmissionUploadedDocument> => {
-    const { schoolId, docType, mimeType, buffer } = params;
+    const { schoolId, docType, buffer } = params;
+    const mimeType = normalizeDeclaredMime(params.mimeType, params.fileName);
     const isPhoto = docType === "student_photo";
     const allowedMimes = isPhoto ? ALLOWED_PHOTO_MIMES : ALLOWED_DOC_MIMES;
     const maxBytes = isPhoto ? MAX_PHOTO_BYTES : MAX_DOC_BYTES;
@@ -157,14 +173,29 @@ export const admissionsDocumentStorage = {
       }
 
       if (!storedInSupabase) {
-        const targetPath = path.join(LOCAL_UPLOAD_ROOT, storageKey);
-        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-        fs.writeFileSync(targetPath, buffer);
-        fs.writeFileSync(
-          `${targetPath}.meta.json`,
-          JSON.stringify({ mimeType, fileName: safeFileName }),
-          "utf8",
-        );
+        try {
+          const targetPath = path.join(LOCAL_UPLOAD_ROOT, storageKey);
+          fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+          fs.writeFileSync(targetPath, buffer);
+          fs.writeFileSync(
+            `${targetPath}.meta.json`,
+            JSON.stringify({ mimeType, fileName: safeFileName }),
+            "utf8",
+          );
+        } catch (fsErr) {
+          logger.error(
+            {
+              event: "ADMISSION_DOCUMENT_LOCAL_WRITE_FAILED",
+              schoolId,
+              storageKey,
+              error: fsErr instanceof Error ? fsErr.message : String(fsErr),
+            },
+            "[AdmissionsDocumentStorage] Failed writing upload to local disk",
+          );
+          throw new ServiceUnavailableError(
+            "Document storage is temporarily unavailable. Please try again or check storage configuration.",
+          );
+        }
       }
     }
 

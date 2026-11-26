@@ -44,6 +44,8 @@ export interface SchoolShellSchool {
   uniqueId?: string | null;
   code: string;
   affiliationBoard: string;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
 }
 
 export interface SchoolShellUser {

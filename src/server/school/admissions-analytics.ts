@@ -492,7 +492,27 @@ export function computeAdmissionsOverviewAnalytics(params: {
         return false;
       }
       if (q) {
-        const hay = `${app.applicationCode} ${app.studentName} ${app.guardianName} ${app.guardianPhone} ${app.guardianEmail || ""} ${app.gradeApplied}`.toLowerCase();
+        const hay = [
+          app.applicationCode,
+          app.admissionNumber,
+          app.studentIdNumber,
+          app.studentName,
+          app.guardianName,
+          app.guardianPhone,
+          app.guardianEmail,
+          app.gradeApplied,
+          app.previousSchool,
+          app.studentDetails?.email,
+          app.studentDetails?.phone,
+          app.guardianDetails?.primary?.phone,
+          app.guardianDetails?.primary?.email,
+          app.guardianDetails?.secondary?.fullName,
+          app.guardianDetails?.secondary?.phone,
+          app.guardianDetails?.emergencyContactNumber,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -509,7 +529,18 @@ export function computeAdmissionsOverviewAnalytics(params: {
     .filter((a) => {
       if (a.status !== "ADMITTED") return false;
       if (q) {
-        const hay = `${a.applicationCode} ${a.admissionNumber || ""} ${a.studentName} ${a.gradeApplied}`.toLowerCase();
+        const hay = [
+          a.applicationCode,
+          a.admissionNumber,
+          a.studentIdNumber,
+          a.studentName,
+          a.guardianName,
+          a.guardianPhone,
+          a.gradeApplied,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
         return hay.includes(q);
       }
       return true;
@@ -519,7 +550,17 @@ export function computeAdmissionsOverviewAnalytics(params: {
   const filteredEnquiries = cohortEnquiries
     .filter((enq) => {
       if (q) {
-        const hay = `${enq.enquiryCode} ${enq.studentName} ${enq.guardianName} ${enq.gradeApplied}`.toLowerCase();
+        const hay = [
+          enq.enquiryCode,
+          enq.studentName,
+          enq.guardianName,
+          enq.guardianPhone,
+          enq.guardianEmail,
+          enq.gradeApplied,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
         return hay.includes(q);
       }
       return true;

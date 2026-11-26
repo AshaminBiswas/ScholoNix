@@ -17,6 +17,7 @@ import {
   Filter,
   LayoutList,
   LayoutGrid,
+  X,
 } from "lucide-react";
 import {
   ADMISSION_STATUS_META,
@@ -390,13 +391,23 @@ export function AdmissionsTable({
                   aria-hidden="true"
                 />
                 <input
-                  type="search"
+                  type="text"
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  placeholder="Search student name, application ID..."
+                  placeholder="Search Student ID, name, application ID..."
                   aria-label="Search applications"
-                  className="w-full rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] pl-8 pr-3 py-1.5 text-xs text-[#08093B] placeholder:text-[#76799C] focus:border-[#663CF6] focus:bg-white focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD] dark:focus:border-[#8B5CF6] dark:focus:bg-[#141731]"
+                  className="w-full rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] pl-8 pr-8 py-1.5 text-xs text-[#08093B] placeholder:text-[#76799C] focus:border-[#663CF6] focus:bg-white focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD] dark:focus:border-[#8B5CF6] dark:focus:bg-[#141731]"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    aria-label="Clear table search"
+                    onClick={() => onSearchChange("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-[#76799C] hover:text-[#08093B] cursor-pointer dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                )}
               </div>
 
               <div className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs dark:border-[#343B6B] dark:bg-[#10142C]">
@@ -481,6 +492,15 @@ export function AdmissionsTable({
                 ? "Try adjusting your search query or filters."
                 : "Create your first admission application to begin tracking applicants."}
             </p>
+            {searchQuery.trim() && (
+              <button
+                type="button"
+                onClick={() => onSearchChange("")}
+                className="mt-3 inline-flex items-center gap-1 rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-1.5 text-xs font-bold text-[#663CF6] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#C4B5FD]"
+              >
+                Clear Search
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
@@ -512,13 +532,24 @@ export function AdmissionsTable({
                         <p className="truncate text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                           {app.studentName}
                         </p>
-                        <button
-                          type="button"
-                          onClick={() => onInspectApplication(app)}
-                          className="text-xs font-bold text-[#663CF6] hover:underline cursor-pointer dark:text-[#A78BFA]"
-                        >
-                          {app.applicationCode}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => onInspectApplication(app)}
+                            className="text-xs font-bold text-[#663CF6] hover:underline cursor-pointer dark:text-[#A78BFA]"
+                          >
+                            {app.applicationCode}
+                          </button>
+                          {app.studentIdNumber && (
+                            <button
+                              type="button"
+                              onClick={() => onInspectApplication(app)}
+                              className="rounded-md bg-[#EDE7FF] px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#663CF6] hover:underline cursor-pointer dark:bg-[#251D4A] dark:text-[#CBB8FF]"
+                            >
+                              {app.studentIdNumber}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <span className="rounded-lg border border-[#D6DBF0] bg-white px-2 py-0.5 text-[11px] font-bold text-[#4D5072] dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#C5CCF0]">
@@ -677,6 +708,15 @@ export function AdmissionsTable({
                         ? "Try adjusting your search query or filters."
                         : "Create your first admission application to begin tracking applicants."}
                     </p>
+                    {searchQuery.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => onSearchChange("")}
+                        className="mt-3 inline-flex items-center gap-1 rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-1.5 text-xs font-bold text-[#663CF6] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#C4B5FD]"
+                      >
+                        Clear Search
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -717,8 +757,20 @@ export function AdmissionsTable({
                         </div>
                       </td>
                       <td className="px-3 py-3">
-                        <div className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
-                          {app.studentName}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
+                            {app.studentName}
+                          </span>
+                          {app.studentIdNumber && (
+                            <button
+                              type="button"
+                              onClick={() => onInspectApplication(app)}
+                              title="View student application details"
+                              className="rounded-md bg-[#EDE7FF] px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#663CF6] hover:underline cursor-pointer dark:bg-[#251D4A] dark:text-[#CBB8FF]"
+                            >
+                              {app.studentIdNumber}
+                            </button>
+                          )}
                         </div>
                         <div className="text-[11px] text-[#76799C] truncate max-w-[200px] dark:text-[#9DA6CC]">
                           Guardian: {app.guardianName}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Users,
   GraduationCap,
@@ -52,6 +53,7 @@ interface SchoolDashboardProps {
 }
 
 export function SchoolDashboard({ initialData, user }: SchoolDashboardProps) {
+  const router = useRouter();
   // Active single-tenant school dashboard data
   const [data, setData] = useState<SchoolDashboardData>(initialData);
 
@@ -102,6 +104,41 @@ export function SchoolDashboard({ initialData, user }: SchoolDashboardProps) {
     () => buildSchoolShellProps(data.school, user),
     [data.school, user],
   );
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredQuickPages = useMemo(() => {
+    const pages = [
+      { label: "Admissions Overview", hint: "KPIs, funnel & recent applications", href: buildSchoolRoute(data.school.slug, "admissions?tab=overview") },
+      { label: "Application Management", hint: "Search, verify & manage applications", href: buildSchoolRoute(data.school.slug, "admissions?tab=applications") },
+      { label: "Admission Enquiries", hint: "Track parent leads & enquiries", href: buildSchoolRoute(data.school.slug, "admissions?tab=enquiries") },
+      { label: "Admitted Students", hint: "View finalized student admissions", href: buildSchoolRoute(data.school.slug, "admissions?tab=admitted") },
+      { label: "Admission Settings", hint: "Academic year, prefix & grades", href: buildSchoolRoute(data.school.slug, "admissions?tab=settings") },
+      { label: "School Profile", hint: "Unique School ID & login link", href: buildSchoolRoute(data.school.slug, "profile") },
+      { label: "Help Center", hint: "Guides & support articles", href: buildSchoolRoute(data.school.slug, "help") },
+    ];
+    if (!normalizedSearch) return pages.slice(0, 4);
+    return pages.filter(
+      (p) =>
+        p.label.toLowerCase().includes(normalizedSearch) ||
+        p.hint.toLowerCase().includes(normalizedSearch),
+    );
+  }, [data.school.slug, normalizedSearch]);
+
+  const filteredAdmissions = useMemo(() => {
+    if (!normalizedSearch) return data.recentAdmissions;
+    return data.recentAdmissions.filter((adm) =>
+      `${adm.name} ${adm.classApplied} ${adm.status} ${adm.appliedOn}`
+        .toLowerCase()
+        .includes(normalizedSearch),
+    );
+  }, [data.recentAdmissions, normalizedSearch]);
+
+  const filteredNotices = useMemo(() => {
+    if (!normalizedSearch) return [];
+    return data.notices.filter((n) =>
+      `${n.title} ${n.summary}`.toLowerCase().includes(normalizedSearch),
+    );
+  }, [data.notices, normalizedSearch]);
 
   return (
     <SchoolWorkspaceShell
@@ -1321,46 +1358,142 @@ export function SchoolDashboard({ initialData, user }: SchoolDashboardProps) {
 
       {/* Search Modal (Ctrl + K) */}
       {searchOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-xs p-4 pt-20 dark:bg-black/65">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Search school workspace"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSearchOpen(false);
+          }}
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-xs p-4 pt-20 dark:bg-black/65"
+        >
           <div className="w-full max-w-lg rounded-[20px] bg-white p-4 shadow-2xl border border-[#D6DBF0] dark:bg-[#141731] dark:border-[#2E345B]">
-            <div className="flex items-center gap-2 border-b border-[#DFE3F5] pb-3 dark:border-[#232746]">
-              <Search className="h-4 w-4 text-[#76799C] dark:text-[#9DA6CC]" />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = searchQuery.trim();
+                setSearchOpen(false);
+                if (q) {
+                  router.push(
+                    buildSchoolRoute(
+                      data.school.slug,
+                      `admissions?tab=applications&search=${encodeURIComponent(q)}`,
+                    ),
+                  );
+                } else if (filteredQuickPages[0]) {
+                  router.push(filteredQuickPages[0].href);
+                }
+              }}
+              className="flex items-center gap-2 border-b border-[#DFE3F5] pb-3 dark:border-[#232746]"
+            >
+              <Search className="h-4 w-4 text-[#76799C] dark:text-[#9DA6CC] shrink-0" />
               <input
                 type="text"
                 autoFocus
-                placeholder="Search students, teachers, fees, roll numbers..."
+                placeholder="Search Student ID, name, classes, admissions, or pages..."
+                aria-label="Search Student ID, name, classes, admissions, or pages"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-transparent text-xs sm:text-sm text-[#08093B] placeholder:text-[#76799C] focus:outline-none dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD]"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => setSearchQuery("")}
+                  className="rounded p-1 text-[#76799C] hover:text-[#08093B] cursor-pointer dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
               <button
                 type="button"
+                aria-label="Close search"
                 onClick={() => setSearchOpen(false)}
-                className="rounded p-1 text-[#76799C] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
+                className="rounded p-1 text-[#76799C] hover:text-[#08093B] cursor-pointer dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
               >
-                <X className="h-4 w-4" />
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-[#D6DBF0] dark:border-[#343B6B]">
+                  ESC
+                </span>
               </button>
-            </div>
-            <div className="mt-3 space-y-1 max-h-64 overflow-y-auto text-xs">
-              <p className="px-2 py-1 text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
-                Quick School Matches ({data.school.name})
-              </p>
-              {data.recentAdmissions.length === 0 ? (
-                <p className="px-2 py-4 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]">
-                  No admission records found yet.
+            </form>
+            <div className="mt-3 space-y-3 max-h-72 overflow-y-auto text-xs">
+              <div>
+                <p className="px-2 py-1 text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                  Recent Admissions ({filteredAdmissions.length})
                 </p>
-              ) : (
-                data.recentAdmissions.map((adm) => (
-                  <div
-                    key={adm.id}
-                    onClick={() => setSearchOpen(false)}
-                    className="flex items-center justify-between p-2 rounded-[8px] hover:bg-[#FAF8FE] cursor-pointer dark:hover:bg-[#1B2042]"
-                  >
-                    <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">{adm.name}</span>
-                    <span className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">{adm.classApplied}</span>
-                  </div>
-                ))
+                {filteredAdmissions.length === 0 ? (
+                  <p className="px-2 py-2 text-xs text-[#76799C] dark:text-[#9DA6CC]">
+                    {normalizedSearch
+                      ? `No recent admissions matched "${searchQuery.trim()}". Press Enter to search all applications.`
+                      : "No admission records found yet."}
+                  </p>
+                ) : (
+                  filteredAdmissions.map((adm) => (
+                    <Link
+                      key={adm.id}
+                      href={buildSchoolRoute(
+                        data.school.slug,
+                        `admissions?tab=applications&search=${encodeURIComponent(adm.name)}`,
+                      )}
+                      onClick={() => setSearchOpen(false)}
+                      className="flex items-center justify-between p-2 rounded-[8px] hover:bg-[#FAF8FE] dark:hover:bg-[#1B2042]"
+                    >
+                      <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">{adm.name}</span>
+                      <span className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
+                        {adm.classApplied} · {adm.status}
+                      </span>
+                    </Link>
+                  ))
+                )}
+              </div>
+
+              {filteredNotices.length > 0 && (
+                <div>
+                  <p className="px-2 py-1 text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                    Notices
+                  </p>
+                  {filteredNotices.map((n) => (
+                    <div
+                      key={n.id}
+                      className="p-2 rounded-[8px] bg-[#FAF8FE]/70 dark:bg-[#10142C]"
+                    >
+                      <p className="font-bold text-[#08093B] dark:text-[#F3F5FF]">{n.title}</p>
+                      <p className="text-[11px] text-[#76799C] truncate dark:text-[#9DA6CC]">{n.summary}</p>
+                    </div>
+                  ))}
+                </div>
               )}
+
+              <div>
+                <p className="px-2 py-1 text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                  Workspace Navigation
+                </p>
+                {filteredQuickPages.map((page) => (
+                  <Link
+                    key={page.label}
+                    href={page.href}
+                    onClick={() => setSearchOpen(false)}
+                    className="flex items-center justify-between p-2 rounded-[8px] hover:bg-[#FAF8FE] dark:hover:bg-[#1B2042]"
+                  >
+                    <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">{page.label}</span>
+                    <span className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">{page.hint}</span>
+                  </Link>
+                ))}
+                {normalizedSearch && (
+                  <Link
+                    href={buildSchoolRoute(
+                      data.school.slug,
+                      `admissions?tab=applications&search=${encodeURIComponent(searchQuery.trim())}`,
+                    )}
+                    onClick={() => setSearchOpen(false)}
+                    className="mt-1 flex items-center justify-between p-2 rounded-[8px] bg-[#FAF8FE] text-[#663CF6] font-bold hover:bg-[#EDE7FF]/60 dark:bg-[#1B183E] dark:text-[#C4B5FD] dark:hover:bg-[#252052]"
+                  >
+                    <span>Search &ldquo;{searchQuery.trim()}&rdquo; in All Applications</span>
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </div>

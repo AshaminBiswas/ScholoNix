@@ -803,17 +803,24 @@ export function ApplicationDetailModal({
     <dialog
       ref={dialogRef}
       aria-labelledby="app-detail-dialog-title"
-      className="m-auto w-[min(95vw,640px)] rounded-[22px] border border-[#D6DBF0] bg-white p-0 text-[#1B1D45] shadow-2xl dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#DCE1F9]"
+      className="m-auto w-[min(95vw,680px)] max-h-[90vh] overflow-y-auto school-menu-scrollbar rounded-[22px] border border-[#D6DBF0] bg-white p-0 text-[#1B1D45] shadow-2xl dark:border-[#2E345B] dark:bg-[#141731] dark:text-[#DCE1F9]"
     >
-      <div className="flex items-center justify-between border-b border-[#DFE3F5] px-6 py-4 dark:border-[#232746]">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#DFE3F5] bg-white px-6 py-4 dark:border-[#232746] dark:bg-[#141731]">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
             <FileCheck2 className="h-5 w-5" aria-hidden="true" />
           </span>
           <div>
-            <h1 id="app-detail-dialog-title" className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-              {application.studentName} · {application.applicationCode}
-            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 id="app-detail-dialog-title" className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                {application.studentName} · {application.applicationCode}
+              </h1>
+              {application.studentIdNumber && (
+                <span className="rounded-md bg-[#EDE7FF] px-2 py-0.5 text-[11px] font-mono font-bold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
+                  Student ID: {application.studentIdNumber}
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
               {application.gradeApplied} · {application.academicYear}
               {application.admissionNumber ? ` · Admission No: ${application.admissionNumber}` : ""}
@@ -929,6 +936,40 @@ export function ApplicationDetailModal({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {application.studentIdNumber && (
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Student ID:</span>{" "}
+                  <strong className="font-mono text-[#663CF6] dark:text-[#C4B5FD]">
+                    {application.studentIdNumber}
+                  </strong>
+                </div>
+              )}
+              {(application.dateOfBirth || application.gender) && (
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">DOB / Gender:</span>{" "}
+                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                    {[application.dateOfBirth, application.gender].filter(Boolean).join(" · ")}
+                  </strong>
+                </div>
+              )}
+              {(application.nationality || application.bloodGroup) && (
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Nationality / Blood:</span>{" "}
+                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                    {[application.nationality, application.bloodGroup].filter(Boolean).join(" · ")}
+                  </strong>
+                </div>
+              )}
+              {(application.studentDetails?.email || application.studentDetails?.phone) && (
+                <div>
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Student Contact:</span>{" "}
+                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                    {[application.studentDetails.email, application.studentDetails.phone]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </strong>
+                </div>
+              )}
               <div>
                 <span className="text-[#76799C] dark:text-[#9DA6CC]">Guardian:</span>{" "}
                 <strong className="text-[#08093B] dark:text-[#F3F5FF]">
@@ -961,6 +1002,40 @@ export function ApplicationDetailModal({
                   <strong className="text-[#08093B] dark:text-[#F3F5FF]">
                     {application.guardianDetails.emergencyContactNumber} (
                     {application.guardianDetails.preferredCommunicationMode})
+                  </strong>
+                </div>
+              )}
+              {application.studentDetails?.address?.addressLine1 && (
+                <div className="sm:col-span-2">
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Address:</span>{" "}
+                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                    {[
+                      application.studentDetails.address.addressLine1,
+                      application.studentDetails.address.addressLine2,
+                      application.studentDetails.address.city,
+                      application.studentDetails.address.state,
+                      application.studentDetails.address.postalCode,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </strong>
+                </div>
+              )}
+              {application.academicDetails && application.admissionType === "TRANSFER" && (
+                <div className="sm:col-span-2">
+                  <span className="text-[#76799C] dark:text-[#9DA6CC]">Previous Academics:</span>{" "}
+                  <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                    {[
+                      application.academicDetails.boardCurriculum,
+                      application.academicDetails.lastStandardStudied,
+                      application.academicDetails.yearOfCompletion,
+                      application.academicDetails.percentage !== null &&
+                      application.academicDetails.percentage !== undefined
+                        ? `${application.academicDetails.percentage}%`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </strong>
                 </div>
               )}

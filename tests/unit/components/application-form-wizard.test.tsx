@@ -173,6 +173,17 @@ describe("ApplicationFormWizard 4-step workflow", () => {
         declarationAccepted: true,
       }),
     );
+
+    // Confirmation page matches submitted design
+    expect(screen.getByRole("heading", { name: "Application Submitted!" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Application Submitted Successfully!" })).toBeInTheDocument();
+    expect(screen.getByText("APP2026-0001")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Go to Dashboard/i }).getAttribute("href")).toBe(
+      "/sc_testtoken",
+    );
+    expect(screen.getByRole("button", { name: /Download Application/i })).toBeInTheDocument();
+
+    await actor.click(screen.getByRole("button", { name: /View All Applications/i }));
     expect(onViewApplications).toHaveBeenCalled();
   });
 });

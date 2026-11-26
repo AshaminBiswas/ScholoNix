@@ -163,6 +163,7 @@ describe("Admissions 4-Step Wizard API, Document Upload & Tenant Isolation", () 
     expect(draftRes.status).toBe(201);
     const draftJson = await draftRes.json();
     expect(draftJson.application.isDraft).toBe(true);
+    expect(draftJson.application.studentIdNumber).toBeNull();
 
     // Overview shows 0 submitted apps and 1 draft
     const ov1Res = await overviewGet(
@@ -258,6 +259,7 @@ describe("Admissions 4-Step Wizard API, Document Upload & Tenant Isolation", () 
     const submitJson = await submitRes.json();
     expect(submitJson.application.isDraft).toBe(false);
     expect(submitJson.application.academicDetails.percentage).toBe(77);
+    expect(submitJson.application.studentIdNumber).toBe("STU2026-0001");
 
     // Overview now shows 1 submitted application and 0 drafts
     const listRes = await appsGet(
@@ -269,5 +271,40 @@ describe("Admissions 4-Step Wizard API, Document Upload & Tenant Isolation", () 
     const listJson = await listRes.json();
     expect(listJson.applications).toHaveLength(1);
     expect(listJson.applications[0].previousSchool).toBe("Old Prep School");
+    expect(listJson.applications[0].studentIdNumber).toBe("STU2026-0001");
+
+    // Searching by auto-generated Student ID returns the matching student details
+    const studentIdSearchRes = await overviewGet(
+      new NextRequest(
+        `http://localhost/api/school/admissions/overview?schoolSlug=${tenant.school.slug}&search=${encodeURIComponent("STU2026-0001")}`,
+        { headers: { cookie: tenant.cookieHeader } },
+      ),
+    );
+    expect(studentIdSearchRes.status).toBe(200);
+    const searchJson = await studentIdSearchRes.json();
+    expect(searchJson.data.applications).toHaveLength(1);
+    expect(searchJson.data.applications[0].studentName).toBe("Synthetic Kavya");
+    expect(searchJson.data.applications[0].studentIdNumber).toBe("STU2026-0001");
+
+    // Parent & student document uploads succeed with PDF and image/jpg alias MIME
+    const parentFd = new FormData();
+    parentFd.append(
+      "file",
+      new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])], "father.jpg", {
+        type: "image/jpg",
+      }),
+    );
+    parentFd.append("docType", "father_aadhaar");
+    const parentUploadRes = await uploadDocPost(
+      new NextRequest(
+        `http://localhost/api/school/admissions/documents?schoolSlug=${tenant.school.slug}`,
+        {
+          method: "POST",
+          headers: { cookie: tenant.cookieHeader },
+          body: parentFd,
+        },
+      ),
+    );
+    expect(parentUploadRes.status).toBe(201);
   });
 });

@@ -315,6 +315,38 @@ function extractYearTag(academicYear: string): string {
   return match ? match[1]! : String(new Date().getFullYear());
 }
 
+function generateUniqueStudentId(
+  academicYear: string,
+  existingIds: Array<string | null | undefined>,
+  seedSeq: number = 1,
+): string {
+  const yearTag = extractYearTag(academicYear);
+  const prefix = `STU${yearTag}-`;
+  const used = new Set<string>();
+  let maxSeq = 0;
+
+  for (const raw of existingIds) {
+    if (!raw) continue;
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    used.add(trimmed.toUpperCase());
+    if (trimmed.toUpperCase().startsWith(prefix)) {
+      const num = Number.parseInt(trimmed.slice(prefix.length), 10);
+      if (Number.isFinite(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  }
+
+  let candidateSeq = Math.max(1, seedSeq, maxSeq + 1);
+  let candidate = `${prefix}${String(candidateSeq).padStart(4, "0")}`;
+  while (used.has(candidate.toUpperCase())) {
+    candidateSeq += 1;
+    candidate = `${prefix}${String(candidateSeq).padStart(4, "0")}`;
+  }
+  return candidate;
+}
+
 function mapPrismaSetting(row: any): StoredSetting {
   return {
     schoolId: row.schoolId,
@@ -640,6 +672,19 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
             const seq = updatedSetting.nextApplicationSeq - 1;
             const applicationCode = `${setting.applicationPrefix}${extractYearTag(input.academicYear)}-${String(seq).padStart(4, "0")}`;
 
+            let resolvedStudentId: string | null = input.studentIdNumber?.trim() || null;
+            if (!isDraft && !resolvedStudentId) {
+              const existingStudentRows = (await (tx.admissionApplication as any).findMany({
+                where: { schoolId, studentIdNumber: { not: null } },
+                select: { studentIdNumber: true },
+              })) as Array<{ studentIdNumber?: string | null }>;
+              resolvedStudentId = generateUniqueStudentId(
+                input.academicYear,
+                existingStudentRows.map((r) => r.studentIdNumber),
+                seq,
+              );
+            }
+
             const created = await tx.admissionApplication.create({
               data: {
                 schoolId,
@@ -665,7 +710,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                 studentPhotoKey: input.studentPhotoKey || null,
                 nationality: input.nationality || null,
                 bloodGroup: input.bloodGroup || null,
-                studentIdNumber: input.studentIdNumber || null,
+                studentIdNumber: resolvedStudentId,
                 studentDetails: (input.studentDetails ?? null) as any,
                 guardianDetails: (input.guardianDetails ?? null) as any,
                 academicDetails: (normalizedAcademicDetails ?? null) as any,
@@ -696,7 +741,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                   actorId: actor.id,
                   actorName: actor.name,
                   action: "APPLICATION_CREATED",
-                  summary: `New application ${applicationCode} received for ${input.studentName} (${input.gradeApplied}).`,
+                  summary: `New application ${applicationCode}${resolvedStudentId ? ` (${resolvedStudentId})` : ""} received for ${input.studentName} (${input.gradeApplied}).`,
                 },
               });
             }
@@ -729,6 +774,14 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     setting.nextApplicationSeq += 1;
     const applicationCode = `${setting.applicationPrefix}${extractYearTag(input.academicYear)}-${String(seq).padStart(4, "0")}`;
 
+    let resolvedStudentId: string | null = input.studentIdNumber?.trim() || null;
+    if (!isDraft && !resolvedStudentId) {
+      const existingSchoolIds = Object.values(store.applications)
+        .filter((a) => a.schoolId === schoolId)
+        .map((a) => a.studentIdNumber);
+      resolvedStudentId = generateUniqueStudentId(input.academicYear, existingSchoolIds, seq);
+    }
+
     const record: AdmissionApplicationRecord = {
       id: randomUUID(),
       schoolId,
@@ -755,7 +808,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
       studentPhotoKey: input.studentPhotoKey || null,
       nationality: input.nationality || null,
       bloodGroup: input.bloodGroup || null,
-      studentIdNumber: input.studentIdNumber || null,
+      studentIdNumber: resolvedStudentId,
       studentDetails: input.studentDetails
         ? {
             email: input.studentDetails.email ?? "",
@@ -944,6 +997,22 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
             const nextIsDraft =
               input.isDraft !== undefined ? input.isDraft : Boolean(existingWizardRow.isDraft);
             const transitioningFromDraft = Boolean(existingWizardRow.isDraft) && !nextIsDraft;
+            const nextAcademicYear = input.academicYear ?? existingRow.academicYear;
+            let resolvedStudentId: string | null | undefined =
+              input.studentIdNumber !== undefined
+                ? input.studentIdNumber?.trim() || null
+                : existingWizardRow.studentIdNumber;
+            if (!nextIsDraft && !resolvedStudentId) {
+              const existingStudentRows = (await (tx.admissionApplication as any).findMany({
+                where: { schoolId, studentIdNumber: { not: null } },
+                select: { studentIdNumber: true },
+              })) as Array<{ studentIdNumber?: string | null }>;
+              resolvedStudentId = generateUniqueStudentId(
+                nextAcademicYear,
+                existingStudentRows.map((r) => r.studentIdNumber),
+                1,
+              );
+            }
             const nextChecklist =
               input.documentsChecklist !== undefined
                 ? (input.documentsChecklist as any)
@@ -994,10 +1063,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                   input.nationality !== undefined ? input.nationality : existingWizardRow.nationality,
                 bloodGroup:
                   input.bloodGroup !== undefined ? input.bloodGroup : existingWizardRow.bloodGroup,
-                studentIdNumber:
-                  input.studentIdNumber !== undefined
-                    ? input.studentIdNumber
-                    : existingWizardRow.studentIdNumber,
+                studentIdNumber: resolvedStudentId,
                 studentDetails:
                   input.studentDetails !== undefined
                     ? (input.studentDetails as any)
@@ -1104,6 +1170,17 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     const nextVerification = input.verificationStatus ?? existing.verificationStatus;
     const nextIsDraft = input.isDraft !== undefined ? input.isDraft : Boolean(existing.isDraft);
     const transitioningFromDraft = Boolean(existing.isDraft) && !nextIsDraft;
+    const nextAcademicYear = input.academicYear ?? existing.academicYear;
+    let resolvedStudentId: string | null | undefined =
+      input.studentIdNumber !== undefined
+        ? input.studentIdNumber?.trim() || null
+        : existing.studentIdNumber;
+    if (!nextIsDraft && !resolvedStudentId) {
+      const existingSchoolIds = Object.values(store.applications)
+        .filter((a) => a.schoolId === schoolId)
+        .map((a) => a.studentIdNumber);
+      resolvedStudentId = generateUniqueStudentId(nextAcademicYear, existingSchoolIds, 1);
+    }
     const after: AdmissionApplicationRecord = {
       ...existing,
       status: nextStatus,
@@ -1139,8 +1216,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         input.studentPhotoKey !== undefined ? input.studentPhotoKey : existing.studentPhotoKey,
       nationality: input.nationality !== undefined ? input.nationality : existing.nationality,
       bloodGroup: input.bloodGroup !== undefined ? input.bloodGroup : existing.bloodGroup,
-      studentIdNumber:
-        input.studentIdNumber !== undefined ? input.studentIdNumber : existing.studentIdNumber,
+      studentIdNumber: resolvedStudentId,
       studentDetails:
         input.studentDetails !== undefined ? input.studentDetails : existing.studentDetails,
       guardianDetails:

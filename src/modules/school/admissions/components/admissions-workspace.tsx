@@ -83,6 +83,7 @@ export function AdmissionsWorkspace({
   const [newEnqOpen, setNewEnqOpen] = useState(false);
   const [inspectApp, setInspectApp] = useState<AdmissionApplicationRecord | null>(null);
   const [inspectAppMode, setInspectAppMode] = useState<"view" | "edit">("view");
+  const [searchFocusNonce, setSearchFocusNonce] = useState(0);
 
   // Settings form state synced from server data
   const [settingsAcademicYear, setSettingsAcademicYear] = useState(
@@ -276,6 +277,22 @@ export function AdmissionsWorkspace({
     }
   }, []);
 
+  const handleOpenGlobalSearch = useCallback(() => {
+    handleTabSelect("applications");
+    setSearchFocusNonce((n) => n + 1);
+  }, [handleTabSelect]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        handleOpenGlobalSearch();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleOpenGlobalSearch]);
+
   const handleDownloadReport = () => {
     const qs = buildFilterQueryString(filters, school.slug);
     window.location.assign(`/api/school/admissions/export?${qs}`);
@@ -344,7 +361,7 @@ export function AdmissionsWorkspace({
       "success",
       json.application?.isDraft
         ? `Draft ${json.application.applicationCode} saved for ${json.application.studentName}.`
-        : `Application ${json.application.applicationCode} created for ${json.application.studentName}.`,
+        : `Application ${json.application.applicationCode} submitted for ${json.application.studentName}${json.application.studentIdNumber ? ` · Student ID: ${json.application.studentIdNumber}` : ""}.`,
     );
     await fetchOverview(filters, { bypassClientCache: true });
     return json.application as AdmissionApplicationRecord;
@@ -372,7 +389,7 @@ export function AdmissionsWorkspace({
       "success",
       json.application?.isDraft
         ? `Updated draft ${json.application.applicationCode}.`
-        : `Updated ${json.application.studentName} (${json.application.applicationCode}).`,
+        : `Updated ${json.application.studentName} (${json.application.applicationCode}${json.application.studentIdNumber ? ` · ${json.application.studentIdNumber}` : ""}).`,
     );
     await fetchOverview(filters, { bypassClientCache: true });
     return json.application as AdmissionApplicationRecord;
@@ -517,9 +534,7 @@ export function AdmissionsWorkspace({
       activeAdmissionsTab={activeTab}
       onSelectAdmissionsTab={handleTabSelect}
       noticeCount={data.reminders.length}
-      onOpenSearch={() => {
-        handleTabSelect("applications");
-      }}
+      onOpenSearch={handleOpenGlobalSearch}
     >
       {/* Page Header (Overview, Enquiries, Admitted, Settings — Applications renders custom Application Management header) */}
       {activeTab !== "applications" && (
@@ -730,9 +745,12 @@ export function AdmissionsWorkspace({
         <ApplicationsManagementView
           schoolName={school.name}
           schoolSlug={school.slug}
+          schoolContactEmail={school.contactEmail}
+          schoolContactPhone={school.contactPhone}
           data={data}
           filters={filters}
           searchInput={searchInput}
+          searchFocusNonce={searchFocusNonce}
           onSearchChange={handleSearchChange}
           onSearchSubmit={handleSearchSubmit}
           onApplyFilterUpdate={applyFilterUpdate}

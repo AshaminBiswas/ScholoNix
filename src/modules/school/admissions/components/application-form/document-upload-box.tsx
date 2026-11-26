@@ -58,9 +58,9 @@ export function DocumentUploadBox({
           body: formData,
         },
       );
-      const json = await res.json();
-      if (!res.ok || !json.success || !json.document) {
-        throw new Error(json?.error?.message || "Failed to upload document.");
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success || !json?.document) {
+        throw new Error(json?.error?.message || `Failed to upload document (HTTP ${res.status}).`);
       }
       onUploaded(json.document as AdmissionUploadedDocument);
     } catch (err: unknown) {

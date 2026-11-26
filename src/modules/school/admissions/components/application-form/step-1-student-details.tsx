@@ -59,9 +59,9 @@ export function Step1StudentDetails({
         `/api/school/admissions/documents?schoolSlug=${encodeURIComponent(schoolSlug)}`,
         { method: "POST", body: formData },
       );
-      const json = await res.json();
-      if (!res.ok || !json.success || !json.document) {
-        throw new Error(json?.error?.message || "Failed to upload photo.");
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success || !json?.document) {
+        throw new Error(json?.error?.message || `Failed to upload photo (HTTP ${res.status}).`);
       }
       const doc = json.document as AdmissionUploadedDocument;
       onChange({
@@ -287,7 +287,7 @@ export function Step1StudentDetails({
                 type="text"
                 value={state.studentIdNumber}
                 onChange={(e) => onChange({ studentIdNumber: e.target.value })}
-                placeholder="Enter Student ID"
+                placeholder="Auto-generated on submit (or enter existing)"
                 className={inputClass}
               />
             </div>

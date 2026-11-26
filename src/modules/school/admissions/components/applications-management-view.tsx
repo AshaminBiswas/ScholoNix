@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Download,
   ChevronDown,
@@ -26,6 +26,7 @@ import {
   TrendingDown,
   Printer,
   FileSpreadsheet,
+  X,
 } from "lucide-react";
 import {
   DEFAULT_ADMISSION_GRADES,
@@ -53,9 +54,12 @@ export type ApplicationsSubViewMode =
 interface ApplicationsManagementViewProps {
   schoolName: string;
   schoolSlug: string;
+  schoolContactEmail?: string | null;
+  schoolContactPhone?: string | null;
   data: AdmissionsOverviewData;
   filters: AdmissionsOverviewFilters;
   searchInput: string;
+  searchFocusNonce?: number;
   onSearchChange: (q: string) => void;
   onSearchSubmit: (q: string) => void;
   onApplyFilterUpdate: (patch: Partial<AdmissionsOverviewFilters>) => void;
@@ -128,9 +132,12 @@ function formatDeltaBadge(delta: number | null) {
 export function ApplicationsManagementView({
   schoolName,
   schoolSlug,
+  schoolContactEmail,
+  schoolContactPhone,
   data,
   filters,
   searchInput,
+  searchFocusNonce = 0,
   onSearchChange,
   onSearchSubmit,
   onApplyFilterUpdate,
@@ -147,6 +154,16 @@ export function ApplicationsManagementView({
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [showAllGrades, setShowAllGrades] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchFocusNonce <= 0) return;
+    setSubView((prev) => (prev === "form" ? "applications" : prev));
+    const id = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 20);
+    return () => clearTimeout(id);
+  }, [searchFocusNonce]);
 
   const statusCounts = useMemo(() => {
     const map = new Map(data.statusBreakdown.map((s) => [s.status, s]));
@@ -261,6 +278,7 @@ export function ApplicationsManagementView({
 
   const handleSearchFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSubView((prev) => (prev === "form" ? "applications" : prev));
     onSearchSubmit(searchInput);
   };
 
@@ -391,6 +409,8 @@ export function ApplicationsManagementView({
         <ApplicationFormWizard
           schoolName={schoolName}
           schoolSlug={schoolSlug}
+          schoolContactEmail={schoolContactEmail}
+          schoolContactPhone={schoolContactPhone}
           availableGrades={data.availableGrades}
           availableAcademicYears={data.availableAcademicYears}
           defaultAcademicYear={data.settings.currentAcademicYear}
@@ -685,13 +705,25 @@ export function ApplicationsManagementView({
                   aria-hidden="true"
                 />
                 <input
-                  type="search"
+                  ref={searchInputRef}
+                  id="applications-search-input"
+                  type="text"
                   value={searchInput}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  placeholder="Search by student name, application ID, parent name, or contact number..."
-                  aria-label="Search applications by student name, application ID, parent name, or contact number"
-                  className="w-full rounded-[12px] border border-[#CAD0EB] bg-[#FAF8FE] pl-10 pr-3.5 py-2.5 text-xs text-[#08093B] placeholder:text-[#76799C] focus:border-[#663CF6] focus:bg-white focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD] dark:focus:border-[#8B5CF6] dark:focus:bg-[#141731]"
+                  placeholder="Search by Student ID, student name, application ID, parent name, or contact number..."
+                  aria-label="Search applications by Student ID, student name, application ID, parent name, or contact number"
+                  className="w-full rounded-[12px] border border-[#CAD0EB] bg-[#FAF8FE] pl-10 pr-9 py-2.5 text-xs text-[#08093B] placeholder:text-[#76799C] focus:border-[#663CF6] focus:bg-white focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder:text-[#7A83AD] dark:focus:border-[#8B5CF6] dark:focus:bg-[#141731]"
                 />
+                {searchInput && (
+                  <button
+                    type="button"
+                    aria-label="Clear search query"
+                    onClick={() => onSearchSubmit("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-[#76799C] hover:text-[#08093B] cursor-pointer dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                )}
               </div>
               <button
                 type="submit"

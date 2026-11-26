@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 interface SchoolAdmissionsPageProps {
   params: Promise<{ schoolSlug: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; search?: string }>;
 }
 
 const VALID_TABS = new Set<AdmissionsTab>([
@@ -43,6 +43,7 @@ export default async function SchoolAdmissionsPage({
   const [{ schoolSlug }, sp] = await Promise.all([params, searchParams]);
   const tabParam = (sp.tab || "overview").toLowerCase() as AdmissionsTab;
   const activeTab: AdmissionsTab = VALID_TABS.has(tabParam) ? tabParam : "overview";
+  const initialSearch = typeof sp.search === "string" ? sp.search.trim() : "";
 
   const access = await resolveTenantRouteAccess(
     schoolSlug,
@@ -108,14 +109,17 @@ export default async function SchoolAdmissionsPage({
   let loadErrorMessage: string | null = null;
 
   try {
-    initialData = await admissionsService.getOverview({
-      userId: access.session.user.id,
-      userName: access.session.user.name,
-      role: access.session.user.role,
-      schoolId: access.school.id,
-      schoolSlug: access.school.slug,
-      schoolName: access.school.name,
-    });
+    initialData = await admissionsService.getOverview(
+      {
+        userId: access.session.user.id,
+        userName: access.session.user.name,
+        role: access.session.user.role,
+        schoolId: access.school.id,
+        schoolSlug: access.school.slug,
+        schoolName: access.school.name,
+      },
+      initialSearch ? { search: initialSearch } : undefined,
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Admissions service unavailable.";
     logger.error(

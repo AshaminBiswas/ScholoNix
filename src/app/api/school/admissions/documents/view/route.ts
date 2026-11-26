@@ -4,6 +4,7 @@ import { resolveApiTenantActor } from "@/server/school/resolve-api-tenant";
 import { admissionsDocumentStorage } from "@/server/school/admissions-document-storage";
 import { toErrorResponse, ValidationError } from "@/lib/errors";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {

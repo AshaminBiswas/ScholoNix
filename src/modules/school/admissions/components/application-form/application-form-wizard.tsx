@@ -24,6 +24,7 @@ import { Step1StudentDetails } from "./step-1-student-details";
 import { Step2ParentGuardian } from "./step-2-parent-guardian";
 import { Step3AcademicDetails } from "./step-3-academic-details";
 import { Step4ReviewSubmit } from "./step-4-review-submit";
+import { ApplicationSubmittedView } from "./application-submitted-view";
 import {
   buildDocumentViewUrl,
   buildInitialWizardState,
@@ -33,6 +34,8 @@ import {
 interface ApplicationFormWizardProps {
   schoolName: string;
   schoolSlug: string;
+  schoolContactEmail?: string | null;
+  schoolContactPhone?: string | null;
   availableGrades: string[];
   availableAcademicYears: string[];
   defaultAcademicYear: string;
@@ -56,6 +59,8 @@ const WIZARD_STEPS = [
 export function ApplicationFormWizard({
   schoolName,
   schoolSlug,
+  schoolContactEmail,
+  schoolContactPhone,
   availableGrades,
   availableAcademicYears,
   defaultAcademicYear,
@@ -67,6 +72,8 @@ export function ApplicationFormWizard({
 }: ApplicationFormWizardProps) {
   const defaultGrade = availableGrades[0] || "Class I";
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [submittedApplication, setSubmittedApplication] =
+    useState<AdmissionApplicationRecord | null>(null);
   const [state, setState] = useState<ApplicationWizardFormState>(() =>
     buildInitialWizardState({ defaultGrade, defaultAcademicYear }),
   );
@@ -325,14 +332,12 @@ export function ApplicationFormWizard({
     setSubmitting(true);
     try {
       const payload = buildPayload(false);
-      if (state.draftId) {
-        await onUpdateApplication(state.draftId, payload);
-      } else {
-        await onCreateApplication(payload);
-      }
+      const saved = state.draftId
+        ? await onUpdateApplication(state.draftId, payload)
+        : await onCreateApplication(payload);
       setState(buildInitialWizardState({ defaultGrade, defaultAcademicYear }));
       setCurrentStep(1);
-      onViewApplications();
+      setSubmittedApplication(saved);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Unable to submit application.");
     } finally {
@@ -363,6 +368,23 @@ export function ApplicationFormWizard({
     if (currentStep === 3) return "Back: Parent/Guardian Info";
     return "Back: Academic Details";
   }, [currentStep]);
+
+  if (submittedApplication) {
+    return (
+      <ApplicationSubmittedView
+        schoolName={schoolName}
+        schoolSlug={schoolSlug}
+        schoolContactEmail={schoolContactEmail}
+        schoolContactPhone={schoolContactPhone}
+        application={submittedApplication}
+        onViewApplications={() => {
+          setSubmittedApplication(null);
+          onViewApplications();
+        }}
+        onSubmitAnother={() => setSubmittedApplication(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5">
