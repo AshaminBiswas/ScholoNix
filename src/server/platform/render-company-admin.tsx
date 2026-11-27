@@ -9,6 +9,7 @@ import { PlatformAdminLoginView } from "@/modules/platform/components/platform-a
 import { PlatformAdminSecurityGate } from "@/modules/platform/components/platform-admin-security-gate";
 import { logAuditEvent } from "@/server/security/audit-logger";
 import { getConfiguredPlatformAdminSlug } from "./admin-route-config";
+import { parsePlatformSubSegments } from "@/modules/platform/routing";
 import {
   getPlatformAdminCookieName,
   isPlatformAdminFullyVerified,
@@ -23,7 +24,10 @@ import {
  * - In production without `PLATFORM_ADMIN_SLUG`, `/admin` returns 404 to unauthenticated visitors.
  * - Authenticated non-company school users always trigger an audit event and HTTP 404.
  */
-export async function renderCompanyAdminPage(routeSlug: string): Promise<React.ReactElement> {
+export async function renderCompanyAdminPage(
+  routeSlug: string,
+  subSegments: string[] = [],
+): Promise<React.ReactElement> {
   const configuredSlug = getConfiguredPlatformAdminSlug();
   if (configuredSlug && routeSlug.toLowerCase() !== configuredSlug) {
     notFound();
@@ -31,6 +35,11 @@ export async function renderCompanyAdminPage(routeSlug: string): Promise<React.R
   if (!configuredSlug && routeSlug.toLowerCase() !== "admin") {
     notFound();
   }
+
+  const basePath = `/${routeSlug}`;
+  const cleanSubPath = subSegments.filter(Boolean).join("/");
+  const targetPath = cleanSubPath ? `${basePath}/${cleanSubPath}` : basePath;
+  const initialRoute = parsePlatformSubSegments(subSegments);
 
   const cookieStore = await cookies();
 
@@ -59,7 +68,7 @@ export async function renderCompanyAdminPage(routeSlug: string): Promise<React.R
             passkeyCount: platformAdmin.passkeyCount ?? 0,
           }}
           mfaVerified={mfaVerified}
-          targetPath={`/${routeSlug}`}
+          targetPath={targetPath}
         />
       );
     }
@@ -83,6 +92,8 @@ export async function renderCompanyAdminPage(routeSlug: string): Promise<React.R
         }}
         initialOverview={initialOverview}
         initialSchools={initialSchools}
+        adminBasePath={basePath}
+        initialRoute={initialRoute}
       />
     );
   }
@@ -116,6 +127,8 @@ export async function renderCompanyAdminPage(routeSlug: string): Promise<React.R
             }}
             initialOverview={initialOverview}
             initialSchools={initialSchools}
+            adminBasePath={basePath}
+            initialRoute={initialRoute}
           />
         );
       }
@@ -143,5 +156,5 @@ export async function renderCompanyAdminPage(routeSlug: string): Promise<React.R
     notFound();
   }
 
-  return <PlatformAdminLoginView targetPath={`/${routeSlug}`} />;
+  return <PlatformAdminLoginView targetPath={targetPath} />;
 }

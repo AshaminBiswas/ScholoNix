@@ -8,6 +8,10 @@ vi.mock("next/navigation", () => ({
 
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { CompanyAdminPanel } from "@/modules/platform/components/company-admin-panel";
+import {
+  buildPlatformRouteUrl,
+  parsePlatformSubSegments,
+} from "@/modules/platform/routing";
 import type { PlatformOverviewData, PlatformSchoolEntry } from "@/modules/platform/types";
 
 const mockOverview: PlatformOverviewData = {
@@ -160,6 +164,7 @@ const mockSchools: PlatformSchoolEntry[] = [
 describe("CompanyAdminPanel Command Center Redesign", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.history.replaceState(null, "", "/admin");
     document.documentElement.classList.remove("dark", "light");
     vi.stubGlobal(
       "fetch",
@@ -170,7 +175,98 @@ describe("CompanyAdminPanel Command Center Redesign", () => {
             status: 200,
           });
         }
-        return new Response(JSON.stringify({ success: true, passkeys: [] }), { status: 200 });
+        if (url.includes("/api/platform/schools/s-1/data")) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                schoolId: "s-1",
+                settings: { currentAcademicYear: "2026-27", applicationPrefix: "APP", enabledGrades: ["Class V"] },
+                applications: [
+                  {
+                    id: "app-1",
+                    applicationCode: "APP-2026-0001",
+                    admissionNumber: "ADM-2026-011",
+                    studentName: "Aarav Sharma",
+                    gender: "Male",
+                    dateOfBirth: "2015-04-12",
+                    bloodGroup: "O+",
+                    nationality: "Indian",
+                    studentIdNumber: "STU-001",
+                    previousSchool: "Sunrise Public School",
+                    admissionType: "FRESH",
+                    gradeApplied: "Class V",
+                    academicYear: "2026-27",
+                    guardianName: "Rajesh Sharma",
+                    guardianRelation: "Father",
+                    guardianPhone: "9876543210",
+                    guardianEmail: "rajesh.sharma@example.com",
+                    fatherName: "Rajesh Sharma",
+                    fatherPhone: "9876543210",
+                    motherName: "Priya Sharma",
+                    motherPhone: "9876500001",
+                    studentDetails: {
+                      email: "aarav.sharma@example.com",
+                      phone: "9876543210",
+                      address: { addressLine1: "42 Park Street", city: "Kolkata", state: "WB", postalCode: "700016" },
+                    },
+                    guardianDetails: {
+                      primary: { fullName: "Rajesh Sharma", relationship: "Father", occupation: "Engineer", phone: "9876543210" },
+                      secondary: { fullName: "Priya Sharma", relationship: "Mother", phone: "9876500001" },
+                      sameAsStudentAddress: true,
+                      emergencyContactNumber: "9876543210",
+                      preferredCommunicationMode: "WhatsApp",
+                    },
+                    academicDetails: {
+                      previousSchoolName: "Sunrise Public School",
+                      boardCurriculum: "CBSE",
+                      lastStandardStudied: "Class IV",
+                      yearOfCompletion: "2026",
+                      percentage: 94.5,
+                    },
+                    documentsChecklist: [{ key: "birth_cert", label: "Birth Certificate", submitted: true, verified: true }],
+                    uploadedDocuments: [],
+                    status: "ADMITTED",
+                    verificationStatus: "VERIFIED",
+                    enrollmentStatus: "ACTIVE",
+                    appliedAt: "2026-03-01T10:00:00.000Z",
+                    admittedAt: "2026-03-10T10:00:00.000Z",
+                  },
+                ],
+                enquiries: [],
+                feeLedgers: [
+                  {
+                    id: "led-1",
+                    applicationId: "app-1",
+                    studentName: "Aarav Sharma",
+                    academicYear: "2026-27",
+                    totalFeePaise: 5000000,
+                    concessionPaise: 500000,
+                    paidPaise: 3000000,
+                    outstandingPaise: 1500000,
+                    updatedAt: "2026-03-10T10:00:00.000Z",
+                  },
+                ],
+                feePayments: [
+                  {
+                    id: "pay-1",
+                    applicationId: "app-1",
+                    receiptNumber: "REC-2026-001",
+                    studentName: "Aarav Sharma",
+                    feeHead: "Admission Fee",
+                    amountPaise: 3000000,
+                    paymentMode: "UPI",
+                    paymentDate: "2026-03-10T10:00:00.000Z",
+                  },
+                ],
+                saasInvoices: [],
+                supportTickets: [],
+              },
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response(JSON.stringify({ success: true, passkeys: [], users: [], logs: [] }), { status: 200 });
       }),
     );
   });
@@ -238,34 +334,45 @@ describe("CompanyAdminPanel Command Center Redesign", () => {
     expect(screen.getByTitle("Schools")).toBeTruthy();
     expect(screen.getByTitle("Global Users")).toBeTruthy();
 
-    // Clients dropdown toggles cleanly; clicking Schools opens All Schools List
+    // Clients dropdown toggles cleanly; clicking Schools opens All Schools List and updates URL
     fireEvent.click(screen.getByTitle("Schools"));
+    expect(window.location.pathname).toBe("/admin/clients/schools");
     expect(screen.getByTitle("Clients").getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByTitle("Schools").getAttribute("aria-expanded")).toBeNull();
     expect(screen.getByText(/All Schools List/i)).toBeTruthy();
     expect(screen.getAllByText(/Green Valley Synthetic School/i).length).toBeGreaterThanOrEqual(1);
 
-    // Clicking a school opens the full-page All Details view with everything about that school
+    // Clicking a school opens the full-page All Details view and updates URL
     fireEvent.click(screen.getByRole("button", { name: /View All Details/i }));
+    expect(window.location.pathname).toBe("/admin/clients/schools/s-1");
     expect(screen.getByRole("button", { name: /Back to All Schools/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Download Complete School Data/i })).toBeTruthy();
-    expect(screen.getAllByText(/Active Subscription:/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Student Seat Utilization/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/SaaS Subscription Invoices/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Admins \/ Principals/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Students & Parents Directory/i).length).toBeGreaterThanOrEqual(1);
+    await waitFor(() => {
+      expect(screen.getAllByText(/Aarav Sharma/i).length).toBeGreaterThanOrEqual(1);
+    });
 
     fireEvent.click(screen.getByRole("button", { name: /Users & Sessions/i }));
-    expect(screen.getAllByText(/Admins \/ Principals/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/^Parents$/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Student Logins/i).length).toBeGreaterThanOrEqual(1);
+    expect(window.location.pathname).toBe("/admin/clients/schools/s-1/users");
 
     fireEvent.click(screen.getByRole("button", { name: /Students & Parents/i }));
+    expect(window.location.pathname).toBe("/admin/clients/schools/s-1/students");
     expect(screen.getByPlaceholderText(/Search student, parent, phone, class/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /All Students/i })).toBeTruthy();
 
-    // Returning to All Schools list cleanly works
+    // Clicking a student opens their dedicated Student Details Dossier and updates URL
+    fireEvent.click(screen.getByRole("button", { name: /View Details/i }));
+    expect(window.location.pathname).toBe("/admin/clients/schools/s-1/students/app-1");
+    expect(screen.getByText(/Student Personal & Contact Details/i)).toBeTruthy();
+    expect(screen.getByText(/Parent, Guardian & Emergency Details/i)).toBeTruthy();
+    expect(screen.getByText(/Previous School & Academic History/i)).toBeTruthy();
+    expect(screen.getByText(/Sunrise Public School/i)).toBeTruthy();
+    expect(screen.getByText(/REC-2026-001/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Back to Students List/i }));
+    expect(window.location.pathname).toBe("/admin/clients/schools/s-1/students");
+
+    // Returning to All Schools list cleanly works & updates URL
     fireEvent.click(screen.getByRole("button", { name: /Back to All Schools/i }));
+    expect(window.location.pathname).toBe("/admin/clients/schools");
     expect(screen.getByText(/All Schools List/i)).toBeTruthy();
 
     fireEvent.click(screen.getByTitle("Clients"));
@@ -295,6 +402,23 @@ describe("CompanyAdminPanel Command Center Redesign", () => {
 
     // Navigate to Settings tab
     fireEvent.click(screen.getByTitle("Settings"));
+    expect(window.location.pathname).toBe("/admin/settings");
     expect(screen.getByText(/Company Portal & Account Settings/i)).toBeTruthy();
+
+    // Verify nested URL parser supports both canonical and singular/short route segments
+    expect(parsePlatformSubSegments(["clint", "school", "school-1", "student", "app-1"])).toEqual({
+      tab: "schools",
+      schoolId: "school-1",
+      schoolSubTab: "students",
+      studentId: "app-1",
+    });
+    expect(
+      buildPlatformRouteUrl("/company-admin-pannel", {
+        tab: "schools",
+        schoolId: "school-1",
+        schoolSubTab: "students",
+        studentId: "app-1",
+      }),
+    ).toBe("/company-admin-pannel/clients/schools/school-1/students/app-1");
   });
 });

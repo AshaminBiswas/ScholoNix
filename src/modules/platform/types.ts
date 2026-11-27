@@ -362,7 +362,10 @@ export interface PlatformSchoolDataInspectResult {
     gender?: string | null;
     dateOfBirth?: string | null;
     bloodGroup?: string | null;
+    nationality?: string | null;
     studentIdNumber?: string | null;
+    previousSchool?: string | null;
+    admissionType?: string | null;
     gradeApplied: string;
     academicYear: string;
     guardianName: string;
@@ -373,11 +376,33 @@ export interface PlatformSchoolDataInspectResult {
     fatherPhone?: string | null;
     motherName?: string | null;
     motherPhone?: string | null;
+    studentDetails?: Record<string, unknown> | null;
+    guardianDetails?: Record<string, unknown> | null;
+    academicDetails?: Record<string, unknown> | null;
+    documentsChecklist?: Array<{
+      key: string;
+      label: string;
+      submitted: boolean;
+      verified: boolean;
+    }>;
+    uploadedDocuments?: Array<{
+      key: string;
+      docType: string;
+      label: string;
+      fileName: string;
+      mimeType: string;
+      sizeBytes: number;
+      uploadedAt: string;
+    }>;
     status: string;
     verificationStatus: string;
+    verificationNotes?: string | null;
     enrollmentStatus: string;
     appliedAt: string;
+    shortlistedAt?: string | null;
+    verifiedAt?: string | null;
     admittedAt?: string | null;
+    rejectedAt?: string | null;
   }>;
   enquiries: Array<{
     id: string;
@@ -404,6 +429,7 @@ export interface PlatformSchoolDataInspectResult {
   }>;
   feePayments: Array<{
     id: string;
+    applicationId?: string;
     receiptNumber: string;
     studentName: string;
     feeHead: string;

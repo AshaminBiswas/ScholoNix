@@ -1399,11 +1399,33 @@ export const platformRepository = {
           );
         }
 
+        const extractParentFields = (gdRaw: unknown) => {
+          const gd = (gdRaw && typeof gdRaw === "object" ? gdRaw : {}) as Record<string, any>;
+          let fatherName = typeof gd.fatherName === "string" ? gd.fatherName : null;
+          let fatherPhone = typeof gd.fatherPhone === "string" ? gd.fatherPhone : null;
+          let motherName = typeof gd.motherName === "string" ? gd.motherName : null;
+          let motherPhone = typeof gd.motherPhone === "string" ? gd.motherPhone : null;
+          for (const g of [gd.primary, gd.secondary]) {
+            if (!g || typeof g !== "object") continue;
+            const rel = String(g.relationship || "").toLowerCase();
+            if (rel.includes("father") && !fatherName) {
+              fatherName = typeof g.fullName === "string" ? g.fullName : null;
+              fatherPhone = typeof g.phone === "string" ? g.phone : fatherPhone;
+            }
+            if (rel.includes("mother") && !motherName) {
+              motherName = typeof g.fullName === "string" ? g.fullName : null;
+              motherPhone = typeof g.phone === "string" ? g.phone : motherPhone;
+            }
+          }
+          return { gd, fatherName, fatherPhone, motherName, motherPhone };
+        };
+
         return {
           schoolId,
           settings: setting ? (setting as unknown as Record<string, unknown>) : null,
           applications: apps.map((a: any) => {
-            const gd = (a.guardianDetails || {}) as Record<string, any>;
+            const { gd, fatherName, fatherPhone, motherName, motherPhone } =
+              extractParentFields(a.guardianDetails);
             return {
               id: a.id,
               applicationCode: a.applicationCode,
@@ -1412,22 +1434,34 @@ export const platformRepository = {
               gender: a.gender ?? null,
               dateOfBirth: a.dateOfBirth ? new Date(a.dateOfBirth).toISOString().slice(0, 10) : null,
               bloodGroup: a.bloodGroup ?? null,
+              nationality: a.nationality ?? null,
               studentIdNumber: a.studentIdNumber ?? null,
+              previousSchool: a.previousSchool ?? null,
+              admissionType: a.admissionType ?? null,
               gradeApplied: a.gradeApplied,
               academicYear: a.academicYear,
               guardianName: a.guardianName,
               guardianRelation: a.guardianRelation ?? null,
               guardianPhone: a.guardianPhone,
               guardianEmail: a.guardianEmail ?? null,
-              fatherName: typeof gd.fatherName === "string" ? gd.fatherName : null,
-              fatherPhone: typeof gd.fatherPhone === "string" ? gd.fatherPhone : null,
-              motherName: typeof gd.motherName === "string" ? gd.motherName : null,
-              motherPhone: typeof gd.motherPhone === "string" ? gd.motherPhone : null,
+              fatherName,
+              fatherPhone,
+              motherName,
+              motherPhone,
+              studentDetails: a.studentDetails && typeof a.studentDetails === "object" ? a.studentDetails : null,
+              guardianDetails: Object.keys(gd).length > 0 ? gd : null,
+              academicDetails: a.academicDetails && typeof a.academicDetails === "object" ? a.academicDetails : null,
+              documentsChecklist: Array.isArray(a.documentsChecklist) ? a.documentsChecklist : [],
+              uploadedDocuments: Array.isArray(a.uploadedDocuments) ? a.uploadedDocuments : [],
               status: a.status,
               verificationStatus: a.verificationStatus,
+              verificationNotes: a.verificationNotes ?? null,
               enrollmentStatus: a.enrollmentStatus || "ACTIVE",
               appliedAt: a.appliedAt.toISOString(),
+              shortlistedAt: a.shortlistedAt ? a.shortlistedAt.toISOString() : null,
+              verifiedAt: a.verifiedAt ? a.verifiedAt.toISOString() : null,
               admittedAt: a.admittedAt ? a.admittedAt.toISOString() : null,
+              rejectedAt: a.rejectedAt ? a.rejectedAt.toISOString() : null,
             };
           }),
           enquiries: enqs.map((e) => ({
@@ -1459,6 +1493,7 @@ export const platformRepository = {
           }),
           feePayments: (payments as any[]).map((p) => ({
             id: p.id,
+            applicationId: p.applicationId,
             receiptNumber: p.receiptNumber,
             studentName: p.application?.studentName || "Student",
             feeHead: p.feeHead,
@@ -1477,31 +1512,62 @@ export const platformRepository = {
     return {
       schoolId,
       settings: snap.settings as unknown as Record<string, unknown>,
-      applications: snap.applications.map((a: any) => ({
-        id: a.id,
-        applicationCode: a.applicationCode,
-        admissionNumber: a.admissionNumber,
-        studentName: a.studentName,
-        gender: a.gender ?? null,
-        dateOfBirth: a.dateOfBirth ?? null,
-        bloodGroup: a.bloodGroup ?? null,
-        studentIdNumber: a.studentIdNumber ?? null,
-        gradeApplied: a.gradeApplied,
-        academicYear: a.academicYear,
-        guardianName: a.guardianName,
-        guardianRelation: a.guardianRelation ?? null,
-        guardianPhone: a.guardianPhone,
-        guardianEmail: a.guardianEmail ?? null,
-        fatherName: a.guardianDetails?.fatherName ?? null,
-        fatherPhone: a.guardianDetails?.fatherPhone ?? null,
-        motherName: a.guardianDetails?.motherName ?? null,
-        motherPhone: a.guardianDetails?.motherPhone ?? null,
-        status: a.status,
-        verificationStatus: a.verificationStatus,
-        enrollmentStatus: a.enrollmentStatus || "ACTIVE",
-        appliedAt: a.appliedAt,
-        admittedAt: a.admittedAt ?? null,
-      })),
+      applications: snap.applications.map((a: any) => {
+        const gd = (a.guardianDetails || {}) as Record<string, any>;
+        let fatherName = typeof gd.fatherName === "string" ? gd.fatherName : null;
+        let fatherPhone = typeof gd.fatherPhone === "string" ? gd.fatherPhone : null;
+        let motherName = typeof gd.motherName === "string" ? gd.motherName : null;
+        let motherPhone = typeof gd.motherPhone === "string" ? gd.motherPhone : null;
+        for (const g of [gd.primary, gd.secondary]) {
+          if (!g || typeof g !== "object") continue;
+          const rel = String(g.relationship || "").toLowerCase();
+          if (rel.includes("father") && !fatherName) {
+            fatherName = typeof g.fullName === "string" ? g.fullName : null;
+            fatherPhone = typeof g.phone === "string" ? g.phone : fatherPhone;
+          }
+          if (rel.includes("mother") && !motherName) {
+            motherName = typeof g.fullName === "string" ? g.fullName : null;
+            motherPhone = typeof g.phone === "string" ? g.phone : motherPhone;
+          }
+        }
+        return {
+          id: a.id,
+          applicationCode: a.applicationCode,
+          admissionNumber: a.admissionNumber,
+          studentName: a.studentName,
+          gender: a.gender ?? null,
+          dateOfBirth: a.dateOfBirth ?? null,
+          bloodGroup: a.bloodGroup ?? null,
+          nationality: a.nationality ?? null,
+          studentIdNumber: a.studentIdNumber ?? null,
+          previousSchool: a.previousSchool ?? null,
+          admissionType: a.admissionType ?? null,
+          gradeApplied: a.gradeApplied,
+          academicYear: a.academicYear,
+          guardianName: a.guardianName,
+          guardianRelation: a.guardianRelation ?? null,
+          guardianPhone: a.guardianPhone,
+          guardianEmail: a.guardianEmail ?? null,
+          fatherName,
+          fatherPhone,
+          motherName,
+          motherPhone,
+          studentDetails: a.studentDetails ?? null,
+          guardianDetails: a.guardianDetails ?? null,
+          academicDetails: a.academicDetails ?? null,
+          documentsChecklist: Array.isArray(a.documentsChecklist) ? a.documentsChecklist : [],
+          uploadedDocuments: Array.isArray(a.uploadedDocuments) ? a.uploadedDocuments : [],
+          status: a.status,
+          verificationStatus: a.verificationStatus,
+          verificationNotes: a.verificationNotes ?? null,
+          enrollmentStatus: a.enrollmentStatus || "ACTIVE",
+          appliedAt: a.appliedAt,
+          shortlistedAt: a.shortlistedAt ?? null,
+          verifiedAt: a.verifiedAt ?? null,
+          admittedAt: a.admittedAt ?? null,
+          rejectedAt: a.rejectedAt ?? null,
+        };
+      }),
       enquiries: snap.enquiries.map((e) => ({
         id: e.id,
         enquiryCode: e.enquiryCode,
@@ -1527,6 +1593,7 @@ export const platformRepository = {
       })),
       feePayments: (snap.admittedFeePayments ?? []).map((p) => ({
         id: p.id,
+        applicationId: p.applicationId,
         receiptNumber: p.receiptNumber,
         studentName: p.studentName || appNames.get(p.applicationId) || "Student",
         feeHead: p.feeHead,

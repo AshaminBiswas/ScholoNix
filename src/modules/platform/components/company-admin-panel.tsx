@@ -47,6 +47,13 @@ import type {
   PlatformSchoolEntry,
   PlatformTab,
 } from "@/modules/platform/types";
+import {
+  buildPlatformRouteUrl,
+  normalizePlatformBasePath,
+  parsePlatformUrlPath,
+  type PlatformRouteState,
+  type SchoolSubTab,
+} from "@/modules/platform/routing";
 import { PlatformOverviewTab } from "./platform-overview-tab";
 import { PlatformSchoolsTab } from "./platform-schools-tab";
 import { PlatformAdminsTab } from "./platform-admins-tab";
@@ -73,6 +80,8 @@ interface CompanyAdminPanelProps {
   };
   initialOverview: PlatformOverviewData;
   initialSchools: PlatformSchoolEntry[];
+  adminBasePath?: string;
+  initialRoute?: PlatformRouteState;
 }
 
 const SIDEBAR_STORAGE_KEY = "snx_platform_sidebar_collapsed";
@@ -88,14 +97,21 @@ export function CompanyAdminPanel({
   adminUser,
   initialOverview,
   initialSchools,
+  adminBasePath,
+  initialRoute,
 }: CompanyAdminPanelProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<PlatformTab>("overview");
+  const basePath = normalizePlatformBasePath(adminBasePath);
+  const [activeTab, setActiveTab] = useState<PlatformTab>(initialRoute?.tab ?? "overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [clientsMenuOpen, setClientsMenuOpen] = useState(true);
-  const [billingMenuOpen, setBillingMenuOpen] = useState(false);
-  const [securityMenuOpen, setSecurityMenuOpen] = useState(false);
+  const [billingMenuOpen, setBillingMenuOpen] = useState(
+    initialRoute?.tab === "billing",
+  );
+  const [securityMenuOpen, setSecurityMenuOpen] = useState(
+    initialRoute?.tab === "admins" || initialRoute?.tab === "audit",
+  );
 
   const [periodDays, setPeriodDays] = useState<PlatformOverviewPeriodDays>(
     initialOverview.periodDays ?? 30,
@@ -103,7 +119,15 @@ export function CompanyAdminPanel({
   const [loadingPeriod, setLoadingPeriod] = useState(false);
   const [overview, setOverview] = useState<PlatformOverviewData>(initialOverview);
   const [schools, setSchools] = useState<PlatformSchoolEntry[]>(initialSchools);
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(
+    initialRoute?.schoolId ?? null,
+  );
+  const [schoolSubTab, setSchoolSubTab] = useState<SchoolSubTab>(
+    initialRoute?.schoolSubTab ?? "all",
+  );
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(
+    initialRoute?.studentId ?? null,
+  );
   const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [quickSearchOpen, setQuickSearchOpen] = useState(false);
@@ -217,19 +241,93 @@ export function CompanyAdminPanel({
     router.refresh();
   };
 
+  const syncBrowserRoute = (next: PlatformRouteState) => {
+    try {
+      const nextUrl = buildPlatformRouteUrl(basePath, next);
+      if (typeof window !== "undefined" && window.location.pathname !== nextUrl) {
+        window.history.pushState(next, "", nextUrl);
+      }
+    } catch {
+      // ignore history errors in sandboxed frames
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window === "undefined") return;
+      const parsed = parsePlatformUrlPath(window.location.pathname, basePath);
+      setActiveTab(parsed.tab);
+      setSelectedSchoolId(parsed.schoolId);
+      setSchoolSubTab(parsed.schoolSubTab);
+      setSelectedStudentId(parsed.studentId);
+      if (parsed.tab === "schools" || parsed.tab === "users") setClientsMenuOpen(true);
+      if (parsed.tab === "billing") setBillingMenuOpen(true);
+      if (parsed.tab === "admins" || parsed.tab === "audit") setSecurityMenuOpen(true);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [basePath]);
+
+  const handleSelectSchoolId = (schoolId: string | null) => {
+    setSelectedSchoolId(schoolId);
+    setSchoolSubTab("all");
+    setSelectedStudentId(null);
+    setActiveTab("schools");
+    syncBrowserRoute({
+      tab: "schools",
+      schoolId,
+      schoolSubTab: "all",
+      studentId: null,
+    });
+  };
+
+  const handleSelectSchoolSubTab = (subTab: SchoolSubTab) => {
+    setSchoolSubTab(subTab);
+    setSelectedStudentId(null);
+    syncBrowserRoute({
+      tab: "schools",
+      schoolId: selectedSchoolId,
+      schoolSubTab: subTab,
+      studentId: null,
+    });
+  };
+
+  const handleSelectStudentId = (studentId: string | null) => {
+    const nextSubTab: SchoolSubTab = studentId ? "students" : schoolSubTab;
+    setSchoolSubTab(nextSubTab);
+    setSelectedStudentId(studentId);
+    syncBrowserRoute({
+      tab: "schools",
+      schoolId: selectedSchoolId,
+      schoolSubTab: nextSubTab,
+      studentId,
+    });
+  };
+
   const handleSelectSchoolFromAnywhere = (schoolId: string) => {
     setSelectedSchoolId(schoolId);
+    setSchoolSubTab("all");
+    setSelectedStudentId(null);
     setActiveTab("schools");
     setClientsMenuOpen(true);
     setQuickSearchOpen(false);
     setNotificationsOpen(false);
     setMobileMenuOpen(false);
+    syncBrowserRoute({
+      tab: "schools",
+      schoolId,
+      schoolSubTab: "all",
+      studentId: null,
+    });
   };
 
   const navigateTab = (tab: PlatformTab) => {
     setActiveTab(tab);
+    const clearedSchool = tab === "schools" ? null : selectedSchoolId;
     if (tab === "schools") {
       setSelectedSchoolId(null);
+      setSchoolSubTab("all");
+      setSelectedStudentId(null);
       setClientsMenuOpen(true);
     } else if (tab === "users") {
       setClientsMenuOpen(true);
@@ -239,6 +337,12 @@ export function CompanyAdminPanel({
     setMobileMenuOpen(false);
     setNotificationsOpen(false);
     setProfileMenuOpen(false);
+    syncBrowserRoute({
+      tab,
+      schoolId: tab === "schools" ? clearedSchool : null,
+      schoolSubTab: "all",
+      studentId: null,
+    });
   };
 
   const alertCount =
@@ -918,7 +1022,11 @@ export function CompanyAdminPanel({
             <PlatformSchoolsTab
               schools={schools}
               selectedSchoolId={selectedSchoolId}
-              onSelectSchoolId={setSelectedSchoolId}
+              onSelectSchoolId={handleSelectSchoolId}
+              selectedSubTab={schoolSubTab}
+              onSelectSubTab={handleSelectSchoolSubTab}
+              selectedStudentId={selectedStudentId}
+              onSelectStudentId={handleSelectStudentId}
               onRefreshSchools={refreshSchools}
               onToast={showToast}
             />

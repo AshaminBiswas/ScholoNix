@@ -57,16 +57,7 @@ import {
   formatInrFromPaise,
 } from "./platform-shared";
 import { PlatformProvisionSchoolModal } from "./platform-provision-modal";
-
-type SchoolSubTab =
-  | "all"
-  | "profile"
-  | "plan"
-  | "users"
-  | "students"
-  | "admissions"
-  | "fees"
-  | "audit";
+import type { SchoolSubTab } from "@/modules/platform/routing";
 
 const CARD_SURFACE =
   "rounded-[18px] border border-white/80 bg-white/85 backdrop-blur-md shadow-[0_8px_24px_rgba(79,39,232,0.06)] dark:border-[#272B4D] dark:bg-[#141731]/95 dark:shadow-[0_10px_28px_rgba(3,5,18,0.45)]";
@@ -86,12 +77,20 @@ export function PlatformSchoolsTab({
   schools,
   selectedSchoolId,
   onSelectSchoolId,
+  selectedSubTab,
+  onSelectSubTab,
+  selectedStudentId,
+  onSelectStudentId,
   onRefreshSchools,
   onToast,
 }: {
   schools: PlatformSchoolEntry[];
   selectedSchoolId: string | null;
   onSelectSchoolId: (id: string | null) => void;
+  selectedSubTab?: SchoolSubTab;
+  onSelectSubTab?: (tab: SchoolSubTab) => void;
+  selectedStudentId?: string | null;
+  onSelectStudentId?: (id: string | null) => void;
   onRefreshSchools: (filters?: { q?: string; status?: string; plan?: string }) => Promise<void>;
   onToast: (type: "success" | "error", text: string) => void;
 }) {
@@ -100,12 +99,32 @@ export function PlatformSchoolsTab({
   const [planFilter, setPlanFilter] = useState("ALL");
   const [searching, setSearching] = useState(false);
 
-  const [subTab, setSubTab] = useState<SchoolSubTab>("all");
+  const [internalSubTab, setInternalSubTab] = useState<SchoolSubTab>("all");
+  const [internalStudentId, setInternalStudentId] = useState<string | null>(null);
+  const subTab = selectedSubTab ?? internalSubTab;
+  const setSubTab = (next: SchoolSubTab) => {
+    setInternalSubTab(next);
+    onSelectSubTab?.(next);
+  };
+  const activeStudentId = selectedStudentId !== undefined ? selectedStudentId : internalStudentId;
+  const setActiveStudentId = (nextId: string | null) => {
+    setInternalStudentId(nextId);
+    if (onSelectStudentId) {
+      onSelectStudentId(nextId);
+    } else if (nextId) {
+      setInternalSubTab("students");
+    }
+  };
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [provisionOpen, setProvisionOpen] = useState(false);
 
   const selectedEntry = selectedSchoolId
-    ? schools.find((e) => e.school.id === selectedSchoolId) ?? null
+    ? schools.find(
+        (e) =>
+          e.school.id === selectedSchoolId ||
+          e.school.slug === selectedSchoolId ||
+          e.school.uniqueId === selectedSchoolId,
+      ) ?? null
     : null;
   const selectedSchoolKey = selectedEntry?.school.id ?? null;
 
@@ -158,13 +177,9 @@ export function PlatformSchoolsTab({
   // Deep data & audit sub-tabs state
   const [schoolData, setSchoolData] = useState<PlatformSchoolDataInspectResult | null>(null);
   const [loadingData, setLoadingData] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [schoolAuditLogs, setSchoolAuditLogs] = useState<PlatformAuditLogRecord[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
-
-  // Reset active subTab when switching to a different school
-  useEffect(() => {
-    setSubTab("all");
-  }, [selectedSchoolKey]);
 
   // Sync form fields when selectedEntry changes
   useEffect(() => {
@@ -195,6 +210,7 @@ export function PlatformSchoolsTab({
 
     setSchoolUsers(selectedEntry.users);
     setSchoolData(null);
+    setDataError(null);
     setSchoolAuditLogs([]);
     setUserSearch("");
     setUserRoleFilter("ALL");
@@ -208,13 +224,18 @@ export function PlatformSchoolsTab({
     let active = true;
 
     setLoadingData(true);
+    setDataError(null);
     setLoadingUsers(true);
     setLoadingAudit(true);
 
     Promise.allSettled([
-      fetch(`/api/platform/schools/${selectedSchoolKey}/data`, { cache: "no-store" }).then((r) =>
-        r.ok ? r.json() : null,
-      ),
+      fetch(`/api/platform/schools/${selectedSchoolKey}/data`, { cache: "no-store" }).then(async (r) => {
+        const j = await r.json().catch(() => null);
+        if (!r.ok || !j?.success) {
+          throw new Error(j?.error?.message || `Failed to load school data (${r.status}).`);
+        }
+        return j;
+      }),
       fetch(`/api/platform/schools/${selectedSchoolKey}/users`, { cache: "no-store" }).then((r) =>
         r.ok ? r.json() : null,
       ),
@@ -224,8 +245,14 @@ export function PlatformSchoolsTab({
     ])
       .then(([dataRes, usersRes, auditRes]) => {
         if (!active) return;
-        if (dataRes.status === "fulfilled" && dataRes.value?.success && dataRes.value.data) {
+        if (dataRes.status === "fulfilled" && dataRes.value?.data) {
           setSchoolData(dataRes.value.data);
+        } else if (dataRes.status === "rejected") {
+          setDataError(
+            dataRes.reason instanceof Error
+              ? dataRes.reason.message
+              : "Failed to load student and tenant data.",
+          );
         }
         if (
           usersRes.status === "fulfilled" &&
@@ -544,6 +571,55 @@ export function PlatformSchoolsTab({
     });
   }, [schoolData?.applications, studentFilter, studentSearch]);
 
+  const selectedStudentRecord = useMemo(() => {
+    if (!activeStudentId || !schoolData?.applications) return null;
+    return (
+      schoolData.applications.find(
+        (a) =>
+          a.id === activeStudentId ||
+          a.applicationCode === activeStudentId ||
+          a.admissionNumber === activeStudentId,
+      ) ?? null
+    );
+  }, [activeStudentId, schoolData?.applications]);
+
+  const selectedStudentLedger = useMemo(() => {
+    if (!selectedStudentRecord) return null;
+    return (
+      schoolData?.feeLedgers.find((l) => l.applicationId === selectedStudentRecord.id) ?? null
+    );
+  }, [selectedStudentRecord, schoolData?.feeLedgers]);
+
+  const selectedStudentReceipts = useMemo(() => {
+    if (!selectedStudentRecord) return [];
+    return (schoolData?.feePayments ?? []).filter(
+      (p) =>
+        p.applicationId === selectedStudentRecord.id ||
+        p.studentName === selectedStudentRecord.studentName,
+    );
+  }, [selectedStudentRecord, schoolData?.feePayments]);
+
+  const selectedStudentPortalUsers = useMemo(() => {
+    if (!selectedStudentRecord) return [];
+    const sd = (selectedStudentRecord.studentDetails || {}) as Record<string, unknown>;
+    const targets = new Set(
+      [
+        selectedStudentRecord.guardianEmail,
+        selectedStudentRecord.guardianPhone,
+        typeof sd.email === "string" ? sd.email : null,
+        typeof sd.phone === "string" ? sd.phone : null,
+        selectedStudentRecord.fatherPhone,
+        selectedStudentRecord.motherPhone,
+      ]
+        .filter((v): v is string => Boolean(v && v.trim()))
+        .map((v) => v.trim().toLowerCase()),
+    );
+    if (targets.size === 0) return [];
+    return schoolUsers.filter((u) =>
+      [u.email, u.phone].some((f) => (f ? targets.has(f.trim().toLowerCase()) : false)),
+    );
+  }, [selectedStudentRecord, schoolUsers]);
+
   const selectedPlanCatalog = selectedEntry ? SAAS_PLAN_CATALOG[selectedEntry.school.plan] : null;
   const studentUsedCount = selectedEntry
     ? selectedEntry.counts.studentCount ?? selectedEntry.counts.admitted
@@ -768,6 +844,14 @@ export function PlatformSchoolsTab({
                 <strong className="text-[#08093B] dark:text-[#F3F5FF]">
                   {selectedEntry.school.name}
                 </strong>
+                {subTab === "students" && activeStudentId && (
+                  <>
+                    {" / Students / "}
+                    <strong className="text-[#663CF6] dark:text-[#C4B5FD]">
+                      {selectedStudentRecord?.studentName || activeStudentId}
+                    </strong>
+                  </>
+                )}
               </span>
             </div>
 
@@ -946,6 +1030,18 @@ export function PlatformSchoolsTab({
                 </p>
               </div>
             </div>
+
+            {dataError && (
+              <div
+                role="alert"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
+              >
+                <span className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>{dataError}</span>
+                </span>
+              </div>
+            )}
 
             {/* Sub-tabs */}
             <div className="flex flex-wrap gap-1.5 rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-1 dark:border-[#272B4D] dark:bg-[#10142C]">
@@ -1294,18 +1390,19 @@ export function PlatformSchoolsTab({
                           <th className="px-3 py-2">Parent / Guardian Details</th>
                           <th className="px-3 py-2">Status</th>
                           <th className="px-3 py-2 text-right">Fee Summary</th>
+                          <th className="px-3 py-2 text-right">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
                         {loadingData ? (
                           <tr>
-                            <td colSpan={5} className="px-4 py-5 text-center text-[#76799C]">
+                            <td colSpan={6} className="px-4 py-5 text-center text-[#76799C]">
                               Loading student &amp; parent records...
                             </td>
                           </tr>
                         ) : !schoolData?.applications || schoolData.applications.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="px-4 py-5 text-center text-[#76799C]">
+                            <td colSpan={6} className="px-4 py-5 text-center text-[#76799C]">
                               No student or guardian records recorded for this school yet.
                             </td>
                           </tr>
@@ -1313,9 +1410,15 @@ export function PlatformSchoolsTab({
                           schoolData.applications.map((a) => {
                             const ledger = ledgerByApplicationId.get(a.id);
                             return (
-                              <tr key={a.id}>
+                              <tr key={a.id} className="hover:bg-[#FAF8FE] dark:hover:bg-[#1B1F3F]/50">
                                 <td className="px-3 py-2.5">
-                                  <p className="font-extrabold text-[#08093B] dark:text-[#F3F5FF]">{a.studentName}</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveStudentId(a.id)}
+                                    className="text-left font-extrabold text-[#08093B] hover:text-[#663CF6] cursor-pointer dark:text-[#F3F5FF] dark:hover:text-[#C4B5FD]"
+                                  >
+                                    {a.studentName}
+                                  </button>
                                   <p className="font-mono text-[10px] text-[#663CF6] dark:text-[#C4B5FD]">
                                     {a.admissionNumber || a.applicationCode}
                                   </p>
@@ -1365,6 +1468,16 @@ export function PlatformSchoolsTab({
                                   ) : (
                                     <span className="text-[10px] text-[#76799C]">No ledger</span>
                                   )}
+                                </td>
+                                <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveStudentId(a.id)}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-[#D6DBF0] bg-white px-2.5 py-1 text-[10px] font-extrabold text-[#663CF6] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#C4B5FD]"
+                                  >
+                                    <span>View Student</span>
+                                    <ArrowRight className="h-3 w-3" />
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -2252,191 +2365,679 @@ export function PlatformSchoolsTab({
                 </div>
               )}
 
-              {/* SUB-TAB 4: STUDENTS & PARENTS DIRECTORY */}
+              {/* SUB-TAB 4: STUDENTS & PARENTS DIRECTORY / STUDENT DETAILS DOSSIER */}
               {subTab === "students" && (
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {(
-                        [
-                          { id: "ALL", label: `All Students (${schoolData?.applications.length ?? 0})` },
-                          { id: "ADMITTED", label: "Admitted Only" },
-                          { id: "IN_PROGRESS", label: "Pending / Review" },
-                        ] as const
-                      ).map((sf) => (
-                        <button
-                          key={sf.id}
-                          type="button"
-                          onClick={() => setStudentFilter(sf.id)}
-                          className={`rounded-full px-3 py-1 text-[11px] font-extrabold cursor-pointer ${
-                            studentFilter === sf.id
-                              ? "bg-[#663CF6] text-white"
-                              : "border border-[#D6DBF0] bg-white text-[#4D5072] dark:border-[#272B4D] dark:bg-[#10142C] dark:text-[#9DA6CC]"
-                          }`}
-                        >
-                          {sf.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="search"
-                        value={studentSearch}
-                        onChange={(e) => setStudentSearch(e.target.value)}
-                        placeholder="Search student, parent, phone, class..."
-                        className="rounded-lg border border-[#CAD0EB] bg-white px-3 py-1.5 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
-                      />
+                activeStudentId ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          exportRowsToCsv(
-                            `${selectedEntry.school.slug}-students-parents.csv`,
-                            [
-                              "Admission No",
-                              "App Code",
-                              "Student Name",
-                              "Class",
-                              "Academic Year",
-                              "Gender",
-                              "DOB",
-                              "Guardian",
-                              "Relation",
-                              "Guardian Phone",
-                              "Guardian Email",
-                              "Father",
-                              "Mother",
-                              "Status",
-                              "Paid (INR)",
-                              "Outstanding (INR)",
-                            ],
-                            filteredStudentsAndParents.map((a) => {
-                              const ledger = ledgerByApplicationId.get(a.id);
-                              return [
-                                a.admissionNumber || "",
-                                a.applicationCode,
-                                a.studentName,
-                                a.gradeApplied,
-                                a.academicYear,
-                                a.gender || "",
-                                a.dateOfBirth || "",
-                                a.guardianName,
-                                a.guardianRelation || "Parent",
-                                a.guardianPhone,
-                                a.guardianEmail || "",
-                                a.fatherName ? `${a.fatherName} (${a.fatherPhone || ""})` : "",
-                                a.motherName ? `${a.motherName} (${a.motherPhone || ""})` : "",
-                                a.status,
-                                ((ledger?.paidPaise ?? 0) / 100).toFixed(2),
-                                ((ledger?.outstandingPaise ?? 0) / 100).toFixed(2),
-                              ];
-                            }),
-                          )
-                        }
-                        className="inline-flex items-center gap-1 rounded-lg border border-[#CAD0EB] px-2.5 py-1.5 text-[11px] font-bold text-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:text-[#C4B5FD]"
+                        onClick={() => setActiveStudentId(null)}
+                        className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#D6DBF0] bg-white px-3 py-1.5 text-xs font-extrabold text-[#08093B] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
                       >
-                        <Download className="h-3.5 w-3.5" />
-                        <span>Export CSV</span>
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        <span>Back to Students List</span>
                       </button>
-                    </div>
-                  </div>
 
-                  {loadingData ? (
-                    <div className="py-6 text-center text-xs text-[#76799C]">
-                      Loading student &amp; parent records...
+                      {selectedStudentRecord && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const payload = {
+                              exportedAtIso: new Date().toISOString(),
+                              schoolId: selectedEntry.school.id,
+                              schoolName: selectedEntry.school.name,
+                              student: selectedStudentRecord,
+                              feeLedger: selectedStudentLedger,
+                              feeReceipts: selectedStudentReceipts,
+                              linkedPortalUsers: selectedStudentPortalUsers,
+                            };
+                            const blob = new Blob([JSON.stringify(payload, null, 2)], {
+                              type: "application/json",
+                            });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement("a");
+                            link.href = url;
+                            link.download = `${selectedEntry.school.slug}-${selectedStudentRecord.applicationCode}-student.json`;
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            URL.revokeObjectURL(url);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#D6DBF0] bg-white px-3 py-1.5 text-xs font-bold text-[#663CF6] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#C4B5FD]"
+                        >
+                          <FileJson className="h-3.5 w-3.5" />
+                          <span>Download Student Dossier (JSON)</span>
+                        </button>
+                      )}
                     </div>
-                  ) : filteredStudentsAndParents.length === 0 ? (
-                    <p className="py-8 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]">
-                      No student or guardian records found for this filter.
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto rounded-[12px] border border-[#DFE3F5] dark:border-[#272B4D]">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
-                          <tr>
-                            <th className="px-3 py-2.5">Student Details</th>
-                            <th className="px-3 py-2.5">Class &amp; Session</th>
-                            <th className="px-3 py-2.5">Parent / Guardian Details</th>
-                            <th className="px-3 py-2.5">Status</th>
-                            <th className="px-3 py-2.5 text-right">Fee Summary</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
-                          {filteredStudentsAndParents.map((a) => {
-                            const ledger = ledgerByApplicationId.get(a.id);
-                            return (
-                              <tr key={a.id}>
-                                <td className="px-3 py-2.5">
-                                  <p className="font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-                                    {a.studentName}
-                                  </p>
-                                  <p className="font-mono text-[10px] text-[#663CF6] dark:text-[#C4B5FD]">
-                                    {a.admissionNumber || a.applicationCode}
-                                  </p>
-                                  {(a.gender || a.dateOfBirth || a.bloodGroup) && (
-                                    <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
-                                      {[a.gender, a.dateOfBirth, a.bloodGroup].filter(Boolean).join(" · ")}
-                                    </p>
-                                  )}
-                                </td>
-                                <td className="px-3 py-2.5">
-                                  <p className="font-bold">{a.gradeApplied}</p>
-                                  <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
-                                    AY {a.academicYear}
-                                  </p>
-                                </td>
-                                <td className="px-3 py-2.5">
-                                  <p className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
-                                    {a.guardianName}{" "}
-                                    <span className="font-normal text-[#76799C] dark:text-[#9DA6CC]">
-                                      ({a.guardianRelation || "Parent"})
+
+                    {loadingData && !selectedStudentRecord ? (
+                      <div className="py-10 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]">
+                        Loading complete student &amp; parent profile...
+                      </div>
+                    ) : !selectedStudentRecord ? (
+                      <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-8 text-center space-y-2 dark:border-[#272B4D] dark:bg-[#10142C]">
+                        <p className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                          Student record not found
+                        </p>
+                        <p className="text-xs text-[#76799C] dark:text-[#9DA6CC]">
+                          No admission or student profile matched &ldquo;{activeStudentId}&rdquo; in {selectedEntry.school.name}.
+                        </p>
+                      </div>
+                    ) : (
+                      (() => {
+                        const st = selectedStudentRecord;
+                        const sd = (st.studentDetails || {}) as Record<string, unknown>;
+                        const sAddr = (sd.address || {}) as Record<string, unknown>;
+                        const gd = (st.guardianDetails || {}) as Record<string, unknown>;
+                        const gPrimary = (gd.primary || {}) as Record<string, unknown>;
+                        const gSecondary = (gd.secondary || {}) as Record<string, unknown>;
+                        const gAddr = (gd.address || {}) as Record<string, unknown>;
+                        const ad = (st.academicDetails || {}) as Record<string, unknown>;
+                        const prevRows = Array.isArray(ad.previousAcademics)
+                          ? (ad.previousAcademics as Array<Record<string, unknown>>)
+                          : [];
+                        return (
+                          <div className="space-y-4">
+                            {/* Student Identity Hero */}
+                            <div className="rounded-[16px] border border-[#DDD6FE] bg-gradient-to-br from-[#F7F3FF] via-white to-[#EDF6FF] p-4 sm:p-5 dark:border-[#342B63] dark:from-[#1B1740] dark:via-[#141731] dark:to-[#112038]">
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="space-y-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#8B5CF6] to-[#4F27E8] text-white">
+                                      <GraduationCap className="h-4 w-4" />
                                     </span>
+                                    <h4 className="text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">
+                                      {st.studentName}
+                                    </h4>
+                                    <span className="rounded-full bg-[#EDE7FF] px-2.5 py-0.5 text-[10px] font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
+                                      {st.status}
+                                    </span>
+                                    <span className="rounded-full border border-[#D6DBF0] bg-white px-2.5 py-0.5 text-[10px] font-bold dark:border-[#343B6B] dark:bg-[#10142C]">
+                                      {st.enrollmentStatus}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs font-semibold text-[#4D5072] dark:text-[#9DA6CC]">
+                                    <span className="font-mono font-bold text-[#663CF6] dark:text-[#C4B5FD]">
+                                      {st.admissionNumber || st.applicationCode}
+                                    </span>
+                                    {st.admissionNumber ? ` · App ${st.applicationCode}` : ""}
+                                    {st.studentIdNumber ? ` · Student ID ${st.studentIdNumber}` : ""}
+                                    {` · ${st.gradeApplied} · AY ${st.academicYear}`}
+                                    {st.admissionType ? ` · ${st.admissionType}` : ""}
                                   </p>
-                                  <p className="text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
-                                    {a.guardianPhone}
-                                    {a.guardianEmail ? ` · ${a.guardianEmail}` : ""}
-                                  </p>
-                                  {(a.fatherName || a.motherName) && (
-                                    <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
-                                      {a.fatherName ? `F: ${a.fatherName}` : ""}
-                                      {a.fatherName && a.motherName ? " · " : ""}
-                                      {a.motherName ? `M: ${a.motherName}` : ""}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    aria-label={`Update status for ${st.studentName}`}
+                                    value={st.status}
+                                    onChange={(e) =>
+                                      void handleTenantDataMutation(
+                                        {
+                                          action: "update_application_status",
+                                          applicationId: st.id,
+                                          status: e.target.value,
+                                        },
+                                        `Updated ${st.studentName} status to ${e.target.value}.`,
+                                      )
+                                    }
+                                    className="rounded-lg border border-[#CAD0EB] bg-white px-2.5 py-1.5 text-xs font-bold dark:border-[#343B6B] dark:bg-[#10142C]"
+                                  >
+                                    <option value="UNDER_REVIEW">UNDER_REVIEW</option>
+                                    <option value="DOCUMENTS_PENDING">DOCUMENTS_PENDING</option>
+                                    <option value="SHORTLISTED">SHORTLISTED</option>
+                                    <option value="ADMITTED">ADMITTED</option>
+                                    <option value="REJECTED">REJECTED</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Personal & Contact + Guardian/Parent Details */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 space-y-2.5 text-xs dark:border-[#272B4D] dark:bg-[#10142C]">
+                                <h5 className="text-xs font-black uppercase tracking-wide text-[#08093B] dark:text-[#F3F5FF]">
+                                  Student Personal &amp; Contact Details
+                                </h5>
+                                <div className="grid grid-cols-2 gap-2.5">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Gender</p>
+                                    <p className="font-bold">{st.gender || "—"}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Date of Birth</p>
+                                    <p className="font-bold">{st.dateOfBirth || "—"}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Blood Group</p>
+                                    <p className="font-bold">{st.bloodGroup || "—"}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Nationality</p>
+                                    <p className="font-bold">{st.nationality || "—"}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Student Email</p>
+                                    <p className="font-semibold break-all">{String(sd.email || "—")}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Student Phone</p>
+                                    <p className="font-semibold">{String(sd.phone || "—")}</p>
+                                  </div>
+                                  <div className="col-span-2">
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Residential Address</p>
+                                    <p className="font-semibold">
+                                      {[
+                                        sAddr.addressLine1,
+                                        sAddr.addressLine2,
+                                        sAddr.city,
+                                        sAddr.state,
+                                        sAddr.postalCode,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(", ") || "Not provided"}
                                     </p>
-                                  )}
-                                </td>
-                                <td className="px-3 py-2.5">
-                                  <span className="inline-flex items-center gap-1 rounded-full bg-[#EDE7FF] px-2 py-0.5 text-[10px] font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    <span>{a.status}</span>
-                                  </span>
-                                  <p className="mt-0.5 text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
-                                    {a.enrollmentStatus}
-                                  </p>
-                                </td>
-                                <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                                  {ledger ? (
-                                    <div>
-                                      <p className="font-bold text-emerald-600 dark:text-emerald-300">
-                                        Paid: {formatInrFromPaise(ledger.paidPaise)}
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Applied On</p>
+                                    <p className="font-semibold">{formatDateShort(st.appliedAt)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Admitted / Verified</p>
+                                    <p className="font-semibold">
+                                      {st.admittedAt ? formatDateShort(st.admittedAt) : st.verificationStatus}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 space-y-2.5 text-xs dark:border-[#272B4D] dark:bg-[#10142C]">
+                                <h5 className="text-xs font-black uppercase tracking-wide text-[#08093B] dark:text-[#F3F5FF]">
+                                  Parent, Guardian &amp; Emergency Details
+                                </h5>
+                                <div className="grid grid-cols-2 gap-2.5">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Primary Guardian</p>
+                                    <p className="font-bold">
+                                      {String(gPrimary.fullName || st.guardianName)} (
+                                      {String(gPrimary.relationship || st.guardianRelation || "Parent")})
+                                    </p>
+                                    <p className="text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
+                                      {String(gPrimary.phone || st.guardianPhone)}
+                                      {gPrimary.email || st.guardianEmail
+                                        ? ` · ${String(gPrimary.email || st.guardianEmail)}`
+                                        : ""}
+                                    </p>
+                                    {Boolean(gPrimary.occupation || gPrimary.annualIncome) && (
+                                      <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                        {[gPrimary.occupation, gPrimary.annualIncome]
+                                          .filter(Boolean)
+                                          .map(String)
+                                          .join(" · ")}
                                       </p>
-                                      <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-300">
-                                        Due: {formatInrFromPaise(ledger.outstandingPaise)}
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Secondary Guardian</p>
+                                    {Boolean(gSecondary.fullName) ? (
+                                      <>
+                                        <p className="font-bold">
+                                          {String(gSecondary.fullName)} ({String(gSecondary.relationship || "Guardian")})
+                                        </p>
+                                        <p className="text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
+                                          {[gSecondary.phone, gSecondary.email]
+                                            .filter(Boolean)
+                                            .map(String)
+                                            .join(" · ") || "—"}
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <p className="font-semibold">
+                                        {st.motherName
+                                          ? `Mother: ${st.motherName} (${st.motherPhone || "—"})`
+                                          : st.fatherName
+                                            ? `Father: ${st.fatherName} (${st.fatherPhone || "—"})`
+                                            : "Not provided"}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Emergency Contact</p>
+                                    <p className="font-bold">
+                                      {String(gd.emergencyContactNumber || st.guardianPhone || "—")}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Preferred Contact Mode</p>
+                                    <p className="font-bold">{String(gd.preferredCommunicationMode || "Phone")}</p>
+                                  </div>
+                                  <div className="col-span-2">
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Guardian Address</p>
+                                    <p className="font-semibold">
+                                      {gd.sameAsStudentAddress
+                                        ? "Same as student residential address"
+                                        : [
+                                            gAddr.addressLine1,
+                                            gAddr.addressLine2,
+                                            gAddr.city,
+                                            gAddr.state,
+                                            gAddr.postalCode,
+                                          ]
+                                            .filter(Boolean)
+                                            .join(", ") || "Same / Not specified"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Academic History + Fee Ledger & Receipts */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 space-y-2.5 text-xs dark:border-[#272B4D] dark:bg-[#10142C]">
+                                <h5 className="text-xs font-black uppercase tracking-wide text-[#08093B] dark:text-[#F3F5FF]">
+                                  Previous School &amp; Academic History
+                                </h5>
+                                <div className="grid grid-cols-2 gap-2.5">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Previous School</p>
+                                    <p className="font-bold">{String(ad.previousSchoolName || st.previousSchool || "—")}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Board / Curriculum</p>
+                                    <p className="font-bold">{String(ad.boardCurriculum || "—")}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Last Standard Studied</p>
+                                    <p className="font-bold">
+                                      {String(ad.lastStandardStudied || "—")}
+                                      {Boolean(ad.yearOfCompletion) ? ` (${String(ad.yearOfCompletion)})` : ""}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Marks / Percentage</p>
+                                    <p className="font-bold">
+                                      {ad.percentage !== undefined && ad.percentage !== null
+                                        ? `${String(ad.percentage)}%`
+                                        : Boolean(ad.marksObtained && ad.totalMarks)
+                                          ? `${String(ad.marksObtained)} / ${String(ad.totalMarks)}`
+                                          : "—"}
+                                    </p>
+                                  </div>
+                                </div>
+                                {prevRows.length > 0 && (
+                                  <div className="overflow-x-auto rounded-lg border border-[#DFE3F5] bg-white dark:border-[#272B4D] dark:bg-[#141731]">
+                                    <table className="w-full text-left text-[11px]">
+                                      <thead className="bg-[#F6F5FD] text-[10px] uppercase dark:bg-[#1B1F3F]">
+                                        <tr>
+                                          <th className="px-2.5 py-1.5">Year</th>
+                                          <th className="px-2.5 py-1.5">Class</th>
+                                          <th className="px-2.5 py-1.5 text-right">Marks</th>
+                                          <th className="px-2.5 py-1.5 text-right">%</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
+                                        {prevRows.map((pr, idx) => (
+                                          <tr key={String(pr.id || idx)}>
+                                            <td className="px-2.5 py-1.5">{String(pr.academicYear || "—")}</td>
+                                            <td className="px-2.5 py-1.5">{String(pr.standard || "—")}</td>
+                                            <td className="px-2.5 py-1.5 text-right">
+                                              {String(pr.marksObtained ?? 0)} / {String(pr.totalMarks ?? 0)}
+                                            </td>
+                                            <td className="px-2.5 py-1.5 text-right font-bold">{String(pr.percentage ?? 0)}%</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 space-y-2.5 text-xs dark:border-[#272B4D] dark:bg-[#10142C]">
+                                <h5 className="text-xs font-black uppercase tracking-wide text-[#08093B] dark:text-[#F3F5FF]">
+                                  Student Fee Ledger &amp; Payment Receipts
+                                </h5>
+                                {selectedStudentLedger ? (
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <div className="rounded-lg border border-[#DFE3F5] bg-white p-2 dark:border-[#272B4D] dark:bg-[#141731]">
+                                      <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">Total Fee</p>
+                                      <p className="font-black">{formatInrFromPaise(selectedStudentLedger.totalFeePaise)}</p>
+                                    </div>
+                                    <div className="rounded-lg border border-[#DFE3F5] bg-white p-2 dark:border-[#272B4D] dark:bg-[#141731]">
+                                      <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">Concession</p>
+                                      <p className="font-black">{formatInrFromPaise(selectedStudentLedger.concessionPaise)}</p>
+                                    </div>
+                                    <div className="rounded-lg border border-[#DFE3F5] bg-white p-2 dark:border-[#272B4D] dark:bg-[#141731]">
+                                      <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">Paid</p>
+                                      <p className="font-black text-emerald-600 dark:text-emerald-300">
+                                        {formatInrFromPaise(selectedStudentLedger.paidPaise)}
                                       </p>
                                     </div>
-                                  ) : (
-                                    <span className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
-                                      No ledger
+                                    <div className="rounded-lg border border-[#DFE3F5] bg-white p-2 dark:border-[#272B4D] dark:bg-[#141731]">
+                                      <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">Outstanding</p>
+                                      <p className="font-black text-amber-600 dark:text-amber-300">
+                                        {formatInrFromPaise(selectedStudentLedger.outstandingPaise)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
+                                    No fee ledger created for this student yet.
+                                  </p>
+                                )}
+
+                                {selectedStudentReceipts.length > 0 && (
+                                  <div className="space-y-1.5">
+                                    {selectedStudentReceipts.map((p) => (
+                                      <div
+                                        key={p.id}
+                                        className="flex items-center justify-between rounded-lg border border-[#DFE3F5] bg-white px-3 py-1.5 text-[11px] dark:border-[#272B4D] dark:bg-[#141731]"
+                                      >
+                                        <span>
+                                          <strong className="font-mono text-[#663CF6] dark:text-[#C4B5FD]">
+                                            {p.receiptNumber}
+                                          </strong>{" "}
+                                          · {p.feeHead} ({p.paymentMode}) · {formatDateShort(p.paymentDate)}
+                                        </span>
+                                        <span className="font-bold text-emerald-600 dark:text-emerald-300">
+                                          {formatInrFromPaise(p.amountPaise)}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Documents & Linked Portal Accounts */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 space-y-2 text-xs dark:border-[#272B4D] dark:bg-[#10142C]">
+                                <h5 className="text-xs font-black uppercase tracking-wide text-[#08093B] dark:text-[#F3F5FF]">
+                                  Documents Verification ({st.verificationStatus})
+                                </h5>
+                                {st.verificationNotes && (
+                                  <p className="text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
+                                    Notes: {st.verificationNotes}
+                                  </p>
+                                )}
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(st.documentsChecklist ?? []).length === 0 ? (
+                                    <span className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
+                                      No document checklist items recorded.
                                     </span>
+                                  ) : (
+                                    (st.documentsChecklist ?? []).map((doc) => (
+                                      <span
+                                        key={doc.key}
+                                        className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
+                                          doc.verified
+                                            ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+                                            : doc.submitted
+                                              ? "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-300"
+                                              : "border-[#DFE3F5] bg-white text-[#76799C] dark:border-[#272B4D] dark:bg-[#141731]"
+                                        }`}
+                                      >
+                                        {doc.label}: {doc.verified ? "Verified" : doc.submitted ? "Submitted" : "Pending"}
+                                      </span>
+                                    ))
                                   )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                </div>
+                                {(st.uploadedDocuments ?? []).length > 0 && (
+                                  <div className="space-y-1 pt-1">
+                                    {(st.uploadedDocuments ?? []).map((uDoc) => (
+                                      <div
+                                        key={uDoc.key}
+                                        className="flex items-center justify-between rounded-lg border border-[#DFE3F5] bg-white px-2.5 py-1 text-[11px] dark:border-[#272B4D] dark:bg-[#141731]"
+                                      >
+                                        <span className="font-semibold truncate">
+                                          {uDoc.label} · {uDoc.fileName}
+                                        </span>
+                                        <span className="text-[10px] text-[#76799C]">
+                                          {Math.round((uDoc.sizeBytes || 0) / 1024)} KB
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 space-y-2 text-xs dark:border-[#272B4D] dark:bg-[#10142C]">
+                                <h5 className="text-xs font-black uppercase tracking-wide text-[#08093B] dark:text-[#F3F5FF]">
+                                  Linked Portal Accounts ({selectedStudentPortalUsers.length})
+                                </h5>
+                                {selectedStudentPortalUsers.length === 0 ? (
+                                  <p className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
+                                    No portal login account matched this student/guardian email or phone yet.
+                                  </p>
+                                ) : (
+                                  <div className="space-y-1.5">
+                                    {selectedStudentPortalUsers.map((pu) => (
+                                      <div
+                                        key={pu.id}
+                                        className="flex items-center justify-between rounded-lg border border-[#DFE3F5] bg-white px-3 py-1.5 text-[11px] dark:border-[#272B4D] dark:bg-[#141731]"
+                                      >
+                                        <div>
+                                          <p className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
+                                            {pu.name} ({pu.role})
+                                          </p>
+                                          <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                            {pu.email || "—"} · {pu.phone || "—"}
+                                          </p>
+                                        </div>
+                                        <span className="font-bold text-emerald-600 dark:text-emerald-300">
+                                          {pu.status}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {(
+                          [
+                            { id: "ALL", label: `All Students (${schoolData?.applications.length ?? 0})` },
+                            { id: "ADMITTED", label: "Admitted Only" },
+                            { id: "IN_PROGRESS", label: "Pending / Review" },
+                          ] as const
+                        ).map((sf) => (
+                          <button
+                            key={sf.id}
+                            type="button"
+                            onClick={() => setStudentFilter(sf.id)}
+                            className={`rounded-full px-3 py-1 text-[11px] font-extrabold cursor-pointer ${
+                              studentFilter === sf.id
+                                ? "bg-[#663CF6] text-white"
+                                : "border border-[#D6DBF0] bg-white text-[#4D5072] dark:border-[#272B4D] dark:bg-[#10142C] dark:text-[#9DA6CC]"
+                            }`}
+                          >
+                            {sf.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="search"
+                          value={studentSearch}
+                          onChange={(e) => setStudentSearch(e.target.value)}
+                          placeholder="Search student, parent, phone, class..."
+                          className="rounded-lg border border-[#CAD0EB] bg-white px-3 py-1.5 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            exportRowsToCsv(
+                              `${selectedEntry.school.slug}-students-parents.csv`,
+                              [
+                                "Admission No",
+                                "App Code",
+                                "Student Name",
+                                "Class",
+                                "Academic Year",
+                                "Gender",
+                                "DOB",
+                                "Guardian",
+                                "Relation",
+                                "Guardian Phone",
+                                "Guardian Email",
+                                "Father",
+                                "Mother",
+                                "Status",
+                                "Paid (INR)",
+                                "Outstanding (INR)",
+                              ],
+                              filteredStudentsAndParents.map((a) => {
+                                const ledger = ledgerByApplicationId.get(a.id);
+                                return [
+                                  a.admissionNumber || "",
+                                  a.applicationCode,
+                                  a.studentName,
+                                  a.gradeApplied,
+                                  a.academicYear,
+                                  a.gender || "",
+                                  a.dateOfBirth || "",
+                                  a.guardianName,
+                                  a.guardianRelation || "Parent",
+                                  a.guardianPhone,
+                                  a.guardianEmail || "",
+                                  a.fatherName ? `${a.fatherName} (${a.fatherPhone || ""})` : "",
+                                  a.motherName ? `${a.motherName} (${a.motherPhone || ""})` : "",
+                                  a.status,
+                                  ((ledger?.paidPaise ?? 0) / 100).toFixed(2),
+                                  ((ledger?.outstandingPaise ?? 0) / 100).toFixed(2),
+                                ];
+                              }),
+                            )
+                          }
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#CAD0EB] px-2.5 py-1.5 text-[11px] font-bold text-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:text-[#C4B5FD]"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          <span>Export CSV</span>
+                        </button>
+                      </div>
                     </div>
-                  )}
-                </div>
+
+                    {loadingData ? (
+                      <div className="py-6 text-center text-xs text-[#76799C]">
+                        Loading student &amp; parent records...
+                      </div>
+                    ) : filteredStudentsAndParents.length === 0 ? (
+                      <p className="py-8 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]">
+                        No student or guardian records found for this filter.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto rounded-[12px] border border-[#DFE3F5] dark:border-[#272B4D]">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
+                            <tr>
+                              <th className="px-3 py-2.5">Student Details</th>
+                              <th className="px-3 py-2.5">Class &amp; Session</th>
+                              <th className="px-3 py-2.5">Parent / Guardian Details</th>
+                              <th className="px-3 py-2.5">Status</th>
+                              <th className="px-3 py-2.5 text-right">Fee Summary</th>
+                              <th className="px-3 py-2.5 text-right">Details</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
+                            {filteredStudentsAndParents.map((a) => {
+                              const ledger = ledgerByApplicationId.get(a.id);
+                              return (
+                                <tr key={a.id} className="hover:bg-[#FAF8FE] dark:hover:bg-[#1B1F3F]/50">
+                                  <td className="px-3 py-2.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveStudentId(a.id)}
+                                      className="text-left font-extrabold text-[#08093B] hover:text-[#663CF6] cursor-pointer dark:text-[#F3F5FF] dark:hover:text-[#C4B5FD]"
+                                    >
+                                      {a.studentName}
+                                    </button>
+                                    <p className="font-mono text-[10px] text-[#663CF6] dark:text-[#C4B5FD]">
+                                      {a.admissionNumber || a.applicationCode}
+                                    </p>
+                                    {(a.gender || a.dateOfBirth || a.bloodGroup) && (
+                                      <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                        {[a.gender, a.dateOfBirth, a.bloodGroup].filter(Boolean).join(" · ")}
+                                      </p>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <p className="font-bold">{a.gradeApplied}</p>
+                                    <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                      AY {a.academicYear}
+                                    </p>
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <p className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
+                                      {a.guardianName}{" "}
+                                      <span className="font-normal text-[#76799C] dark:text-[#9DA6CC]">
+                                        ({a.guardianRelation || "Parent"})
+                                      </span>
+                                    </p>
+                                    <p className="text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
+                                      {a.guardianPhone}
+                                      {a.guardianEmail ? ` · ${a.guardianEmail}` : ""}
+                                    </p>
+                                    {(a.fatherName || a.motherName) && (
+                                      <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                        {a.fatherName ? `F: ${a.fatherName}` : ""}
+                                        {a.fatherName && a.motherName ? " · " : ""}
+                                        {a.motherName ? `M: ${a.motherName}` : ""}
+                                      </p>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#EDE7FF] px-2 py-0.5 text-[10px] font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      <span>{a.status}</span>
+                                    </span>
+                                    <p className="mt-0.5 text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                      {a.enrollmentStatus}
+                                    </p>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                                    {ledger ? (
+                                      <div>
+                                        <p className="font-bold text-emerald-600 dark:text-emerald-300">
+                                          Paid: {formatInrFromPaise(ledger.paidPaise)}
+                                        </p>
+                                        <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-300">
+                                          Due: {formatInrFromPaise(ledger.outstandingPaise)}
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <span className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                        No ledger
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveStudentId(a.id)}
+                                      className="inline-flex items-center gap-1 rounded-lg bg-[#663CF6] px-2.5 py-1 text-[10px] font-extrabold text-white hover:bg-[#4F27E8] cursor-pointer"
+                                    >
+                                      <span>View Details</span>
+                                      <ArrowRight className="h-3 w-3" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )
               )}
 
               {/* SUB-TAB 5: ADMISSIONS & SETTINGS DATA EXPLORER */}
