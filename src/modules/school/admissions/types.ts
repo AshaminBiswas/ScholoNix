@@ -22,7 +22,25 @@ export type AdmissionsDatePreset = "all" | "year" | "30d" | "90d" | "custom";
 
 export type AdmissionsTrendGranularity = "month" | "week";
 
-export type AdmissionTypeValue = "FRESH" | "TRANSFER";
+export type AdmissionTypeValue = "FRESH" | "TRANSFER" | "RE_ADMISSION" | "OTHER";
+
+export type AdmittedEnrollmentStatusValue = "ACTIVE" | "TRANSFERRED" | "WITHDRAWN";
+
+export type AdmittedFeePaymentStatusValue = "PAID" | "PARTIAL" | "PENDING";
+
+export type AdmittedFeeHeadValue =
+  | "Admission Fee"
+  | "Tuition Fee"
+  | "Annual Charges"
+  | "Transport Fee"
+  | "Hostel Fee";
+
+export type AdmittedPaymentModeValue =
+  | "UPI"
+  | "Net Banking"
+  | "Card"
+  | "Cash"
+  | "Cheque";
 
 export type AdmissionCommunicationMode = "Phone" | "Email" | "SMS" | "WhatsApp";
 
@@ -126,6 +144,7 @@ export interface AdmissionApplicationRecord {
   verificationNotes: string | null;
   documentsChecklist: AdmissionDocumentChecklistItem[];
   admissionType?: AdmissionTypeValue;
+  enrollmentStatus?: AdmittedEnrollmentStatusValue;
   isDraft?: boolean;
   currentStep?: number;
   studentPhotoKey?: string | null;
@@ -477,6 +496,53 @@ export interface AdmissionsOverviewFilters {
   pageSize: number;
 }
 
+export interface AdmissionFeeLedgerRecord {
+  id: string;
+  schoolId: string;
+  applicationId: string;
+  academicYear: string;
+  totalFeePaise: number;
+  concessionPaise: number;
+  concessionReason: string | null;
+  currency: string;
+  paidPaise: number;
+  outstandingPaise: number;
+  paymentStatus: AdmittedFeePaymentStatusValue;
+  lastPaymentDate: string | null;
+  updatedAt: string;
+}
+
+export interface AdmissionFeePaymentRecord {
+  id: string;
+  schoolId: string;
+  applicationId: string;
+  studentName?: string;
+  admissionNumber?: string | null;
+  receiptNumber: string;
+  idempotencyKey: string;
+  feeHead: AdmittedFeeHeadValue;
+  amountPaise: number;
+  paymentDate: string;
+  paymentMode: AdmittedPaymentModeValue;
+  referenceNo: string | null;
+  remarks: string | null;
+  recordedByUserId: string | null;
+  recordedByName: string;
+  createdAt: string;
+}
+
+export interface AdmittedStudentFeeSummary {
+  totalStudents: number;
+  totalFeePaise: number;
+  totalConcessionPaise: number;
+  totalCollectedPaise: number;
+  totalOutstandingPaise: number;
+  collectionRate: number;
+  fullyPaidCount: number;
+  partialPaidCount: number;
+  pendingCount: number;
+}
+
 export interface AdmissionsOverviewData {
   schoolId: string;
   filters: AdmissionsOverviewFilters;
@@ -513,6 +579,8 @@ export interface AdmissionsOverviewData {
   enquiryFollowUps?: AdmissionEnquiryFollowUpRecord[];
   staffOptions?: SchoolStaffOption[];
   admittedStudents: AdmissionApplicationRecord[];
+  admittedFeeLedgers?: AdmissionFeeLedgerRecord[];
+  admittedFeePayments?: AdmissionFeePaymentRecord[];
   activities: AdmissionActivityRecord[];
   reminders: AdmissionReminderRecord[];
   permissions: {

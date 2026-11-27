@@ -29,6 +29,7 @@ import { AdmissionsTable } from "./admissions-table";
 import { AdmissionsActivityAndNotes } from "./admissions-activity-and-notes";
 import { ApplicationsManagementView } from "./applications-management-view";
 import { EnquiriesWorkspace } from "./enquiries/enquiries-workspace";
+import { AdmittedWorkspace } from "./admitted/admitted-workspace";
 import {
   AdmissionSettingsPanel,
   type AdmissionSettingsSavePayload,
@@ -777,81 +778,25 @@ export function AdmissionsWorkspace({
       )}
 
       {activeTab === "admitted" && (
-        <div className="space-y-4">
-          <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs space-y-4 dark:border-[#272B4D] dark:bg-[#141731]">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-                  Admitted Students ({data.admittedStudents.length})
-                </h2>
-                <p className="text-xs text-[#76799C] dark:text-[#9DA6CC]">
-                  Applicants who completed admission and received a tenant Admission Number.
-                </p>
-              </div>
-            </div>
-
-            {data.admittedStudents.length === 0 ? (
-              <div className="rounded-[14px] border border-dashed border-[#D6DBF0] bg-[#FAF8FE]/60 py-12 px-4 text-center dark:border-[#2E345B] dark:bg-[#10142C]/60">
-                <p className="text-sm font-bold text-[#08093B] dark:text-[#F3F5FF]">No admitted students yet</p>
-                <p className="mt-1 text-xs text-[#76799C] dark:text-[#9DA6CC]">
-                  Once an application stage is updated to Admitted, the student and generated Admission Number appear here.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto school-menu-scrollbar rounded-[14px] border border-[#DFE3F5] dark:border-[#272B4D]">
-                <table className="w-full min-w-[700px] text-left text-xs border-collapse">
-                  <thead className="bg-[#F6F5FD] text-[11px] font-bold uppercase tracking-wider text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
-                    <tr>
-                      <th scope="col" className="px-3 py-3">Admission No</th>
-                      <th scope="col" className="px-3 py-3">Application ID</th>
-                      <th scope="col" className="px-3 py-3">Student Name</th>
-                      <th scope="col" className="px-3 py-3">Grade</th>
-                      <th scope="col" className="px-3 py-3">Guardian Contact</th>
-                      <th scope="col" className="px-3 py-3">Admitted On</th>
-                      <th scope="col" className="px-3 py-3 text-right">Details</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F1F5F9] dark:divide-[#232746]">
-                    {data.admittedStudents.map((stu) => (
-                      <tr key={stu.id} className="hover:bg-[#FAF8FE] dark:hover:bg-[#1B2042]">
-                        <td className="px-3 py-3 font-extrabold text-emerald-700 dark:text-emerald-400">
-                          {stu.admissionNumber || "Assigned"}
-                        </td>
-                        <td className="px-3 py-3 font-semibold text-[#663CF6] dark:text-[#A78BFA]">
-                          {stu.applicationCode}
-                        </td>
-                        <td className="px-3 py-3 font-bold text-[#08093B] dark:text-[#F3F5FF]">{stu.studentName}</td>
-                        <td className="px-3 py-3 text-[#4D5072] dark:text-[#C5CCF0]">{stu.gradeApplied}</td>
-                        <td className="px-3 py-3 text-[#4D5072] dark:text-[#C5CCF0]">
-                          {stu.guardianName} · {stu.guardianPhone}
-                        </td>
-                        <td className="px-3 py-3 text-[#4D5072] dark:text-[#9DA6CC]">
-                          {stu.admittedAt
-                            ? new Intl.DateTimeFormat("en-IN", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                                timeZone: "Asia/Kolkata",
-                              }).format(new Date(stu.admittedAt))
-                            : "—"}
-                        </td>
-                        <td className="px-3 py-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setInspectApp(stu)}
-                            className="rounded-[8px] border border-[#D6DBF0] px-2.5 py-1 text-[11px] font-bold text-[#663CF6] hover:bg-[#FAF8FE] cursor-pointer dark:border-[#30365C] dark:text-[#C4B5FD] dark:hover:bg-[#1F2447]"
-                          >
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </div>
+        <AdmittedWorkspace
+          schoolName={school.name}
+          schoolSlug={school.slug}
+          students={data.admittedStudents}
+          allSubmittedApplicationsCount={data.kpis.totalApplications.value}
+          ledgers={data.admittedFeeLedgers ?? []}
+          payments={data.admittedFeePayments ?? []}
+          settings={data.settings}
+          activities={data.activities}
+          availableAcademicYears={data.availableAcademicYears}
+          availableGrades={data.availableGrades}
+          canWrite={data.permissions.canWrite}
+          canVerify={data.permissions.canVerify}
+          canExport={data.permissions.canExport}
+          onRefreshOverview={() => fetchOverview(filters, { bypassClientCache: true })}
+          onViewStudent={(stu) => setInspectApp(stu)}
+          onEditStudent={handleStartEditApplication}
+          onShowToast={showToast}
+        />
       )}
 
       {activeTab === "settings" && (

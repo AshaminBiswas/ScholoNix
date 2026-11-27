@@ -64,6 +64,8 @@ model School {
   admissionApplications         AdmissionApplication[]
   admissionReminders            AdmissionReminder[]
   admissionActivities           AdmissionActivity[]
+  admissionFeeLedgers           AdmissionFeeLedger[]
+  admissionFeePayments          AdmissionFeePayment[]
 
   @@index([status])
   @@index([slug])
@@ -299,6 +301,8 @@ enum AdmissionReminderPriority {
 enum AdmissionType {
   FRESH
   TRANSFER
+  RE_ADMISSION
+  OTHER
 }
 
 model AdmissionSetting {
@@ -310,6 +314,7 @@ model AdmissionSetting {
   nextApplicationSeq  Int       @default(1) @map("next_application_seq")
   nextEnquirySeq      Int       @default(1) @map("next_enquiry_seq")
   nextAdmissionSeq    Int       @default(1) @map("next_admission_seq")
+  nextReceiptSeq      Int       @default(1) @map("next_receipt_seq")
   enabledGrades       String[]  @map("enabled_grades")
   extendedConfig      Json?     @map("extended_config")
 
@@ -472,9 +477,10 @@ model AdmissionApplication {
   status             AdmissionApplicationStatus @default(UNDER_REVIEW)
   verificationStatus DocumentVerificationStatus @default(PENDING) @map("verification_status")
   verificationNotes  String?                    @map("verification_notes") @db.Text
-  documentsChecklist Json                       @map("documents_checklist") @db.JsonB
-  admissionType      AdmissionType              @default(FRESH) @map("admission_type")
-  isDraft            Boolean                    @default(false) @map("is_draft")
+  documentsChecklist  Json                       @map("documents_checklist") @db.JsonB
+  admissionType       AdmissionType              @default(FRESH) @map("admission_type")
+  enrollmentStatus    String                     @default("ACTIVE") @map("enrollment_status") @db.VarChar(30)
+  isDraft             Boolean                    @default(false) @map("is_draft")
   currentStep        Int                        @default(1) @map("current_step")
   studentPhotoKey    String?                    @map("student_photo_key") @db.VarChar(500)
   nationality        String?                    @db.VarChar(80)
@@ -495,7 +501,9 @@ model AdmissionApplication {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school      School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  feeLedger   AdmissionFeeLedger?
+  feePayments AdmissionFeePayment[]
 
   @@unique([schoolId, applicationCode])
   @@unique([schoolId, admissionNumber])
@@ -504,6 +512,52 @@ model AdmissionApplication {
   @@index([schoolId, academicYear, gradeApplied])
   @@index([schoolId, appliedAt])
   @@map("admission_applications")
+}
+
+model AdmissionFeeLedger {
+  id               String   @id @default(uuid()) @db.Uuid
+  schoolId         String   @map("school_id") @db.Uuid
+  applicationId    String   @unique @map("application_id") @db.Uuid
+  academicYear     String   @map("academic_year") @db.VarChar(30)
+  totalFeePaise    Int      @default(0) @map("total_fee_paise")
+  concessionPaise  Int      @default(0) @map("concession_paise")
+  concessionReason String?  @map("concession_reason") @db.VarChar(255)
+  currency         String   @default("INR") @db.VarChar(10)
+  updatedByUserId  String?  @map("updated_by_user_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  application AdmissionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, applicationId])
+  @@index([schoolId, academicYear])
+  @@map("admission_fee_ledgers")
+}
+
+model AdmissionFeePayment {
+  id               String   @id @default(uuid()) @db.Uuid
+  schoolId         String   @map("school_id") @db.Uuid
+  applicationId    String   @map("application_id") @db.Uuid
+  receiptNumber    String   @map("receipt_number") @db.VarChar(40)
+  idempotencyKey   String   @map("idempotency_key") @db.VarChar(80)
+  feeHead          String   @map("fee_head") @db.VarChar(80)
+  amountPaise      Int      @map("amount_paise")
+  paymentDate      DateTime @map("payment_date") @db.Timestamptz(6)
+  paymentMode      String   @map("payment_mode") @db.VarChar(40)
+  referenceNo      String?  @map("reference_no") @db.VarChar(120)
+  remarks          String?  @db.VarChar(255)
+  recordedByUserId String?  @map("recorded_by_user_id") @db.Uuid
+  recordedByName   String   @map("recorded_by_name") @db.VarChar(255)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  application AdmissionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, receiptNumber])
+  @@unique([schoolId, idempotencyKey])
+  @@index([schoolId, applicationId, paymentDate])
+  @@map("admission_fee_payments")
 }
 
 model AdmissionReminder {

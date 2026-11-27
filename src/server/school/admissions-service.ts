@@ -12,6 +12,8 @@ import type {
   AdmissionEnquiryNoteRecord,
   AdmissionEnquiryRecord,
   AdmissionEnquirySourceRecord,
+  AdmissionFeeLedgerRecord,
+  AdmissionFeePaymentRecord,
   AdmissionReminderRecord,
   AdmissionSettingRecord,
   AdmissionsOverviewData,
@@ -29,15 +31,20 @@ import type {
   CreateEnquiryNoteInput,
   CreateEnquirySourceInput,
   CreateReminderInput,
+  DirectAdmitStudentInput,
+  RecordAdmittedFeePaymentInput,
   UpdateAdmissionsSettingsInput,
+  UpdateAdmittedEnrollmentInput,
   UpdateApplicationInput,
   UpdateEnquiryFollowUpInput,
   UpdateEnquiryInput,
   UpdateEnquiryNoteInput,
   UpdateEnquirySourceInput,
+  UpsertAdmittedFeeLedgerInput,
 } from "@/modules/school/admissions/schemas";
 import {
   buildAdmissionsCsv,
+  buildAdmittedStudentsCsv,
   buildEnquiriesCsv,
   computeAdmissionsOverviewAnalytics,
 } from "./admissions-analytics";
@@ -222,6 +229,8 @@ export const admissionsService = {
         enquirySources: snapshot.enquirySources,
         enquiryFollowUps: snapshot.enquiryFollowUps,
         staffOptions: snapshot.staffOptions,
+        admittedFeeLedgers: snapshot.admittedFeeLedgers,
+        admittedFeePayments: snapshot.admittedFeePayments,
       });
 
       // 3. Store computed query data in tenant cache before serving
@@ -953,6 +962,8 @@ export const admissionsService = {
         enquirySources: snapshot.enquirySources,
         enquiryFollowUps: snapshot.enquiryFollowUps,
         staffOptions: snapshot.staffOptions,
+        admittedFeeLedgers: snapshot.admittedFeeLedgers,
+        admittedFeePayments: snapshot.admittedFeePayments,
       });
 
       const csv = buildEnquiriesCsv(overview.enquiries);
@@ -971,6 +982,212 @@ export const admissionsService = {
       });
 
       return { csv, filename, count: overview.enquiries.length };
+    });
+  },
+
+  async directAdmitStudent(
+    ctx: AdmissionsActorContext,
+    input: DirectAdmitStudentInput,
+  ): Promise<AdmissionApplicationRecord> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      const created = await admissionsRepository.directAdmitStudent(
+        ctx.schoolId,
+        { id: ctx.userId, name: ctx.userName },
+        input,
+      );
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMISSION_DIRECTLY_ADMITTED",
+        entityType: "AdmissionApplication",
+        entityId: created.id,
+        details: {
+          admissionNumber: created.admissionNumber,
+          gradeApplied: created.gradeApplied,
+          academicYear: created.academicYear,
+          admissionType: created.admissionType,
+        },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+      return created;
+    });
+  },
+
+  async importAdmittedStudents(
+    ctx: AdmissionsActorContext,
+    students: DirectAdmitStudentInput[],
+  ): Promise<AdmissionApplicationRecord[]> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      const imported = await admissionsRepository.importAdmittedStudents(
+        ctx.schoolId,
+        { id: ctx.userId, name: ctx.userName },
+        students,
+      );
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMITTED_STUDENTS_IMPORTED",
+        entityType: "AdmissionApplication",
+        entityId: ctx.schoolId,
+        details: { importedCount: imported.length },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+      return imported;
+    });
+  },
+
+  async updateAdmittedEnrollment(
+    ctx: AdmissionsActorContext,
+    applicationId: string,
+    input: UpdateAdmittedEnrollmentInput,
+  ): Promise<AdmissionApplicationRecord> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      const updated = await admissionsRepository.updateAdmittedEnrollment(
+        ctx.schoolId,
+        applicationId,
+        { id: ctx.userId, name: ctx.userName },
+        input,
+      );
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMITTED_ENROLLMENT_UPDATED",
+        entityType: "AdmissionApplication",
+        entityId: updated.id,
+        details: {
+          enrollmentStatus: updated.enrollmentStatus,
+          admissionType: updated.admissionType,
+        },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+      return updated;
+    });
+  },
+
+  async upsertAdmittedFeeLedger(
+    ctx: AdmissionsActorContext,
+    input: UpsertAdmittedFeeLedgerInput,
+  ): Promise<AdmissionFeeLedgerRecord> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      const ledger = await admissionsRepository.upsertAdmittedFeeLedger(
+        ctx.schoolId,
+        { id: ctx.userId, name: ctx.userName },
+        input,
+      );
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMISSION_FEE_LEDGER_UPDATED",
+        entityType: "AdmissionFeeLedger",
+        entityId: ledger.id,
+        details: {
+          applicationId: ledger.applicationId,
+          totalFeePaise: ledger.totalFeePaise,
+          concessionPaise: ledger.concessionPaise,
+        },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+      return ledger;
+    });
+  },
+
+  async recordAdmittedFeePayment(
+    ctx: AdmissionsActorContext,
+    input: RecordAdmittedFeePaymentInput,
+  ): Promise<{ payment: AdmissionFeePaymentRecord; ledger: AdmissionFeeLedgerRecord }> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:write");
+    return runScoped(ctx, async () => {
+      const result = await admissionsRepository.recordAdmittedFeePayment(
+        ctx.schoolId,
+        { id: ctx.userId, name: ctx.userName },
+        input,
+      );
+      await invalidateTenantCaches(ctx.schoolId, ctx.userId);
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMISSION_FEE_PAYMENT_RECORDED",
+        entityType: "AdmissionFeePayment",
+        entityId: result.payment.id,
+        details: {
+          applicationId: result.payment.applicationId,
+          receiptNumber: result.payment.receiptNumber,
+          amountPaise: result.payment.amountPaise,
+          paymentMode: result.payment.paymentMode,
+          idempotencyKey: result.payment.idempotencyKey,
+        },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+      return result;
+    });
+  },
+
+  async exportAdmittedCsv(
+    ctx: AdmissionsActorContext,
+    dataset: "roster" | "documents" | "fees",
+    partialFilters?: Partial<AdmissionsOverviewFilters>,
+  ): Promise<{ csv: string; filename: string; count: number }> {
+    authorize({ id: ctx.userId, role: ctx.role, schoolId: ctx.schoolId }, "admissions:export");
+    return runScoped(ctx, async () => {
+      const snapshot = await admissionsRepository.getTenantSnapshot(ctx.schoolId);
+      const filters: AdmissionsOverviewFilters = {
+        ...DEFAULT_FILTERS,
+        academicYear: partialFilters?.academicYear ?? snapshot.settings.currentAcademicYear,
+        ...partialFilters,
+        page: 1,
+        pageSize: 5000,
+      };
+      const overview = computeAdmissionsOverviewAnalytics({
+        schoolId: ctx.schoolId,
+        filters,
+        allApplications: snapshot.applications,
+        allEnquiries: snapshot.enquiries,
+        customReminders: snapshot.reminders,
+        activities: snapshot.activities,
+        settings: snapshot.settings,
+        permissions: {
+          canWrite: false,
+          canVerify: false,
+          canExport: true,
+          canManageSettings: false,
+        },
+        admittedFeeLedgers: snapshot.admittedFeeLedgers,
+        admittedFeePayments: snapshot.admittedFeePayments,
+      });
+
+      const csv = buildAdmittedStudentsCsv({
+        dataset,
+        students: overview.admittedStudents,
+        ledgers: overview.admittedFeeLedgers ?? [],
+      });
+      const safeSlug = ctx.schoolSlug.replace(/[^a-z0-9-_]/gi, "-");
+      const filename = `admitted-${dataset}-${safeSlug}-${new Date().toISOString().slice(0, 10)}.csv`;
+
+      await logAuditEvent({
+        schoolId: ctx.schoolId,
+        actorId: ctx.userId,
+        action: "ADMITTED_REPORT_EXPORTED",
+        entityType: "AdmissionReport",
+        entityId: filename,
+        details: { dataset, count: overview.admittedStudents.length },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+      });
+
+      return { csv, filename, count: overview.admittedStudents.length };
     });
   },
 };

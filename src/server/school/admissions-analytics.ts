@@ -380,6 +380,8 @@ export function computeAdmissionsOverviewAnalytics(params: {
   enquirySources?: import("@/modules/school/admissions/types").AdmissionEnquirySourceRecord[];
   enquiryFollowUps?: import("@/modules/school/admissions/types").AdmissionEnquiryFollowUpRecord[];
   staffOptions?: import("@/modules/school/admissions/types").SchoolStaffOption[];
+  admittedFeeLedgers?: import("@/modules/school/admissions/types").AdmissionFeeLedgerRecord[];
+  admittedFeePayments?: import("@/modules/school/admissions/types").AdmissionFeePaymentRecord[];
   now?: Date;
 }): AdmissionsOverviewData {
   const {
@@ -394,6 +396,8 @@ export function computeAdmissionsOverviewAnalytics(params: {
     enquirySources = [],
     enquiryFollowUps = [],
     staffOptions = [],
+    admittedFeeLedgers = [],
+    admittedFeePayments = [],
     now = new Date(),
   } = params;
 
@@ -640,6 +644,8 @@ export function computeAdmissionsOverviewAnalytics(params: {
     enquiryFollowUps: enquiryFollowUps.filter((f) => f.schoolId === schoolId),
     staffOptions,
     admittedStudents,
+    admittedFeeLedgers: admittedFeeLedgers.filter((l) => l.schoolId === schoolId),
+    admittedFeePayments: admittedFeePayments.filter((p) => p.schoolId === schoolId),
     activities: tenantActivities.slice(0, 20),
     reminders,
     permissions,
@@ -731,5 +737,108 @@ export function buildEnquiriesCsv(enquiries: AdmissionEnquiryRecord[]): string {
     escapeCsvCell(enq.notes || ""),
   ]);
 
+  return [headers.map(escapeCsvCell).join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+}
+
+export function buildAdmittedStudentsCsv(params: {
+  dataset: "roster" | "documents" | "fees";
+  students: AdmissionApplicationRecord[];
+  ledgers: import("@/modules/school/admissions/types").AdmissionFeeLedgerRecord[];
+}): string {
+  const ledgerByApp = new Map(params.ledgers.map((l) => [l.applicationId, l]));
+
+  if (params.dataset === "documents") {
+    const headers = [
+      "Admission No",
+      "Student Name",
+      "Grade",
+      "Academic Year",
+      "Verification Status",
+      "Submitted Docs",
+      "Verified Docs",
+      "Total Checklist Docs",
+    ];
+    const rows = params.students.map((s) => {
+      const checklist = s.documentsChecklist || [];
+      const submitted = checklist.filter((d) => d.submitted).length;
+      const verified = checklist.filter((d) => d.verified).length;
+      return [
+        escapeCsvCell(s.admissionNumber || ""),
+        escapeCsvCell(s.studentName),
+        escapeCsvCell(s.gradeApplied),
+        escapeCsvCell(s.academicYear),
+        escapeCsvCell(s.verificationStatus),
+        escapeCsvCell(submitted),
+        escapeCsvCell(verified),
+        escapeCsvCell(checklist.length),
+      ];
+    });
+    return [headers.map(escapeCsvCell).join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+  }
+
+  if (params.dataset === "fees") {
+    const headers = [
+      "Admission No",
+      "Student Name",
+      "Grade",
+      "Academic Year",
+      "Total Fee (INR)",
+      "Concession (INR)",
+      "Paid (INR)",
+      "Outstanding (INR)",
+      "Payment Status",
+      "Last Payment Date",
+    ];
+    const rows = params.students.map((s) => {
+      const l = ledgerByApp.get(s.id);
+      const total = l ? (l.totalFeePaise / 100).toFixed(2) : "0.00";
+      const concession = l ? (l.concessionPaise / 100).toFixed(2) : "0.00";
+      const paid = l ? (l.paidPaise / 100).toFixed(2) : "0.00";
+      const due = l ? (l.outstandingPaise / 100).toFixed(2) : "0.00";
+      return [
+        escapeCsvCell(s.admissionNumber || ""),
+        escapeCsvCell(s.studentName),
+        escapeCsvCell(s.gradeApplied),
+        escapeCsvCell(s.academicYear),
+        escapeCsvCell(total),
+        escapeCsvCell(concession),
+        escapeCsvCell(paid),
+        escapeCsvCell(due),
+        escapeCsvCell(l?.paymentStatus || "PENDING"),
+        escapeCsvCell(l?.lastPaymentDate ? l.lastPaymentDate.slice(0, 10) : ""),
+      ];
+    });
+    return [headers.map(escapeCsvCell).join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+  }
+
+  const headers = [
+    "Admission No",
+    "Application ID",
+    "Student Name",
+    "Grade",
+    "Academic Year",
+    "Admission Date",
+    "Admission Type",
+    "Enrollment Status",
+    "Guardian Name",
+    "Guardian Phone",
+    "Fee Status",
+  ];
+  const rows = params.students.map((s) => {
+    const l = ledgerByApp.get(s.id);
+    return [
+      escapeCsvCell(s.admissionNumber || ""),
+      escapeCsvCell(s.applicationCode),
+      escapeCsvCell(s.studentName),
+      escapeCsvCell(s.gradeApplied),
+      escapeCsvCell(s.academicYear),
+      escapeCsvCell((s.admittedAt || s.appliedAt).slice(0, 10)),
+      escapeCsvCell(s.admissionType || "FRESH"),
+      escapeCsvCell(s.enrollmentStatus || "ACTIVE"),
+      escapeCsvCell(s.guardianName),
+      escapeCsvCell(s.guardianPhone),
+      escapeCsvCell(l?.paymentStatus || "PENDING"),
+    ];
+  });
   return [headers.map(escapeCsvCell).join(","), ...rows.map((r) => r.join(","))].join("\r\n");
 }

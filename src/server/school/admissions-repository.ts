@@ -6,7 +6,7 @@ import { randomUUID } from "crypto";
 import { db } from "@/server/database/client";
 import { BaseTenantRepository } from "@/server/repositories/base-tenant-repository";
 import { tenantCache } from "@/server/integrations/redis";
-import { ConflictError, NotFoundError, ServiceUnavailableError, TenantNotFoundError } from "@/lib/errors";
+import { ConflictError, NotFoundError, ServiceUnavailableError, TenantNotFoundError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import {
   DEFAULT_ADMISSION_GRADES,
@@ -23,12 +23,18 @@ import {
   type AdmissionEnquiryNoteRecord,
   type AdmissionEnquiryRecord,
   type AdmissionEnquirySourceRecord,
+  type AdmissionFeeLedgerRecord,
+  type AdmissionFeePaymentRecord,
   type AdmissionGuardianDetailsPayload,
   type AdmissionReminderRecord,
   type AdmissionSettingRecord,
   type AdmissionStudentDetailsPayload,
   type AdmissionTypeValue,
   type AdmissionUploadedDocument,
+  type AdmittedEnrollmentStatusValue,
+  type AdmittedFeeHeadValue,
+  type AdmittedFeePaymentStatusValue,
+  type AdmittedPaymentModeValue,
   type EnquiryCommunicationAttachment,
   type EnquiryCommunicationChannelValue,
   type EnquiryDossierData,
@@ -47,12 +53,16 @@ import type {
   CreateEnquiryNoteInput,
   CreateEnquirySourceInput,
   CreateReminderInput,
+  DirectAdmitStudentInput,
+  RecordAdmittedFeePaymentInput,
   UpdateAdmissionsSettingsInput,
+  UpdateAdmittedEnrollmentInput,
   UpdateApplicationInput,
   UpdateEnquiryFollowUpInput,
   UpdateEnquiryInput,
   UpdateEnquiryNoteInput,
   UpdateEnquirySourceInput,
+  UpsertAdmittedFeeLedgerInput,
 } from "@/modules/school/admissions/schemas";
 import { getCurrentAcademicYearLabel } from "./admissions-analytics";
 
@@ -60,6 +70,19 @@ interface StoredSetting extends AdmissionSettingRecord {
   nextApplicationSeq: number;
   nextEnquirySeq: number;
   nextAdmissionSeq: number;
+  nextReceiptSeq: number;
+}
+
+interface StoredRawFeeLedger {
+  id: string;
+  schoolId: string;
+  applicationId: string;
+  academicYear: string;
+  totalFeePaise: number;
+  concessionPaise: number;
+  concessionReason: string | null;
+  currency: string;
+  updatedAt: string;
 }
 
 interface AdmissionsStoreState {
@@ -70,6 +93,8 @@ interface AdmissionsStoreState {
   enquiryFollowUps: Record<string, AdmissionEnquiryFollowUpRecord>;
   enquiryCommunications: Record<string, AdmissionEnquiryCommunicationRecord>;
   enquiryNotes: Record<string, AdmissionEnquiryNoteRecord>;
+  feeLedgers: Record<string, StoredRawFeeLedger>;
+  feePayments: Record<string, AdmissionFeePaymentRecord>;
   reminders: Record<string, AdmissionReminderRecord>;
   activities: AdmissionActivityRecord[];
 }
@@ -85,6 +110,8 @@ let storeMemory: AdmissionsStoreState = {
   enquiryFollowUps: {},
   enquiryCommunications: {},
   enquiryNotes: {},
+  feeLedgers: {},
+  feePayments: {},
   reminders: {},
   activities: [],
 };
@@ -115,6 +142,8 @@ function loadStore(): AdmissionsStoreState {
         enquiryFollowUps: parsed.enquiryFollowUps || {},
         enquiryCommunications: parsed.enquiryCommunications || {},
         enquiryNotes: parsed.enquiryNotes || {},
+        feeLedgers: parsed.feeLedgers || {},
+        feePayments: parsed.feePayments || {},
         reminders: parsed.reminders || {},
         activities: Array.isArray(parsed.activities) ? parsed.activities : [],
       };
@@ -134,6 +163,8 @@ function loadStore(): AdmissionsStoreState {
     enquiryFollowUps: {},
     enquiryCommunications: {},
     enquiryNotes: {},
+    feeLedgers: {},
+    feePayments: {},
     reminders: {},
     activities: [],
   };
@@ -396,6 +427,7 @@ function mapPrismaSetting(row: any): StoredSetting {
     nextApplicationSeq: row.nextApplicationSeq,
     nextEnquirySeq: row.nextEnquirySeq,
     nextAdmissionSeq: row.nextAdmissionSeq,
+    nextReceiptSeq: typeof row.nextReceiptSeq === "number" ? row.nextReceiptSeq : 1,
     updatedAt: new Date(row.updatedAt).toISOString(),
   };
 }
@@ -426,6 +458,7 @@ function mapPrismaApplication(row: any): AdmissionApplicationRecord {
     verificationNotes: row.verificationNotes ?? null,
     documentsChecklist: checklistRaw,
     admissionType: (row.admissionType as AdmissionTypeValue) ?? "FRESH",
+    enrollmentStatus: (row.enrollmentStatus as AdmittedEnrollmentStatusValue) ?? "ACTIVE",
     isDraft: Boolean(row.isDraft),
     currentStep: typeof row.currentStep === "number" ? row.currentStep : 1,
     studentPhotoKey: row.studentPhotoKey ?? null,
@@ -629,7 +662,73 @@ export interface ActorMeta {
   name: string;
 }
 
-export const ADMISSIONS_SNAPSHOT_CACHE_KEY = "admissions:snapshot:v2";
+function rupeesToPaise(rupees: number): number {
+  return Math.max(0, Math.round(rupees * 100));
+}
+
+function buildEnrichedFeeLedger(
+  raw: StoredRawFeeLedger,
+  payments: AdmissionFeePaymentRecord[],
+): AdmissionFeeLedgerRecord {
+  const paidPaise = payments.reduce((sum, p) => sum + p.amountPaise, 0);
+  const netPayablePaise = Math.max(0, raw.totalFeePaise - raw.concessionPaise);
+  const outstandingPaise = Math.max(0, netPayablePaise - paidPaise);
+  let paymentStatus: AdmittedFeePaymentStatusValue = "PENDING";
+  if (raw.totalFeePaise > 0 && outstandingPaise === 0) {
+    paymentStatus = "PAID";
+  } else if (paidPaise > 0 && outstandingPaise === 0) {
+    paymentStatus = "PAID";
+  } else if (paidPaise > 0) {
+    paymentStatus = "PARTIAL";
+  }
+  const latestPayment = [...payments].sort(
+    (a, b) => Date.parse(b.paymentDate) - Date.parse(a.paymentDate),
+  )[0];
+  return {
+    ...raw,
+    paidPaise,
+    outstandingPaise,
+    paymentStatus,
+    lastPaymentDate: latestPayment?.paymentDate ?? null,
+  };
+}
+
+function mapPrismaFeeLedger(row: any): StoredRawFeeLedger {
+  return {
+    id: row.id,
+    schoolId: row.schoolId,
+    applicationId: row.applicationId,
+    academicYear: row.academicYear,
+    totalFeePaise: Number(row.totalFeePaise || 0),
+    concessionPaise: Number(row.concessionPaise || 0),
+    concessionReason: row.concessionReason ?? null,
+    currency: row.currency || "INR",
+    updatedAt: new Date(row.updatedAt).toISOString(),
+  };
+}
+
+function mapPrismaFeePayment(row: any): AdmissionFeePaymentRecord {
+  return {
+    id: row.id,
+    schoolId: row.schoolId,
+    applicationId: row.applicationId,
+    studentName: row.application?.studentName,
+    admissionNumber: row.application?.admissionNumber ?? null,
+    receiptNumber: row.receiptNumber,
+    idempotencyKey: row.idempotencyKey,
+    feeHead: row.feeHead as AdmittedFeeHeadValue,
+    amountPaise: Number(row.amountPaise || 0),
+    paymentDate: new Date(row.paymentDate).toISOString(),
+    paymentMode: row.paymentMode as AdmittedPaymentModeValue,
+    referenceNo: row.referenceNo ?? null,
+    remarks: row.remarks ?? null,
+    recordedByUserId: row.recordedByUserId ?? null,
+    recordedByName: row.recordedByName,
+    createdAt: new Date(row.createdAt).toISOString(),
+  };
+}
+
+export const ADMISSIONS_SNAPSHOT_CACHE_KEY = "admissions:snapshot:v3";
 const ADMISSIONS_SNAPSHOT_TTL_SECONDS = 60;
 
 export interface TenantAdmissionsSnapshot {
@@ -638,6 +737,8 @@ export interface TenantAdmissionsSnapshot {
   enquiries: AdmissionEnquiryRecord[];
   enquirySources: AdmissionEnquirySourceRecord[];
   enquiryFollowUps: AdmissionEnquiryFollowUpRecord[];
+  admittedFeeLedgers: AdmissionFeeLedgerRecord[];
+  admittedFeePayments: AdmissionFeePaymentRecord[];
   staffOptions: SchoolStaffOption[];
   reminders: AdmissionReminderRecord[];
   activities: AdmissionActivityRecord[];
@@ -656,6 +757,8 @@ function isValidCachedSnapshot(
       Array.isArray(s.enquiries) &&
       Array.isArray(s.enquirySources) &&
       Array.isArray(s.enquiryFollowUps) &&
+      Array.isArray(s.admittedFeeLedgers) &&
+      Array.isArray(s.admittedFeePayments) &&
       Array.isArray(s.reminders) &&
       Array.isArray(s.activities),
   );
@@ -687,10 +790,14 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         nextApplicationSeq: 1,
         nextEnquirySeq: 1,
         nextAdmissionSeq: 1,
+        nextReceiptSeq: 1,
         updatedAt: new Date().toISOString(),
       };
     } else if (!store.settings[schoolId]!.extendedConfig) {
       store.settings[schoolId]!.extendedConfig = mergeExtendedSettings(null);
+    }
+    if (typeof store.settings[schoolId]!.nextReceiptSeq !== "number") {
+      store.settings[schoolId]!.nextReceiptSeq = 1;
     }
     return store.settings[schoolId]!;
   }
@@ -747,6 +854,8 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               sourceRowsRaw,
               followUpRowsRaw,
               staffRowsRaw,
+              feeLedgerRowsRaw,
+              feePaymentRowsRaw,
             ] = await Promise.all([
               tx.admissionSetting.findUnique({ where: { schoolId } }),
               tx.admissionApplication.findMany({
@@ -797,6 +906,20 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                 select: { id: true, name: true, role: true },
                 orderBy: { name: "asc" },
               }),
+              (tx as any).admissionFeeLedger
+                ? (tx as any).admissionFeeLedger.findMany({ where: { schoolId } })
+                : Promise.resolve([]),
+              (tx as any).admissionFeePayment
+                ? (tx as any).admissionFeePayment.findMany({
+                    where: { schoolId },
+                    orderBy: { paymentDate: "desc" },
+                    include: {
+                      application: {
+                        select: { studentName: true, admissionNumber: true },
+                      },
+                    },
+                  })
+                : Promise.resolve([]),
             ]);
 
             let sourceRows = sourceRowsRaw as any[];
@@ -817,6 +940,18 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               sourceRows = seeded;
             }
 
+            const mappedPayments = (feePaymentRowsRaw as any[]).map(mapPrismaFeePayment);
+            const paymentsByApp = new Map<string, AdmissionFeePaymentRecord[]>();
+            for (const p of mappedPayments) {
+              const list = paymentsByApp.get(p.applicationId) ?? [];
+              list.push(p);
+              paymentsByApp.set(p.applicationId, list);
+            }
+            const enrichedLedgers = (feeLedgerRowsRaw as any[]).map((l) => {
+              const raw = mapPrismaFeeLedger(l);
+              return buildEnrichedFeeLedger(raw, paymentsByApp.get(raw.applicationId) ?? []);
+            });
+
             const settings: AdmissionSettingRecord = settingRow
               ? mapPrismaSetting(settingRow)
               : {
@@ -835,6 +970,8 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               enquiries: enqRows.map(mapPrismaEnquiry),
               enquirySources: sourceRows.map(mapPrismaEnquirySource),
               enquiryFollowUps: (followUpRowsRaw as any[]).map((r) => mapPrismaEnquiryFollowUp(r)),
+              admittedFeeLedgers: enrichedLedgers,
+              admittedFeePayments: mappedPayments,
               staffOptions: staffRowsRaw.map((u) => ({
                 id: u.id,
                 name: u.name,
@@ -864,14 +1001,18 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
       nextApplicationSeq: _a,
       nextEnquirySeq: _e,
       nextAdmissionSeq: _adm,
+      nextReceiptSeq: _rcp,
       ...publicSettings
     } = setting;
     void _a;
     void _e;
     void _adm;
+    void _rcp;
 
     const fallbackSources = this.ensureFallbackSources(store, schoolId);
     const enquiries = Object.values(store.enquiries).filter((r) => r.schoolId === schoolId);
+    const applications = Object.values(store.applications).filter((r) => r.schoolId === schoolId);
+    const appById = new Map(applications.map((a) => [a.id, a]));
     const enquiryById = new Map(enquiries.map((e) => [e.id, e]));
     const enquiryFollowUps = Object.values(store.enquiryFollowUps)
       .filter((f) => f.schoolId === schoolId)
@@ -888,12 +1029,37 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
       })
       .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt));
 
+    const payments = Object.values(store.feePayments)
+      .filter((p) => p.schoolId === schoolId)
+      .map((p) => {
+        const app = appById.get(p.applicationId);
+        return {
+          ...p,
+          studentName: app?.studentName ?? p.studentName,
+          admissionNumber: app?.admissionNumber ?? p.admissionNumber,
+        };
+      })
+      .sort((a, b) => Date.parse(b.paymentDate) - Date.parse(a.paymentDate));
+
+    const paymentsByApp = new Map<string, AdmissionFeePaymentRecord[]>();
+    for (const p of payments) {
+      const list = paymentsByApp.get(p.applicationId) ?? [];
+      list.push(p);
+      paymentsByApp.set(p.applicationId, list);
+    }
+
+    const enrichedLedgers = Object.values(store.feeLedgers)
+      .filter((l) => l.schoolId === schoolId)
+      .map((raw) => buildEnrichedFeeLedger(raw, paymentsByApp.get(raw.applicationId) ?? []));
+
     const fallbackSnapshot: TenantAdmissionsSnapshot = {
       settings: publicSettings,
-      applications: Object.values(store.applications).filter((r) => r.schoolId === schoolId),
+      applications,
       enquiries,
       enquirySources: fallbackSources,
       enquiryFollowUps,
+      admittedFeeLedgers: enrichedLedgers,
+      admittedFeePayments: payments,
       staffOptions: [],
       reminders: Object.values(store.reminders).filter((r) => r.schoolId === schoolId),
       activities: store.activities.filter((a) => a.schoolId === schoolId).slice(0, 40),
@@ -3501,6 +3667,699 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     }
     delete store.enquiryNotes[noteId];
     saveStore(store);
+  }
+
+  async directAdmitStudent(
+    explicitSchoolId: string,
+    actor: ActorMeta,
+    input: DirectAdmitStudentInput,
+  ): Promise<AdmissionApplicationRecord> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const admittedDateObj =
+      input.admittedAt && input.admittedAt.trim() !== ""
+        ? new Date(`${input.admittedAt.slice(0, 10)}T00:00:00.000Z`)
+        : now;
+    const admittedDateIso = admittedDateObj.toISOString();
+    const admissionType: AdmissionTypeValue = input.admissionType ?? "FRESH";
+    const enrollmentStatus: AdmittedEnrollmentStatusValue = input.enrollmentStatus ?? "ACTIVE";
+    const checklist = cloneDefaultChecklist();
+    const initialFeePaise =
+      typeof input.totalFeeRupees === "number" && input.totalFeeRupees > 0
+        ? rupeesToPaise(input.totalFeeRupees)
+        : 0;
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("directAdmitStudent", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const setting = await tx.admissionSetting.upsert({
+              where: { schoolId },
+              update: {
+                nextApplicationSeq: { increment: 1 },
+                nextAdmissionSeq: { increment: 1 },
+              },
+              create: {
+                schoolId,
+                currentAcademicYear: getCurrentAcademicYearLabel(),
+                applicationPrefix: "APP",
+                enabledGrades: [...DEFAULT_ADMISSION_GRADES],
+                nextApplicationSeq: 2,
+                nextAdmissionSeq: 2,
+              },
+            });
+            const appSeq = setting.nextApplicationSeq - 1;
+            const admSeq = setting.nextAdmissionSeq - 1;
+            const yearTag = extractYearTag(input.academicYear);
+            const applicationCode = `${setting.applicationPrefix}${yearTag}-${String(appSeq).padStart(4, "0")}`;
+            const admissionNumber = `ADM${yearTag}-${String(admSeq).padStart(4, "0")}`;
+
+            const existingStudentRows = (await (tx.admissionApplication as any).findMany({
+              where: { schoolId, studentIdNumber: { not: null } },
+              select: { studentIdNumber: true },
+            })) as Array<{ studentIdNumber?: string | null }>;
+            const studentIdNumber = generateUniqueStudentId(
+              input.academicYear,
+              existingStudentRows.map((r) => r.studentIdNumber),
+              appSeq,
+            );
+
+            const created = await tx.admissionApplication.create({
+              data: {
+                schoolId,
+                applicationCode,
+                admissionNumber,
+                studentName: input.studentName,
+                gender: input.gender || null,
+                dateOfBirth: input.dateOfBirth ? new Date(`${input.dateOfBirth}T00:00:00.000Z`) : null,
+                gradeApplied: input.gradeApplied,
+                academicYear: input.academicYear,
+                guardianName: input.guardianName,
+                guardianRelation: input.guardianRelation ?? "Parent",
+                guardianPhone: input.guardianPhone,
+                guardianEmail: input.guardianEmail || null,
+                previousSchool: input.previousSchool || null,
+                status: "ADMITTED",
+                verificationStatus: "PENDING",
+                verificationNotes: input.notes || null,
+                documentsChecklist: checklist as any,
+                admissionType: admissionType as any,
+                enrollmentStatus,
+                isDraft: false,
+                currentStep: 4,
+                bloodGroup: input.bloodGroup || null,
+                nationality: input.nationality || null,
+                studentIdNumber,
+                appliedAt: admittedDateObj,
+                admittedAt: admittedDateObj,
+                reviewedByUserId: actor.id,
+              } as any,
+            });
+
+            if (initialFeePaise > 0 && (tx as any).admissionFeeLedger) {
+              await (tx as any).admissionFeeLedger.create({
+                data: {
+                  schoolId,
+                  applicationId: created.id,
+                  academicYear: input.academicYear,
+                  totalFeePaise: initialFeePaise,
+                  concessionPaise: 0,
+                  updatedByUserId: actor.id,
+                },
+              });
+            }
+
+            await tx.admissionActivity.create({
+              data: {
+                schoolId,
+                applicationId: created.id,
+                actorId: actor.id,
+                actorName: actor.name,
+                action: "STUDENT_ADMITTED",
+                summary: `${input.studentName} directly admitted into ${input.gradeApplied} (${admissionNumber}).`,
+              },
+            });
+
+            return mapPrismaApplication(created);
+          });
+        });
+      } catch (err) {
+        handlePrismaError("directAdmitStudent", err);
+      }
+    }
+
+    const store = loadStore();
+    const setting = this.getOrCreateFallbackSetting(store, schoolId);
+    const appSeq = setting.nextApplicationSeq;
+    const admSeq = setting.nextAdmissionSeq;
+    setting.nextApplicationSeq += 1;
+    setting.nextAdmissionSeq += 1;
+    const yearTag = extractYearTag(input.academicYear);
+    const applicationCode = `${setting.applicationPrefix}${yearTag}-${String(appSeq).padStart(4, "0")}`;
+    const admissionNumber = `ADM${yearTag}-${String(admSeq).padStart(4, "0")}`;
+    const existingIds = Object.values(store.applications)
+      .filter((a) => a.schoolId === schoolId)
+      .map((a) => a.studentIdNumber);
+    const studentIdNumber = generateUniqueStudentId(input.academicYear, existingIds, appSeq);
+
+    const record: AdmissionApplicationRecord = {
+      id: randomUUID(),
+      schoolId,
+      applicationCode,
+      admissionNumber,
+      enquiryId: null,
+      studentName: input.studentName,
+      gender: input.gender || null,
+      dateOfBirth: input.dateOfBirth || null,
+      gradeApplied: input.gradeApplied,
+      academicYear: input.academicYear,
+      guardianName: input.guardianName,
+      guardianRelation: input.guardianRelation ?? "Parent",
+      guardianPhone: input.guardianPhone,
+      guardianEmail: input.guardianEmail || null,
+      previousSchool: input.previousSchool || null,
+      status: "ADMITTED",
+      verificationStatus: "PENDING",
+      verificationNotes: input.notes || null,
+      documentsChecklist: checklist,
+      admissionType,
+      enrollmentStatus,
+      isDraft: false,
+      currentStep: 4,
+      studentPhotoKey: null,
+      nationality: input.nationality || null,
+      bloodGroup: input.bloodGroup || null,
+      studentIdNumber,
+      studentDetails: null,
+      guardianDetails: null,
+      academicDetails: null,
+      uploadedDocuments: [],
+      declarationAccepted: true,
+      appliedAt: admittedDateIso,
+      shortlistedAt: null,
+      admittedAt: admittedDateIso,
+      rejectedAt: null,
+      verifiedAt: null,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+    store.applications[record.id] = record;
+
+    if (initialFeePaise > 0) {
+      const ledgerId = randomUUID();
+      store.feeLedgers[ledgerId] = {
+        id: ledgerId,
+        schoolId,
+        applicationId: record.id,
+        academicYear: input.academicYear,
+        totalFeePaise: initialFeePaise,
+        concessionPaise: 0,
+        concessionReason: null,
+        currency: "INR",
+        updatedAt: nowIso,
+      };
+    }
+
+    store.activities.unshift({
+      id: randomUUID(),
+      schoolId,
+      applicationId: record.id,
+      enquiryId: null,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "STUDENT_ADMITTED",
+      summary: `${input.studentName} directly admitted into ${input.gradeApplied} (${admissionNumber}).`,
+      createdAt: nowIso,
+    });
+    saveStore(store);
+    return record;
+  }
+
+  async importAdmittedStudents(
+    explicitSchoolId: string,
+    actor: ActorMeta,
+    students: DirectAdmitStudentInput[],
+  ): Promise<AdmissionApplicationRecord[]> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const createdRecords: AdmissionApplicationRecord[] = [];
+    for (const row of students) {
+      const rec = await this.directAdmitStudent(schoolId, actor, row);
+      createdRecords.push(rec);
+    }
+    return createdRecords;
+  }
+
+  async updateAdmittedEnrollment(
+    explicitSchoolId: string,
+    applicationId: string,
+    actor: ActorMeta,
+    input: UpdateAdmittedEnrollmentInput,
+  ): Promise<AdmissionApplicationRecord> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const nowIso = new Date().toISOString();
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("updateAdmittedEnrollment", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const existing = await tx.admissionApplication.findFirst({
+              where: { id: applicationId, schoolId, status: "ADMITTED" },
+            });
+            if (!existing) throw new NotFoundError("Admitted student record");
+
+            const updated = await tx.admissionApplication.update({
+              where: { id: existing.id },
+              data: {
+                ...(input.enrollmentStatus !== undefined
+                  ? { enrollmentStatus: input.enrollmentStatus }
+                  : {}),
+                ...(input.admissionType !== undefined
+                  ? { admissionType: input.admissionType as any }
+                  : {}),
+                ...(input.notes !== undefined ? { verificationNotes: input.notes } : {}),
+              } as any,
+            });
+
+            await tx.admissionActivity.create({
+              data: {
+                schoolId,
+                applicationId: existing.id,
+                actorId: actor.id,
+                actorName: actor.name,
+                action: "ENROLLMENT_UPDATED",
+                summary: `Updated admitted enrollment profile for ${existing.studentName} (${existing.admissionNumber || existing.applicationCode}).`,
+              },
+            });
+
+            return mapPrismaApplication(updated);
+          });
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError) throw err;
+        handlePrismaError("updateAdmittedEnrollment", err);
+      }
+    }
+
+    const store = loadStore();
+    const existing = store.applications[applicationId];
+    if (!existing || existing.schoolId !== schoolId || existing.status !== "ADMITTED") {
+      throw new NotFoundError("Admitted student record");
+    }
+    const updated: AdmissionApplicationRecord = {
+      ...existing,
+      enrollmentStatus: input.enrollmentStatus ?? existing.enrollmentStatus ?? "ACTIVE",
+      admissionType: input.admissionType ?? existing.admissionType ?? "FRESH",
+      verificationNotes:
+        input.notes !== undefined ? input.notes : existing.verificationNotes,
+      updatedAt: nowIso,
+    };
+    store.applications[applicationId] = updated;
+    store.activities.unshift({
+      id: randomUUID(),
+      schoolId,
+      applicationId,
+      enquiryId: null,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "ENROLLMENT_UPDATED",
+      summary: `Updated admitted enrollment profile for ${existing.studentName} (${existing.admissionNumber || existing.applicationCode}).`,
+      createdAt: nowIso,
+    });
+    saveStore(store);
+    return updated;
+  }
+
+  async upsertAdmittedFeeLedger(
+    explicitSchoolId: string,
+    actor: ActorMeta,
+    input: UpsertAdmittedFeeLedgerInput,
+  ): Promise<AdmissionFeeLedgerRecord> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const nowIso = new Date().toISOString();
+    const totalFeePaise = rupeesToPaise(input.totalFeeRupees);
+    const concessionPaise = rupeesToPaise(input.concessionRupees ?? 0);
+    if (concessionPaise > totalFeePaise) {
+      throw new ValidationError("Concession cannot exceed total fee amount.");
+    }
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("upsertAdmittedFeeLedger", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const app = await tx.admissionApplication.findFirst({
+              where: { id: input.applicationId, schoolId, status: "ADMITTED" },
+            });
+            if (!app) throw new NotFoundError("Admitted student");
+
+            const paymentsRaw = await (tx as any).admissionFeePayment.findMany({
+              where: { schoolId, applicationId: app.id },
+            });
+            const payments = (paymentsRaw as any[]).map(mapPrismaFeePayment);
+            const paidPaise = payments.reduce((sum, p) => sum + p.amountPaise, 0);
+            if (totalFeePaise - concessionPaise < paidPaise) {
+              throw new ValidationError(
+                "Net payable fee cannot be reduced below amount already collected.",
+              );
+            }
+
+            const upserted = await (tx as any).admissionFeeLedger.upsert({
+              where: { applicationId: app.id },
+              update: {
+                totalFeePaise,
+                concessionPaise,
+                concessionReason: input.concessionReason?.trim() || null,
+                updatedByUserId: actor.id,
+              },
+              create: {
+                schoolId,
+                applicationId: app.id,
+                academicYear: app.academicYear,
+                totalFeePaise,
+                concessionPaise,
+                concessionReason: input.concessionReason?.trim() || null,
+                currency: "INR",
+                updatedByUserId: actor.id,
+              },
+            });
+
+            await tx.admissionActivity.create({
+              data: {
+                schoolId,
+                applicationId: app.id,
+                actorId: actor.id,
+                actorName: actor.name,
+                action: "FEE_LEDGER_UPDATED",
+                summary: `Updated fee assessment for ${app.studentName}: Total ₹${(totalFeePaise / 100).toLocaleString("en-IN")}, Concession ₹${(concessionPaise / 100).toLocaleString("en-IN")}.`,
+              },
+            });
+
+            return buildEnrichedFeeLedger(mapPrismaFeeLedger(upserted), payments);
+          });
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError || err instanceof ValidationError) throw err;
+        handlePrismaError("upsertAdmittedFeeLedger", err);
+      }
+    }
+
+    const store = loadStore();
+    const app = store.applications[input.applicationId];
+    if (!app || app.schoolId !== schoolId || app.status !== "ADMITTED") {
+      throw new NotFoundError("Admitted student");
+    }
+
+    const payments = Object.values(store.feePayments).filter(
+      (p) => p.schoolId === schoolId && p.applicationId === app.id,
+    );
+    const paidPaise = payments.reduce((sum, p) => sum + p.amountPaise, 0);
+    if (totalFeePaise - concessionPaise < paidPaise) {
+      throw new ValidationError(
+        "Net payable fee cannot be reduced below amount already collected.",
+      );
+    }
+
+    const existing = Object.values(store.feeLedgers).find(
+      (l) => l.schoolId === schoolId && l.applicationId === app.id,
+    );
+    const ledgerId = existing?.id ?? randomUUID();
+    const raw: StoredRawFeeLedger = {
+      id: ledgerId,
+      schoolId,
+      applicationId: app.id,
+      academicYear: app.academicYear,
+      totalFeePaise,
+      concessionPaise,
+      concessionReason: input.concessionReason?.trim() || null,
+      currency: "INR",
+      updatedAt: nowIso,
+    };
+    store.feeLedgers[ledgerId] = raw;
+
+    store.activities.unshift({
+      id: randomUUID(),
+      schoolId,
+      applicationId: app.id,
+      enquiryId: null,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "FEE_LEDGER_UPDATED",
+      summary: `Updated fee assessment for ${app.studentName}: Total ₹${(totalFeePaise / 100).toLocaleString("en-IN")}, Concession ₹${(concessionPaise / 100).toLocaleString("en-IN")}.`,
+      createdAt: nowIso,
+    });
+    saveStore(store);
+    return buildEnrichedFeeLedger(raw, payments);
+  }
+
+  async recordAdmittedFeePayment(
+    explicitSchoolId: string,
+    actor: ActorMeta,
+    input: RecordAdmittedFeePaymentInput,
+  ): Promise<{ payment: AdmissionFeePaymentRecord; ledger: AdmissionFeeLedgerRecord }> {
+    const schoolId = this.requireSchoolId(explicitSchoolId);
+    const amountPaise = rupeesToPaise(input.amountRupees);
+    if (amountPaise <= 0) {
+      throw new ValidationError("Payment amount must be greater than zero.");
+    }
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const paymentDateObj =
+      input.paymentDate && input.paymentDate.trim() !== ""
+        ? new Date(`${input.paymentDate.slice(0, 10)}T00:00:00.000Z`)
+        : now;
+    const paymentDateIso = paymentDateObj.toISOString();
+
+    if (await canUsePrisma()) {
+      try {
+        return await runPrismaOp("recordAdmittedFeePayment", async () => {
+          return db.$transaction(async (tx) => {
+            await setTransactionTenantContext(tx, schoolId);
+            const app = await tx.admissionApplication.findFirst({
+              where: { id: input.applicationId, schoolId, status: "ADMITTED" },
+            });
+            if (!app) throw new NotFoundError("Admitted student");
+
+            const duplicate = await (tx as any).admissionFeePayment.findFirst({
+              where: { schoolId, idempotencyKey: input.idempotencyKey },
+            });
+            if (duplicate) {
+              const allPaymentsRaw = await (tx as any).admissionFeePayment.findMany({
+                where: { schoolId, applicationId: app.id },
+              });
+              const ledgerRow = await (tx as any).admissionFeeLedger.findUnique({
+                where: { applicationId: app.id },
+              });
+              const allPayments = (allPaymentsRaw as any[]).map(mapPrismaFeePayment);
+              const rawLedger = ledgerRow
+                ? mapPrismaFeeLedger(ledgerRow)
+                : {
+                    id: randomUUID(),
+                    schoolId,
+                    applicationId: app.id,
+                    academicYear: app.academicYear,
+                    totalFeePaise: amountPaise,
+                    concessionPaise: 0,
+                    concessionReason: null,
+                    currency: "INR",
+                    updatedAt: nowIso,
+                  };
+              return {
+                payment: mapPrismaFeePayment({
+                  ...duplicate,
+                  application: {
+                    studentName: app.studentName,
+                    admissionNumber: app.admissionNumber,
+                  },
+                }),
+                ledger: buildEnrichedFeeLedger(rawLedger, allPayments),
+              };
+            }
+
+            const existingPaymentsRaw = await (tx as any).admissionFeePayment.findMany({
+              where: { schoolId, applicationId: app.id },
+            });
+            const existingPayments = (existingPaymentsRaw as any[]).map(mapPrismaFeePayment);
+            const paidSoFar = existingPayments.reduce((sum, p) => sum + p.amountPaise, 0);
+
+            let ledgerRow = await (tx as any).admissionFeeLedger.findUnique({
+              where: { applicationId: app.id },
+            });
+            if (!ledgerRow) {
+              ledgerRow = await (tx as any).admissionFeeLedger.create({
+                data: {
+                  schoolId,
+                  applicationId: app.id,
+                  academicYear: app.academicYear,
+                  totalFeePaise: paidSoFar + amountPaise,
+                  concessionPaise: 0,
+                  currency: "INR",
+                  updatedByUserId: actor.id,
+                },
+              });
+            } else {
+              const netFee = Math.max(
+                0,
+                Number(ledgerRow.totalFeePaise) - Number(ledgerRow.concessionPaise || 0),
+              );
+              const outstanding = Math.max(0, netFee - paidSoFar);
+              if (netFee > 0 && amountPaise > outstanding) {
+                throw new ValidationError(
+                  `Payment of ₹${(amountPaise / 100).toFixed(2)} exceeds remaining balance of ₹${(outstanding / 100).toFixed(2)}.`,
+                );
+              }
+            }
+
+            const setting = await (tx.admissionSetting as any).upsert({
+              where: { schoolId },
+              update: { nextReceiptSeq: { increment: 1 } },
+              create: {
+                schoolId,
+                currentAcademicYear: getCurrentAcademicYearLabel(),
+                applicationPrefix: "APP",
+                enabledGrades: [...DEFAULT_ADMISSION_GRADES],
+                nextReceiptSeq: 2,
+              },
+            });
+            const rcpSeq = (setting as any).nextReceiptSeq ? (setting as any).nextReceiptSeq - 1 : 1;
+            const receiptNumber = `RCP${extractYearTag(app.academicYear)}-${String(rcpSeq).padStart(4, "0")}`;
+
+            const createdPayment = await (tx as any).admissionFeePayment.create({
+              data: {
+                schoolId,
+                applicationId: app.id,
+                receiptNumber,
+                idempotencyKey: input.idempotencyKey,
+                feeHead: input.feeHead || "Admission Fee",
+                amountPaise,
+                paymentDate: paymentDateObj,
+                paymentMode: input.paymentMode,
+                referenceNo: input.referenceNo?.trim() || null,
+                remarks: input.remarks?.trim() || null,
+                recordedByUserId: actor.id,
+                recordedByName: actor.name,
+              },
+            });
+
+            await tx.admissionActivity.create({
+              data: {
+                schoolId,
+                applicationId: app.id,
+                actorId: actor.id,
+                actorName: actor.name,
+                action: "FEE_PAYMENT_RECORDED",
+                summary: `Recorded ₹${(amountPaise / 100).toLocaleString("en-IN")} (${input.paymentMode}) for ${app.studentName} · Receipt ${receiptNumber}.`,
+              },
+            });
+
+            const mappedPayment = mapPrismaFeePayment({
+              ...createdPayment,
+              application: {
+                studentName: app.studentName,
+                admissionNumber: app.admissionNumber,
+              },
+            });
+            return {
+              payment: mappedPayment,
+              ledger: buildEnrichedFeeLedger(mapPrismaFeeLedger(ledgerRow), [
+                ...existingPayments,
+                mappedPayment,
+              ]),
+            };
+          });
+        });
+      } catch (err) {
+        if (err instanceof NotFoundError || err instanceof ValidationError) throw err;
+        handlePrismaError("recordAdmittedFeePayment", err);
+      }
+    }
+
+    const store = loadStore();
+    const app = store.applications[input.applicationId];
+    if (!app || app.schoolId !== schoolId || app.status !== "ADMITTED") {
+      throw new NotFoundError("Admitted student");
+    }
+
+    const duplicate = Object.values(store.feePayments).find(
+      (p) => p.schoolId === schoolId && p.idempotencyKey === input.idempotencyKey,
+    );
+    const existingPayments = Object.values(store.feePayments).filter(
+      (p) => p.schoolId === schoolId && p.applicationId === app.id,
+    );
+    let existingLedger = Object.values(store.feeLedgers).find(
+      (l) => l.schoolId === schoolId && l.applicationId === app.id,
+    );
+
+    if (duplicate) {
+      const ledgerFallback: StoredRawFeeLedger = existingLedger ?? {
+        id: randomUUID(),
+        schoolId,
+        applicationId: app.id,
+        academicYear: app.academicYear,
+        totalFeePaise: amountPaise,
+        concessionPaise: 0,
+        concessionReason: null,
+        currency: "INR",
+        updatedAt: nowIso,
+      };
+      return {
+        payment: duplicate,
+        ledger: buildEnrichedFeeLedger(ledgerFallback, existingPayments),
+      };
+    }
+
+    const paidSoFar = existingPayments.reduce((sum, p) => sum + p.amountPaise, 0);
+    if (!existingLedger) {
+      const ledgerId = randomUUID();
+      existingLedger = {
+        id: ledgerId,
+        schoolId,
+        applicationId: app.id,
+        academicYear: app.academicYear,
+        totalFeePaise: paidSoFar + amountPaise,
+        concessionPaise: 0,
+        concessionReason: null,
+        currency: "INR",
+        updatedAt: nowIso,
+      };
+      store.feeLedgers[ledgerId] = existingLedger;
+    } else {
+      const netFee = Math.max(
+        0,
+        existingLedger.totalFeePaise - existingLedger.concessionPaise,
+      );
+      const outstanding = Math.max(0, netFee - paidSoFar);
+      if (netFee > 0 && amountPaise > outstanding) {
+        throw new ValidationError(
+          `Payment of ₹${(amountPaise / 100).toFixed(2)} exceeds remaining balance of ₹${(outstanding / 100).toFixed(2)}.`,
+        );
+      }
+    }
+
+    const setting = this.getOrCreateFallbackSetting(store, schoolId);
+    const seq = setting.nextReceiptSeq;
+    setting.nextReceiptSeq += 1;
+    const receiptNumber = `RCP${extractYearTag(app.academicYear)}-${String(seq).padStart(4, "0")}`;
+
+    const payment: AdmissionFeePaymentRecord = {
+      id: randomUUID(),
+      schoolId,
+      applicationId: app.id,
+      studentName: app.studentName,
+      admissionNumber: app.admissionNumber,
+      receiptNumber,
+      idempotencyKey: input.idempotencyKey,
+      feeHead: (input.feeHead as AdmittedFeeHeadValue) || "Admission Fee",
+      amountPaise,
+      paymentDate: paymentDateIso,
+      paymentMode: input.paymentMode as AdmittedPaymentModeValue,
+      referenceNo: input.referenceNo?.trim() || null,
+      remarks: input.remarks?.trim() || null,
+      recordedByUserId: actor.id,
+      recordedByName: actor.name,
+      createdAt: nowIso,
+    };
+    store.feePayments[payment.id] = payment;
+
+    store.activities.unshift({
+      id: randomUUID(),
+      schoolId,
+      applicationId: app.id,
+      enquiryId: null,
+      actorId: actor.id,
+      actorName: actor.name,
+      action: "FEE_PAYMENT_RECORDED",
+      summary: `Recorded ₹${(amountPaise / 100).toLocaleString("en-IN")} (${input.paymentMode}) for ${app.studentName} · Receipt ${receiptNumber}.`,
+      createdAt: nowIso,
+    });
+    saveStore(store);
+
+    return {
+      payment,
+      ledger: buildEnrichedFeeLedger(existingLedger, [...existingPayments, payment]),
+    };
   }
 }
 

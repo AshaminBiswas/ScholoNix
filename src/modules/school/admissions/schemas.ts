@@ -279,7 +279,7 @@ export const createApplicationSchema = z
     status: z.enum(["UNDER_REVIEW", "DOCUMENTS_PENDING", "SHORTLISTED"]).default("UNDER_REVIEW"),
     enquiryId: z.string().uuid().optional().nullable(),
     notes: z.string().trim().max(500).optional().or(z.literal("")),
-    admissionType: z.enum(["FRESH", "TRANSFER"]).default("FRESH"),
+    admissionType: z.enum(["FRESH", "TRANSFER", "RE_ADMISSION", "OTHER"]).default("FRESH"),
     isDraft: z.boolean().default(false),
     currentStep: z.coerce.number().int().min(1).max(4).default(1),
     studentPhotoKey: z.string().trim().max(500).optional().nullable(),
@@ -422,7 +422,7 @@ export const updateApplicationSchema = z.object({
   guardianPhone: phoneSchema.optional(),
   guardianEmail: optionalEmailSchema,
   previousSchool: z.string().trim().max(200).optional().nullable(),
-  admissionType: z.enum(["FRESH", "TRANSFER"]).optional(),
+  admissionType: z.enum(["FRESH", "TRANSFER", "RE_ADMISSION", "OTHER"]).optional(),
   isDraft: z.boolean().optional(),
   currentStep: z.coerce.number().int().min(1).max(4).optional(),
   studentPhotoKey: z.string().trim().max(500).optional().nullable(),
@@ -573,6 +573,64 @@ export const bulkUpdateApplicationsSchema = z
     { message: "Provide at least one field to update across selected applications." },
   );
 
+export const directAdmitStudentSchema = z.object({
+  studentName: z.string().trim().min(2, "Student name is required").max(120),
+  gender: z.enum(["Male", "Female", "Other", ""]).optional(),
+  dateOfBirth: optionalDateSchema,
+  gradeApplied: z.string().trim().min(1, "Grade is required").max(60),
+  academicYear: z.string().trim().min(4, "Academic year is required").max(30),
+  guardianName: z.string().trim().min(2, "Guardian name is required").max(120),
+  guardianRelation: z.string().trim().min(2).max(60).default("Parent"),
+  guardianPhone: phoneSchema,
+  guardianEmail: optionalEmailSchema,
+  admissionType: z.enum(["FRESH", "TRANSFER", "RE_ADMISSION", "OTHER"]).default("FRESH"),
+  enrollmentStatus: z.enum(["ACTIVE", "TRANSFERRED", "WITHDRAWN"]).default("ACTIVE"),
+  admittedAt: optionalDateSchema,
+  previousSchool: z.string().trim().max(200).optional().or(z.literal("")),
+  bloodGroup: z.string().trim().max(20).optional().or(z.literal("")),
+  nationality: z.string().trim().max(80).optional().or(z.literal("")),
+  totalFeeRupees: z.coerce.number().min(0).max(100_000_000).optional(),
+  notes: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const importAdmittedStudentsSchema = z.object({
+  students: z
+    .array(directAdmitStudentSchema)
+    .min(1, "Include at least one admitted student row to import")
+    .max(100, "Import at most 100 admitted students per batch"),
+});
+
+export const updateAdmittedEnrollmentSchema = z.object({
+  enrollmentStatus: z.enum(["ACTIVE", "TRANSFERRED", "WITHDRAWN"]).optional(),
+  admissionType: z.enum(["FRESH", "TRANSFER", "RE_ADMISSION", "OTHER"]).optional(),
+  notes: z.string().trim().max(500).optional().nullable(),
+});
+
+export const upsertAdmittedFeeLedgerSchema = z
+  .object({
+    applicationId: z.string().uuid("Invalid admitted student application ID"),
+    totalFeeRupees: z.coerce.number().min(0, "Total fee cannot be negative").max(100_000_000),
+    concessionRupees: z.coerce.number().min(0, "Concession cannot be negative").max(100_000_000).default(0),
+    concessionReason: z.string().trim().max(255).optional().or(z.literal("")),
+  })
+  .refine((val) => val.concessionRupees <= val.totalFeeRupees, {
+    message: "Concession cannot exceed total fee.",
+    path: ["concessionRupees"],
+  });
+
+export const recordAdmittedFeePaymentSchema = z.object({
+  applicationId: z.string().uuid("Invalid admitted student application ID"),
+  idempotencyKey: z.string().trim().min(8, "Idempotency key is required").max(80),
+  feeHead: z
+    .enum(["Admission Fee", "Tuition Fee", "Annual Charges", "Transport Fee", "Hostel Fee"])
+    .default("Admission Fee"),
+  amountRupees: z.coerce.number().positive("Payment amount must be greater than zero").max(100_000_000),
+  paymentDate: optionalDateSchema,
+  paymentMode: z.enum(["UPI", "Net Banking", "Card", "Cash", "Cheque"]),
+  referenceNo: z.string().trim().max(120).optional().or(z.literal("")),
+  remarks: z.string().trim().max(255).optional().or(z.literal("")),
+});
+
 export type CreateEnquiryInput = z.input<typeof createEnquirySchema>;
 export type UpdateEnquiryInput = z.infer<typeof updateEnquirySchema>;
 export type CreateEnquirySourceInput = z.input<typeof createEnquirySourceSchema>;
@@ -588,3 +646,8 @@ export type UpdateAdmissionsSettingsInput = z.infer<typeof updateAdmissionsSetti
 export type CreateReminderInput = z.infer<typeof createReminderSchema>;
 export type BulkImportApplicationsInput = z.infer<typeof bulkImportApplicationsSchema>;
 export type BulkUpdateApplicationsInput = z.infer<typeof bulkUpdateApplicationsSchema>;
+export type DirectAdmitStudentInput = z.input<typeof directAdmitStudentSchema>;
+export type ImportAdmittedStudentsInput = z.input<typeof importAdmittedStudentsSchema>;
+export type UpdateAdmittedEnrollmentInput = z.infer<typeof updateAdmittedEnrollmentSchema>;
+export type UpsertAdmittedFeeLedgerInput = z.input<typeof upsertAdmittedFeeLedgerSchema>;
+export type RecordAdmittedFeePaymentInput = z.input<typeof recordAdmittedFeePaymentSchema>;
