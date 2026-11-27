@@ -258,9 +258,143 @@ function isMissingTablePrismaError(err: unknown): boolean {
   return (
     code === "P2021" ||
     code === "P2022" ||
-    message.includes("does not exist in the current database") ||
+    message.includes("does not exist") ||
     message.includes("relation \"admission_")
   );
+}
+
+interface AdmissionsSchemaCaps {
+  hasReceiptSeq: boolean;
+  hasEnrollmentStatus: boolean;
+  hasFeeLedgers: boolean;
+  hasFeePayments: boolean;
+  checkedAt: number;
+}
+
+const globalForAdmissionsCaps = globalThis as unknown as {
+  admissionsSchemaCaps?: AdmissionsSchemaCaps;
+};
+
+async function getAdmissionsSchemaCaps(tx: any): Promise<AdmissionsSchemaCaps> {
+  const cached = globalForAdmissionsCaps.admissionsSchemaCaps;
+  const now = Date.now();
+  if (cached) {
+    const allReady =
+      cached.hasReceiptSeq &&
+      cached.hasEnrollmentStatus &&
+      cached.hasFeeLedgers &&
+      cached.hasFeePayments;
+    const ttl = allReady ? 300_000 : 15_000;
+    if (now - cached.checkedAt < ttl) {
+      return cached;
+    }
+  }
+
+  try {
+    const rows = (await tx.$queryRawUnsafe(`
+      SELECT
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'admission_settings'
+            AND column_name = 'next_receipt_seq'
+        ) AS has_receipt_seq,
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'admission_applications'
+            AND column_name = 'enrollment_status'
+        ) AS has_enrollment_status,
+        to_regclass('public.admission_fee_ledgers') IS NOT NULL AS has_fee_ledgers,
+        to_regclass('public.admission_fee_payments') IS NOT NULL AS has_fee_payments
+    `)) as Array<{
+      has_receipt_seq?: boolean;
+      has_enrollment_status?: boolean;
+      has_fee_ledgers?: boolean;
+      has_fee_payments?: boolean;
+    }>;
+    const row = rows?.[0];
+    const caps: AdmissionsSchemaCaps = {
+      hasReceiptSeq: Boolean(row?.has_receipt_seq),
+      hasEnrollmentStatus: Boolean(row?.has_enrollment_status),
+      hasFeeLedgers: Boolean(row?.has_fee_ledgers),
+      hasFeePayments: Boolean(row?.has_fee_payments),
+      checkedAt: now,
+    };
+    globalForAdmissionsCaps.admissionsSchemaCaps = caps;
+    return caps;
+  } catch {
+    return {
+      hasReceiptSeq: false,
+      hasEnrollmentStatus: false,
+      hasFeeLedgers: false,
+      hasFeePayments: false,
+      checkedAt: now,
+    };
+  }
+}
+
+function getSettingSelect(caps: AdmissionsSchemaCaps) {
+  return {
+    id: true,
+    schoolId: true,
+    currentAcademicYear: true,
+    applicationDeadline: true,
+    applicationPrefix: true,
+    nextApplicationSeq: true,
+    nextEnquirySeq: true,
+    nextAdmissionSeq: true,
+    enabledGrades: true,
+    extendedConfig: true,
+    createdAt: true,
+    updatedAt: true,
+    ...(caps.hasReceiptSeq ? { nextReceiptSeq: true } : {}),
+  } as const;
+}
+
+function getApplicationSelect(caps: AdmissionsSchemaCaps) {
+  return {
+    id: true,
+    schoolId: true,
+    applicationCode: true,
+    admissionNumber: true,
+    enquiryId: true,
+    studentName: true,
+    gender: true,
+    dateOfBirth: true,
+    gradeApplied: true,
+    academicYear: true,
+    guardianName: true,
+    guardianRelation: true,
+    guardianPhone: true,
+    guardianEmail: true,
+    previousSchool: true,
+    status: true,
+    verificationStatus: true,
+    verificationNotes: true,
+    documentsChecklist: true,
+    admissionType: true,
+    isDraft: true,
+    currentStep: true,
+    studentPhotoKey: true,
+    nationality: true,
+    bloodGroup: true,
+    studentIdNumber: true,
+    studentDetails: true,
+    guardianDetails: true,
+    academicDetails: true,
+    uploadedDocuments: true,
+    declarationAccepted: true,
+    appliedAt: true,
+    shortlistedAt: true,
+    admittedAt: true,
+    rejectedAt: true,
+    verifiedAt: true,
+    reviewedByUserId: true,
+    createdAt: true,
+    updatedAt: true,
+    ...(caps.hasEnrollmentStatus ? { enrollmentStatus: true } : {}),
+  } as const;
 }
 
 function handlePrismaError(operation: string, err: unknown): void {
@@ -845,6 +979,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         const fresh = await runPrismaOp("getTenantSnapshot", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
+            const caps = await getAdmissionsSchemaCaps(tx);
             const [
               settingRow,
               appRows,
@@ -857,9 +992,13 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               feeLedgerRowsRaw,
               feePaymentRowsRaw,
             ] = await Promise.all([
-              tx.admissionSetting.findUnique({ where: { schoolId } }),
-              tx.admissionApplication.findMany({
+              (tx.admissionSetting as any).findUnique({
                 where: { schoolId },
+                select: getSettingSelect(caps),
+              }),
+              (tx.admissionApplication as any).findMany({
+                where: { schoolId },
+                select: getApplicationSelect(caps),
                 orderBy: { appliedAt: "desc" },
               }),
               tx.admissionEnquiry.findMany({
@@ -906,10 +1045,10 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                 select: { id: true, name: true, role: true },
                 orderBy: { name: "asc" },
               }),
-              (tx as any).admissionFeeLedger
+              caps.hasFeeLedgers && (tx as any).admissionFeeLedger
                 ? (tx as any).admissionFeeLedger.findMany({ where: { schoolId } })
                 : Promise.resolve([]),
-              (tx as any).admissionFeePayment
+              caps.hasFeePayments && (tx as any).admissionFeePayment
                 ? (tx as any).admissionFeePayment.findMany({
                     where: { schoolId },
                     orderBy: { paymentDate: "desc" },
@@ -924,19 +1063,19 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
 
             let sourceRows = sourceRowsRaw as any[];
             if (sourceRows.length === 0 && (tx as any).admissionEnquirySource) {
-              const seeded = await Promise.all(
-                DEFAULT_ENQUIRY_SOURCES.map((def) =>
-                  (tx as any).admissionEnquirySource.create({
-                    data: {
-                      schoolId,
-                      name: def.name,
-                      description: def.description,
-                      isActive: true,
-                      colorToken: def.colorToken,
-                    },
-                  }),
-                ),
-              );
+              const seeded: any[] = [];
+              for (const def of DEFAULT_ENQUIRY_SOURCES) {
+                const row = await (tx as any).admissionEnquirySource.create({
+                  data: {
+                    schoolId,
+                    name: def.name,
+                    description: def.description,
+                    isActive: true,
+                    colorToken: def.colorToken,
+                  },
+                });
+                seeded.push(row);
+              }
               sourceRows = seeded;
             }
 
@@ -1096,15 +1235,20 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("createApplication", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            let setting = await tx.admissionSetting.findUnique({ where: { schoolId } });
+            const caps = await getAdmissionsSchemaCaps(tx);
+            let setting = await (tx.admissionSetting as any).findUnique({
+              where: { schoolId },
+              select: getSettingSelect(caps),
+            });
             if (!setting) {
-              setting = await tx.admissionSetting.create({
+              setting = await (tx.admissionSetting as any).create({
                 data: {
                   schoolId,
                   currentAcademicYear: getCurrentAcademicYearLabel(),
                   applicationPrefix: "APP",
                   enabledGrades: [...DEFAULT_ADMISSION_GRADES],
                 },
+                select: getSettingSelect(caps),
               });
             }
 
@@ -1120,9 +1264,10 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               }
             }
 
-            const updatedSetting = await tx.admissionSetting.update({
+            const updatedSetting = await (tx.admissionSetting as any).update({
               where: { schoolId },
               data: { nextApplicationSeq: { increment: 1 } },
+              select: getSettingSelect(caps),
             });
             const seq = updatedSetting.nextApplicationSeq - 1;
             const applicationCode = `${setting.applicationPrefix}${extractYearTag(input.academicYear)}-${String(seq).padStart(4, "0")}`;
@@ -1140,7 +1285,8 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               );
             }
 
-            const created = await tx.admissionApplication.create({
+            const created = await (tx.admissionApplication as any).create({
+              select: getApplicationSelect(caps),
               data: {
                 schoolId,
                 applicationCode,
@@ -1159,7 +1305,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                 verificationStatus: "PENDING",
                 verificationNotes: input.notes || null,
                 documentsChecklist: checklist as any,
-                admissionType,
+                admissionType: admissionType as any,
                 isDraft,
                 currentStep: input.currentStep ?? 1,
                 studentPhotoKey: input.studentPhotoKey || null,
@@ -1364,8 +1510,10 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("getApplicationById", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const found = await tx.admissionApplication.findFirst({
+            const caps = await getAdmissionsSchemaCaps(tx);
+            const found = await (tx.admissionApplication as any).findFirst({
               where: { id: applicationId, schoolId },
+              select: getApplicationSelect(caps),
             });
             if (!found) {
               throw new NotFoundError("Admission application");
@@ -1407,8 +1555,10 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("updateApplication", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const existingRow = await tx.admissionApplication.findFirst({
+            const caps = await getAdmissionsSchemaCaps(tx);
+            const existingRow = await (tx.admissionApplication as any).findFirst({
               where: { id: applicationId, schoolId },
+              select: getApplicationSelect(caps),
             });
             if (!existingRow) {
               throw new NotFoundError("Admission application");
@@ -1419,7 +1569,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
 
             let admissionNumber = existingRow.admissionNumber;
             if (nextStatus === "ADMITTED" && !admissionNumber) {
-              const updatedSetting = await tx.admissionSetting.upsert({
+              const updatedSetting = await (tx.admissionSetting as any).upsert({
                 where: { schoolId },
                 update: { nextAdmissionSeq: { increment: 1 } },
                 create: {
@@ -1429,6 +1579,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                   enabledGrades: [...DEFAULT_ADMISSION_GRADES],
                   nextAdmissionSeq: 2,
                 },
+                select: getSettingSelect(caps),
               });
               const seq = updatedSetting.nextAdmissionSeq - 1;
               admissionNumber = `ADM${extractYearTag(existingRow.academicYear)}-${String(seq).padStart(4, "0")}`;
@@ -1475,8 +1626,9 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                   ? (buildChecklistFromUploads(input.uploadedDocuments) as any)
                   : existingRow.documentsChecklist;
 
-            const updatedRow = await tx.admissionApplication.update({
+            const updatedRow = await (tx.admissionApplication as any).update({
               where: { id: existingRow.id },
+              select: getApplicationSelect(caps),
               data: {
                 status: nextStatus,
                 admissionNumber,
@@ -1769,7 +1921,8 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("createEnquiry", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const updatedSetting = await tx.admissionSetting.upsert({
+            const caps = await getAdmissionsSchemaCaps(tx);
+            const updatedSetting = await (tx.admissionSetting as any).upsert({
               where: { schoolId },
               update: { nextEnquirySeq: { increment: 1 } },
               create: {
@@ -1779,6 +1932,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                 enabledGrades: [...DEFAULT_ADMISSION_GRADES],
                 nextEnquirySeq: 2,
               },
+              select: getSettingSelect(caps),
             });
             const seq = updatedSetting.nextEnquirySeq - 1;
             const enquiryCode = `ENQ${extractYearTag(input.academicYear)}-${String(seq).padStart(4, "0")}`;
@@ -2231,8 +2385,10 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("updateSettings", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
+            const caps = await getAdmissionsSchemaCaps(tx);
             const updated = await (tx.admissionSetting as any).upsert({
               where: { schoolId },
+              select: getSettingSelect(caps),
               update: {
                 currentAcademicYear: input.currentAcademicYear,
                 applicationDeadline: deadlineDate,
@@ -2433,21 +2589,27 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("importApplications", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            let setting = await tx.admissionSetting.findUnique({ where: { schoolId } });
+            const caps = await getAdmissionsSchemaCaps(tx);
+            let setting = await (tx.admissionSetting as any).findUnique({
+              where: { schoolId },
+              select: getSettingSelect(caps),
+            });
             if (!setting) {
-              setting = await tx.admissionSetting.create({
+              setting = await (tx.admissionSetting as any).create({
                 data: {
                   schoolId,
                   currentAcademicYear: getCurrentAcademicYearLabel(),
                   applicationPrefix: "APP",
                   enabledGrades: [...DEFAULT_ADMISSION_GRADES],
                 },
+                select: getSettingSelect(caps),
               });
             }
 
-            const updatedSetting = await tx.admissionSetting.update({
+            const updatedSetting = await (tx.admissionSetting as any).update({
               where: { schoolId },
               data: { nextApplicationSeq: { increment: items.length } },
+              select: getSettingSelect(caps),
             });
             const firstSeq = updatedSetting.nextApplicationSeq - items.length;
             const createdRecords: AdmissionApplicationRecord[] = [];
@@ -2457,7 +2619,8 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               const seq = firstSeq + idx;
               const applicationCode = `${setting.applicationPrefix}${extractYearTag(item.academicYear)}-${String(seq).padStart(4, "0")}`;
 
-              const created = await tx.admissionApplication.create({
+              const created = await (tx.admissionApplication as any).create({
+                select: getApplicationSelect(caps),
                 data: {
                   schoolId,
                   applicationCode,
@@ -2576,8 +2739,10 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("bulkUpdateApplications", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const rows = await tx.admissionApplication.findMany({
+            const caps = await getAdmissionsSchemaCaps(tx);
+            const rows = await (tx.admissionApplication as any).findMany({
               where: { id: { in: uniqueIds }, schoolId },
+              select: getApplicationSelect(caps),
             });
             if (rows.length !== uniqueIds.length) {
               throw new NotFoundError("Admission application");
@@ -2588,7 +2753,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               const nextStatus: AdmissionApplicationStatusType = input.status ?? existingRow.status;
               let admissionNumber = existingRow.admissionNumber;
               if (nextStatus === "ADMITTED" && !admissionNumber) {
-                const updatedSetting = await tx.admissionSetting.upsert({
+                const updatedSetting = await (tx.admissionSetting as any).upsert({
                   where: { schoolId },
                   update: { nextAdmissionSeq: { increment: 1 } },
                   create: {
@@ -2598,14 +2763,16 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                     enabledGrades: [...DEFAULT_ADMISSION_GRADES],
                     nextAdmissionSeq: 2,
                   },
+                  select: getSettingSelect(caps),
                 });
                 const seq = updatedSetting.nextAdmissionSeq - 1;
                 admissionNumber = `ADM${extractYearTag(existingRow.academicYear)}-${String(seq).padStart(4, "0")}`;
               }
               const nextVerification = input.verificationStatus ?? existingRow.verificationStatus;
 
-              const updatedRow = await tx.admissionApplication.update({
+              const updatedRow = await (tx.admissionApplication as any).update({
                 where: { id: existingRow.id },
+                select: getApplicationSelect(caps),
                 data: {
                   status: nextStatus,
                   admissionNumber,
@@ -3695,7 +3862,8 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("directAdmitStudent", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const setting = await tx.admissionSetting.upsert({
+            const caps = await getAdmissionsSchemaCaps(tx);
+            const setting = await (tx.admissionSetting as any).upsert({
               where: { schoolId },
               update: {
                 nextApplicationSeq: { increment: 1 },
@@ -3709,6 +3877,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                 nextApplicationSeq: 2,
                 nextAdmissionSeq: 2,
               },
+              select: getSettingSelect(caps),
             });
             const appSeq = setting.nextApplicationSeq - 1;
             const admSeq = setting.nextAdmissionSeq - 1;
@@ -3726,7 +3895,8 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               appSeq,
             );
 
-            const created = await tx.admissionApplication.create({
+            const created = await (tx.admissionApplication as any).create({
+              select: getApplicationSelect(caps),
               data: {
                 schoolId,
                 applicationCode,
@@ -3745,8 +3915,13 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
                 verificationStatus: "PENDING",
                 verificationNotes: input.notes || null,
                 documentsChecklist: checklist as any,
-                admissionType: admissionType as any,
-                enrollmentStatus,
+                admissionType:
+                  caps.hasEnrollmentStatus
+                    ? (admissionType as any)
+                    : admissionType === "TRANSFER"
+                      ? "TRANSFER"
+                      : "FRESH",
+                ...(caps.hasEnrollmentStatus ? { enrollmentStatus } : {}),
                 isDraft: false,
                 currentStep: 4,
                 bloodGroup: input.bloodGroup || null,
@@ -3758,7 +3933,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               } as any,
             });
 
-            if (initialFeePaise > 0 && (tx as any).admissionFeeLedger) {
+            if (initialFeePaise > 0 && caps.hasFeeLedgers && (tx as any).admissionFeeLedger) {
               await (tx as any).admissionFeeLedger.create({
                 data: {
                   schoolId,
@@ -3905,15 +4080,24 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("updateAdmittedEnrollment", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const existing = await tx.admissionApplication.findFirst({
+            const caps = await getAdmissionsSchemaCaps(tx);
+            const existing = await (tx.admissionApplication as any).findFirst({
               where: { id: applicationId, schoolId, status: "ADMITTED" },
+              select: getApplicationSelect(caps),
             });
             if (!existing) throw new NotFoundError("Admitted student record");
 
-            const updated = await tx.admissionApplication.update({
+            if (input.enrollmentStatus !== undefined && !caps.hasEnrollmentStatus) {
+              throw new ServiceUnavailableError(
+                "Execute prisma/migrations/20261127000000_admitted_students_workbench/migration.sql in Supabase SQL Editor to enable Enrollment Status updates.",
+              );
+            }
+
+            const updated = await (tx.admissionApplication as any).update({
               where: { id: existing.id },
+              select: getApplicationSelect(caps),
               data: {
-                ...(input.enrollmentStatus !== undefined
+                ...(input.enrollmentStatus !== undefined && caps.hasEnrollmentStatus
                   ? { enrollmentStatus: input.enrollmentStatus }
                   : {}),
                 ...(input.admissionType !== undefined
@@ -3990,8 +4174,15 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("upsertAdmittedFeeLedger", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const app = await tx.admissionApplication.findFirst({
+            const caps = await getAdmissionsSchemaCaps(tx);
+            if (!caps.hasFeeLedgers || !caps.hasFeePayments) {
+              throw new ServiceUnavailableError(
+                "Execute prisma/migrations/20261127000000_admitted_students_workbench/migration.sql in Supabase SQL Editor to enable Fee Ledger tracking.",
+              );
+            }
+            const app = await (tx.admissionApplication as any).findFirst({
               where: { id: input.applicationId, schoolId, status: "ADMITTED" },
+              select: getApplicationSelect(caps),
             });
             if (!app) throw new NotFoundError("Admitted student");
 
@@ -4117,8 +4308,15 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
         return await runPrismaOp("recordAdmittedFeePayment", async () => {
           return db.$transaction(async (tx) => {
             await setTransactionTenantContext(tx, schoolId);
-            const app = await tx.admissionApplication.findFirst({
+            const caps = await getAdmissionsSchemaCaps(tx);
+            if (!caps.hasFeeLedgers || !caps.hasFeePayments) {
+              throw new ServiceUnavailableError(
+                "Execute prisma/migrations/20261127000000_admitted_students_workbench/migration.sql in Supabase SQL Editor to enable Fee Ledger tracking.",
+              );
+            }
+            const app = await (tx.admissionApplication as any).findFirst({
               where: { id: input.applicationId, schoolId, status: "ADMITTED" },
+              select: getApplicationSelect(caps),
             });
             if (!app) throw new NotFoundError("Admitted student");
 
