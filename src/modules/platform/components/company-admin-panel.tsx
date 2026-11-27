@@ -6,25 +6,35 @@ import {
   Activity,
   AlertCircle,
   ArrowRight,
+  BarChart3,
   Bell,
   Briefcase,
   Building2,
+  CalendarCheck,
+  CalendarClock,
   CheckCircle2,
+  CheckSquare,
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
   CreditCard,
+  FileText,
+  FolderKanban,
   Headphones,
   HelpCircle,
+  IndianRupee,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
   Megaphone,
   Menu,
+  Receipt,
   Search,
   Settings,
   ShieldCheck,
+  TrendingUp,
   UserCog,
+  UserPlus,
   Users,
   X,
 } from "lucide-react";
@@ -49,6 +59,7 @@ import {
   PlatformSupportTab,
   PlatformUsersTab,
 } from "./platform-operations-tabs";
+import { PlatformCompanyOpsTab } from "./platform-company-ops-tabs";
 import { formatDateShort } from "./platform-shared";
 
 interface CompanyAdminPanelProps {
@@ -299,6 +310,33 @@ export function CompanyAdminPanel({
             </span>
           </button>
 
+          {(
+            [
+              { tab: "employees", label: "Employees", icon: <Users className="h-4 w-4 shrink-0" /> },
+              { tab: "recruitment", label: "Recruitment", icon: <UserPlus className="h-4 w-4 shrink-0" /> },
+              { tab: "attendance", label: "Attendance", icon: <CalendarCheck className="h-4 w-4 shrink-0" /> },
+              { tab: "leaves", label: "Leave & Holidays", icon: <CalendarClock className="h-4 w-4 shrink-0" /> },
+              { tab: "payroll", label: "Payroll", icon: <IndianRupee className="h-4 w-4 shrink-0" /> },
+              { tab: "expenses", label: "Expenses", icon: <Receipt className="h-4 w-4 shrink-0" /> },
+              { tab: "projects", label: "Projects", icon: <FolderKanban className="h-4 w-4 shrink-0" /> },
+              { tab: "tasks", label: "Tasks", icon: <CheckSquare className="h-4 w-4 shrink-0" /> },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.tab}
+              type="button"
+              title={item.label}
+              aria-current={activeTab === item.tab ? "page" : undefined}
+              onClick={() => navigateTab(item.tab)}
+              className={navBtnCls(activeTab === item.tab)}
+            >
+              <span className="flex items-center gap-2.5 min-w-0">
+                {item.icon}
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </span>
+            </button>
+          ))}
+
           {/* Clients Accordion (Schools & Global Users) */}
           <div>
             <button
@@ -376,6 +414,28 @@ export function CompanyAdminPanel({
               </div>
             )}
           </div>
+
+          {(
+            [
+              { tab: "sales", label: "Sales & Invoicing", icon: <TrendingUp className="h-4 w-4 shrink-0" /> },
+              { tab: "documents", label: "Documents", icon: <FileText className="h-4 w-4 shrink-0" /> },
+              { tab: "reports", label: "Reports", icon: <BarChart3 className="h-4 w-4 shrink-0" /> },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.tab}
+              type="button"
+              title={item.label}
+              aria-current={activeTab === item.tab ? "page" : undefined}
+              onClick={() => navigateTab(item.tab)}
+              className={navBtnCls(activeTab === item.tab)}
+            >
+              <span className="flex items-center gap-2.5 min-w-0">
+                {item.icon}
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </span>
+            </button>
+          ))}
 
           {/* Plans & Billing Accordion */}
           <div>
@@ -530,7 +590,7 @@ export function CompanyAdminPanel({
           >
             <span className="flex items-center gap-2.5 min-w-0">
               <Settings className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="truncate">Settings</span>}
+              {!collapsed && <span className="truncate">Company Settings</span>}
             </span>
           </button>
         </nav>
@@ -824,6 +884,26 @@ export function CompanyAdminPanel({
               onSelectSchool={handleSelectSchoolFromAnywhere}
               onNavigateTab={navigateTab}
               onOpenProvision={() => setProvisionModalOpen(true)}
+            />
+          )}
+
+          {(activeTab === "employees" ||
+            activeTab === "recruitment" ||
+            activeTab === "attendance" ||
+            activeTab === "leaves" ||
+            activeTab === "payroll" ||
+            activeTab === "expenses" ||
+            activeTab === "projects" ||
+            activeTab === "tasks" ||
+            activeTab === "sales" ||
+            activeTab === "documents" ||
+            activeTab === "reports") && (
+            <PlatformCompanyOpsTab
+              tab={activeTab}
+              overview={overview}
+              schools={schools}
+              onNavigateTab={navigateTab}
+              onToast={showToast}
             />
           )}
 

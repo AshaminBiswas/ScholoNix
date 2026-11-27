@@ -237,6 +237,24 @@ describe("CompanyAdminPanel Command Center Redesign", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }));
     expect(screen.getByTitle("Schools")).toBeTruthy();
     expect(screen.getByTitle("Global Users")).toBeTruthy();
+    for (const label of [
+      "Employees",
+      "Recruitment",
+      "Attendance",
+      "Leave & Holidays",
+      "Payroll",
+      "Expenses",
+      "Projects",
+      "Tasks",
+      "Sales & Invoicing",
+      "Documents",
+      "Reports",
+    ]) {
+      expect(screen.getByTitle(label)).toBeTruthy();
+    }
+
+    fireEvent.click(screen.getByTitle("Reports"));
+    expect(screen.getByText(/Platform Reports & Exports/i)).toBeTruthy();
 
     // Navigate to Settings tab
     fireEvent.click(screen.getByTitle("Settings"));
