@@ -615,7 +615,7 @@ export function BlogPage() {
                   </span>
                 </div>
 
-                <div className="group relative overflow-hidden rounded-[24px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF8FF]/90 to-[#EDE7FF]/70 dark:to-[#251D4A]/75 shadow-[0_12px_36px_rgba(24,18,77,0.08)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_20px_45px_rgba(102,60,246,0.16)]">
+                <div className="group relative overflow-hidden rounded-[24px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF8FF]/90 dark:via-[#1B183E]/90 to-[#EDE7FF]/70 dark:to-[#251D4A]/75 shadow-[0_12px_36px_rgba(24,18,77,0.08)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_20px_45px_rgba(102,60,246,0.16)]">
                   <div className="grid md:grid-cols-12">
                     {/* Visual / Image */}
                     <div className="relative md:col-span-5">
@@ -718,7 +718,7 @@ export function BlogPage() {
                   {latestPosts.map((post) => (
                     <article
                       key={post.id}
-                      className="group relative overflow-hidden rounded-[20px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF8FF]/90 to-[#F2EDFD]/60 dark:to-[#221B48]/70 p-4 sm:p-5 shadow-[0_8px_24px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_16px_36px_rgba(102,60,246,0.14)]"
+                      className="group relative overflow-hidden rounded-[20px] border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-br from-white/95 dark:from-[#141731]/95 via-[#FAF8FF]/90 dark:via-[#19193D]/90 to-[#F2EDFD]/60 dark:to-[#221B48]/70 p-4 sm:p-5 shadow-[0_8px_24px_rgba(24,18,77,0.06)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_16px_36px_rgba(102,60,246,0.14)]"
                     >
                       <div className="grid gap-4 sm:grid-cols-12 sm:gap-6">
                         {/* Thumbnail Graphic */}

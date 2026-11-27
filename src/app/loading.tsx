@@ -38,7 +38,7 @@ export default function RootLoading() {
           {/* Action CTAs Skeleton */}
           <div className="flex items-center gap-2.5">
             <Skeleton className="hidden h-9 w-20 rounded-[12px] sm:block" />
-            <Skeleton className="h-9 w-28 sm:w-32 rounded-[12px] bg-[#EDE7FF]" />
+            <Skeleton className="h-9 w-28 sm:w-32 rounded-[12px] bg-[#EDE7FF] dark:bg-[#251D4A]" />
           </div>
         </div>
       </header>
@@ -50,13 +50,13 @@ export default function RootLoading() {
           {/* Left Column: Headline & Controls */}
           <div className="space-y-5 sm:space-y-6 lg:col-span-6">
             {/* Pill Badge */}
-            <Skeleton className="h-6 w-52 rounded-full bg-[#EDE7FF]" />
+            <Skeleton className="h-6 w-52 rounded-full bg-[#EDE7FF] dark:bg-[#251D4A]" />
 
             {/* Main Headline lines */}
             <div className="space-y-3">
               <Skeleton className="h-10 w-3/4 sm:h-12" />
               <Skeleton className="h-10 w-4/5 sm:h-12" />
-              <Skeleton className="h-10 w-2/3 sm:h-12 bg-[#EDE7FF]" />
+              <Skeleton className="h-10 w-2/3 sm:h-12 bg-[#EDE7FF] dark:bg-[#251D4A]" />
             </div>
 
             {/* Subtitle lines */}
@@ -67,7 +67,7 @@ export default function RootLoading() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
-              <Skeleton className="h-11 w-full sm:w-40 rounded-[12px] bg-[#EDE7FF]" />
+              <Skeleton className="h-11 w-full sm:w-40 rounded-[12px] bg-[#EDE7FF] dark:bg-[#251D4A]" />
               <Skeleton className="h-11 w-full sm:w-36 rounded-[12px]" />
             </div>
 
@@ -134,7 +134,7 @@ export default function RootLoading() {
         {/* 3. Feature Cards Grid Skeleton */}
         <div className="mt-16 sm:mt-24">
           <div className="mx-auto max-w-xl text-center space-y-2">
-            <Skeleton className="mx-auto h-5 w-28 rounded-full bg-[#EDE7FF]" />
+            <Skeleton className="mx-auto h-5 w-28 rounded-full bg-[#EDE7FF] dark:bg-[#251D4A]" />
             <Skeleton className="mx-auto h-8 w-64 sm:w-80" />
             <Skeleton className="mx-auto h-4 w-96 max-w-full" />
           </div>

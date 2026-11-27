@@ -597,7 +597,7 @@ export function LandingPage() {
 
             {/* 3. Lotus World School */}
             <div
-              className={`group relative overflow-hidden rounded-[20px] border border-[#DDD6FE]/90 dark:border-[#3B306E]/90 bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF5FF]/85 to-[#EDE7FF]/70 dark:to-[#251D4A]/75 backdrop-blur-md p-4.5 sm:p-5 shadow-[0_8px_24px_rgba(102,60,246,0.08)] transition-all duration-700 hover:-translate-y-2 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_20px_42px_rgba(102,60,246,0.22)] cursor-pointer will-change-transform ${
+              className={`group relative overflow-hidden rounded-[20px] border border-[#DDD6FE]/90 dark:border-[#3B306E]/90 bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF5FF]/85 dark:via-[#1B183E]/90 to-[#EDE7FF]/70 dark:to-[#251D4A]/75 backdrop-blur-md p-4.5 sm:p-5 shadow-[0_8px_24px_rgba(102,60,246,0.08)] transition-all duration-700 hover:-translate-y-2 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_20px_42px_rgba(102,60,246,0.22)] cursor-pointer will-change-transform ${
                 cardsInView
                   ? "opacity-100 translate-y-0 scale-100"
                   : "opacity-0 translate-y-8 scale-[0.97]"

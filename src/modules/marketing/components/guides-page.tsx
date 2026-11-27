@@ -739,7 +739,7 @@ export function GuidesPage() {
                     className="group flex flex-col overflow-hidden rounded-2xl border border-[#CDC2F7] dark:border-[#40347A] bg-gradient-to-b from-white/95 dark:from-[#141731]/95 via-[#FAF8FF] dark:via-[#191C3B] to-[#F2ECFE] dark:to-[#221B48] shadow-[0_10px_32px_rgba(24,18,77,0.07)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#663CF6] dark:hover:border-[#9D7CFE] hover:shadow-[0_18px_40px_rgba(102,60,246,0.16)] sm:flex-row"
                   >
                     {/* Left: Dashboard Mockup Artwork */}
-                    <div className="relative flex items-center justify-center bg-gradient-to-br from-[#EDE9FE] dark:from-[#231B47] via-[#EEF2FF] to-[#E0E7FF] dark:to-[#1F2554] p-6 sm:w-1/2">
+                    <div className="relative flex items-center justify-center bg-gradient-to-br from-[#EDE9FE] dark:from-[#231B47] via-[#EEF2FF] dark:via-[#1C214A] to-[#E0E7FF] dark:to-[#1F2554] p-6 sm:w-1/2">
                       <div className="relative w-full max-w-[260px] drop-shadow-md transition-transform duration-500 group-hover:scale-105">
                         {/* Realistic Mockup Laptop */}
                         <div className="rounded-xl border-4 border-[#312E81] bg-white dark:bg-[#141731] p-3 shadow-lg">

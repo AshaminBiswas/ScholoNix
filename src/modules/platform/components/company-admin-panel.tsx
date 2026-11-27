@@ -232,53 +232,53 @@ export function CompanyAdminPanel({
     }`;
 
   const renderSidebarContent = (collapsed: boolean) => (
-    <div className="flex h-full flex-col justify-between p-3.5 relative">
+    <div className="flex h-full flex-col justify-between p-3.5 overflow-y-auto no-scrollbar">
       <div className="space-y-4">
         {/* Brand Header & Collapse Toggle */}
-        <div className="flex items-center justify-between gap-2 px-1 pt-0.5">
-          <div className="flex items-center gap-2.5 min-w-0">
+        <div
+          className={`flex items-center gap-2 px-1 pt-0.5 ${
+            collapsed ? "flex-col justify-center" : "justify-between"
+          }`}
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
             <BrandLogo
-              className="h-8 shrink-0"
+              className="max-w-full shrink"
+              imgClassName={collapsed ? "h-8 w-8" : "h-7 w-auto max-w-[144px]"}
               asLink={false}
               variant={collapsed ? "icon" : "full"}
             />
-            {!collapsed && (
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-[#76799C] truncate dark:text-[#9DA6CC]">
-                  SaaS School Management
-                </p>
-              </div>
-            )}
           </div>
           <button
             type="button"
             onClick={() => setMobileMenuOpen(false)}
-            className="lg:hidden rounded-lg p-1 text-[#76799C]"
+            className="lg:hidden shrink-0 rounded-lg p-1.5 text-[#4D5072] hover:bg-white/60 dark:text-[#C5CCF0] dark:hover:bg-[#1B1F3F]"
             aria-label="Close navigation menu"
           >
             <X className="h-5 w-5" />
           </button>
+          <button
+            type="button"
+            onClick={toggleSidebarCollapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="hidden lg:inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#D6DBF0] bg-white text-[#663CF6] shadow-xs hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#1B1F3F] dark:text-[#C4B5FD] dark:hover:border-[#8B5CF6]"
+          >
+            {collapsed ? (
+              <ChevronsRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronsLeft className="h-3.5 w-3.5" />
+            )}
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={toggleSidebarCollapsed}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="hidden lg:flex absolute -right-3.5 top-5 z-20 h-7 w-7 items-center justify-center rounded-full border border-[#D6DBF0] bg-white text-[#663CF6] shadow-sm hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#1B1F3F] dark:text-[#C4B5FD]"
-        >
-          {collapsed ? (
-            <ChevronsRight className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronsLeft className="h-3.5 w-3.5" />
-          )}
-        </button>
 
         {/* Subtle Command Center Pill */}
         {!collapsed && (
-          <div className="rounded-[12px] border border-[#DDD6FE] bg-white/70 px-3 py-2 dark:border-[#342B63] dark:bg-[#19163B]/70">
-            <div className="flex items-center gap-2 text-[11px] font-extrabold text-[#663CF6] dark:text-[#CBB8FF]">
-              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-              <span>Company Control Center</span>
+          <div className="rounded-[12px] border border-[#DDD6FE] bg-white/75 px-3 py-2 dark:border-[#342B63] dark:bg-[#181538]">
+            <div className="flex items-center justify-between gap-2 text-[11px] font-extrabold text-[#663CF6] dark:text-[#CBB8FF]">
+              <span className="flex items-center gap-2 truncate">
+                <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Company Control Center</span>
+              </span>
             </div>
           </div>
         )}
@@ -371,7 +371,7 @@ export function CompanyAdminPanel({
                   className={`w-full text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
                     activeTab === "billing"
                       ? "text-[#663CF6] bg-[#EDE7FF]/70 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
-                      : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC]"
+                      : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
                   }`}
                 >
                   Invoices &amp; MRR
@@ -444,7 +444,7 @@ export function CompanyAdminPanel({
                     className={`w-full flex items-center gap-1.5 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
                       activeTab === "admins"
                         ? "text-[#663CF6] bg-[#EDE7FF]/70 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
-                        : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC]"
+                        : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
                     }`}
                   >
                     <UserCog className="h-3 w-3 shrink-0" />
@@ -456,7 +456,7 @@ export function CompanyAdminPanel({
                     className={`w-full flex items-center gap-1.5 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
                       activeTab === "audit"
                         ? "text-[#663CF6] bg-[#EDE7FF]/70 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
-                        : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC]"
+                        : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
                     }`}
                   >
                     <Activity className="h-3 w-3 shrink-0" />
@@ -544,7 +544,7 @@ export function CompanyAdminPanel({
     <div className="min-h-screen bg-[#F5F3FC] text-[#1B1D45] flex dark:bg-[#090B1A] dark:text-[#DCE1F9]">
       {/* Desktop Collapsible Lavender Sidebar */}
       <aside
-        className={`hidden lg:block shrink-0 border-r border-[#DFE3F5] bg-gradient-to-b from-[#F4F0FC] via-[#EFEAFD] to-[#EAE3FC] sticky top-0 h-screen transition-all duration-200 dark:border-[#232746] dark:bg-gradient-to-b dark:from-[#0E1026] dark:to-[#111430] ${
+        className={`hidden lg:block shrink-0 border-r border-[#DFE3F5] bg-gradient-to-b from-[#F4F0FC] via-[#EFEAFD] to-[#EAE3FC] sticky top-0 h-screen transition-all duration-200 dark:border-[#232746] dark:bg-gradient-to-b dark:from-[#0E1026] dark:via-[#10132C] dark:to-[#111430] ${
           sidebarCollapsed ? "w-[78px]" : "w-64"
         }`}
       >
@@ -558,7 +558,7 @@ export function CompanyAdminPanel({
             className="fixed inset-0 bg-black/50 backdrop-blur-xs"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <aside className="relative w-72 max-w-[85vw] bg-gradient-to-b from-[#F4F0FC] to-[#EAE3FC] h-full shadow-2xl dark:bg-gradient-to-b dark:from-[#0E1026] dark:to-[#111430]">
+          <aside className="relative w-72 max-w-[85vw] bg-gradient-to-b from-[#F4F0FC] via-[#EFEAFD] to-[#EAE3FC] h-full shadow-2xl dark:bg-gradient-to-b dark:from-[#0E1026] dark:via-[#10132C] dark:to-[#111430]">
             {renderSidebarContent(false)}
           </aside>
         </div>
@@ -567,33 +567,40 @@ export function CompanyAdminPanel({
       {/* Main Content */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Sticky Top Utility Bar */}
-        <header className="sticky top-0 z-30 h-16 border-b border-[#DFE3F5] bg-white/85 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-3 dark:border-[#232746] dark:bg-[#0E1026]/90">
-          <div className="flex items-center gap-2.5 min-w-0">
+        <header className="sticky top-0 z-30 h-16 border-b border-[#DFE3F5] bg-white/85 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 dark:border-[#232746] dark:bg-[#0E1026]/90">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
               aria-label="Open menu"
-              className="lg:hidden rounded-lg p-1.5 text-[#4D5072] hover:bg-[#FAF8FE] dark:text-[#C5CCF0]"
+              className="lg:hidden shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#D6DBF0] bg-white text-[#4D5072] hover:bg-[#FAF8FE] dark:border-[#272B4D] dark:bg-[#141731] dark:text-[#C5CCF0] dark:hover:bg-[#1B1F3F]"
             >
               <Menu className="h-5 w-5" />
             </button>
+            <BrandLogo
+              variant="icon"
+              className="lg:hidden shrink-0"
+              imgClassName="h-7 w-7"
+              asLink={false}
+            />
             <h1 className="sr-only">Company Admin Panel</h1>
             <button
               type="button"
               onClick={() => setQuickSearchOpen(true)}
-              className="inline-flex items-center justify-between gap-3 rounded-full border border-[#CAD0EB] bg-[#FAF8FE] px-4 py-2 text-xs font-semibold text-[#76799C] hover:border-[#663CF6] w-full sm:w-80 md:w-96 cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#9DA6CC]"
+              className="inline-flex items-center justify-between gap-2 sm:gap-3 rounded-full border border-[#CAD0EB] bg-[#FAF8FE] px-3 sm:px-4 py-2 text-xs font-semibold text-[#76799C] hover:border-[#663CF6] w-full max-w-[190px] sm:max-w-xs md:max-w-md min-w-0 cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#9DA6CC] dark:hover:border-[#8B5CF6]"
             >
-              <span className="flex items-center gap-2 truncate">
+              <span className="flex items-center gap-2 truncate min-w-0">
                 <Search className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">Search schools, users, invoices, tickets...</span>
+                <span className="truncate hidden sm:inline">Search schools, users, invoices, tickets...</span>
+                <span className="truncate sm:hidden">Search...</span>
               </span>
-              <kbd className="hidden sm:inline-block rounded-md border border-[#CAD0EB] bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#4D5072] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#B4BDD9]">
+              <kbd className="hidden md:inline-block shrink-0 rounded-md border border-[#CAD0EB] bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#4D5072] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#B4BDD9]">
                 Ctrl + K
               </kbd>
             </button>
           </div>
 
-          <div className="flex items-center gap-2 relative">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 relative">
             {/* Notification Bell */}
             <div className="relative">
               <button
@@ -613,7 +620,7 @@ export function CompanyAdminPanel({
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-80 rounded-[16px] border border-[#D6DBF0] bg-white p-3.5 shadow-xl space-y-2.5 z-50 dark:border-[#272B4D] dark:bg-[#141731]">
+                <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-[16px] border border-[#D6DBF0] bg-white p-3.5 shadow-xl space-y-2.5 z-50 dark:border-[#272B4D] dark:bg-[#141731]">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
                       Platform Alerts ({alertCount})

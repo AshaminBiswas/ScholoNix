@@ -38,11 +38,11 @@ export default function LoginLoading() {
           </div>
 
           {/* Button */}
-          <Skeleton className="h-11 w-full rounded-[12px] bg-[#EDE7FF] mt-2" />
+          <Skeleton className="h-11 w-full rounded-[12px] bg-[#EDE7FF] dark:bg-[#251D4A] mt-2" />
         </div>
 
         {/* Footer */}
-        <div className="pt-2 text-center border-t border-[#DFE3F5]">
+        <div className="pt-2 text-center border-t border-[#DFE3F5] dark:border-[#232746]">
           <Skeleton className="mx-auto h-3.5 w-60" />
         </div>
       </div>

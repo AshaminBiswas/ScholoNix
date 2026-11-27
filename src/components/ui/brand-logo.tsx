@@ -51,8 +51,7 @@ export function BrandLogo({
         width={width}
         height={height}
         priority={priority}
-        style={{ width: "auto", height: "auto" }}
-        className={`${defaultImgClass} dark:brightness-110 dark:drop-shadow-[0_1px_10px_rgba(139,92,246,0.28)] ${imgClassName}`.trim()}
+        className={`${defaultImgClass} max-w-full dark:brightness-125 dark:contrast-110 dark:drop-shadow-[0_1px_10px_rgba(167,139,250,0.45)] ${imgClassName}`.trim()}
       />
       <span className="sr-only">School Management SaaS</span>
     </>

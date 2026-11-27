@@ -39,7 +39,7 @@ export default function AdmissionsLoading() {
               <Skeleton className="h-8 w-44" />
             </div>
             <div className="flex gap-2">
-              <Skeleton className="h-10 w-36 rounded-[12px] bg-[#EDE7FF]" />
+              <Skeleton className="h-10 w-36 rounded-[12px] bg-[#EDE7FF] dark:bg-[#251D4A]" />
               <Skeleton className="h-10 w-36 rounded-[12px]" />
             </div>
           </div>

@@ -720,7 +720,7 @@ export function ApplicationFormWizard({
                 <iframe
                   title={previewDoc.label}
                   src={buildDocumentViewUrl(schoolSlug, previewDoc.storageKey)}
-                  className="h-[65vh] w-full rounded-[12px] border border-[#DFE3F5] bg-white dark:border-[#272B4D]"
+                  className="h-[65vh] w-full rounded-[12px] border border-[#DFE3F5] bg-white dark:border-[#272B4D] dark:bg-[#141731]"
                 />
               )}
             </div>

@@ -85,12 +85,12 @@ export default async function SchoolAdmissionsPage({
         activeNav="admissions"
         activeAdmissionsTab={activeTab}
       >
-        <div className="mx-auto max-w-lg rounded-[22px] border border-rose-200 bg-white p-8 text-center shadow-xs space-y-3">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+        <div className="mx-auto max-w-lg rounded-[22px] border border-rose-200 bg-white p-8 text-center shadow-xs space-y-3 dark:border-rose-800/70 dark:bg-[#141731]">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
             <ShieldAlert className="h-6 w-6" aria-hidden="true" />
           </div>
-          <h1 className="text-lg font-extrabold text-[#08093B]">Admissions Access Restricted</h1>
-          <p className="text-xs text-[#4D5072] leading-relaxed">
+          <h1 className="text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">Admissions Access Restricted</h1>
+          <p className="text-xs text-[#4D5072] leading-relaxed dark:text-[#9DA6CC]">
             Your current role ({user.displayRole}) does not have permission to view student admission
             applications and guardian records for {school.name}.
           </p>
@@ -149,26 +149,26 @@ export default async function SchoolAdmissionsPage({
         activeNav="admissions"
         activeAdmissionsTab={activeTab}
       >
-        <div className="mx-auto max-w-xl rounded-[22px] border border-amber-200 bg-white p-8 text-center shadow-xs space-y-4">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+        <div className="mx-auto max-w-xl rounded-[22px] border border-amber-200 bg-white p-8 text-center shadow-xs space-y-4 dark:border-amber-800/70 dark:bg-[#141731]">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
             <DatabaseZap className="h-6 w-6" aria-hidden="true" />
           </div>
-          <h1 className="text-lg font-extrabold text-[#08093B]">
+          <h1 className="text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
             {isMigrationPending
               ? "Admissions Setup Pending Database Migration"
               : "Admissions Data Temporarily Unavailable"}
           </h1>
-          <p className="text-xs text-[#4D5072] leading-relaxed">{loadErrorMessage}</p>
+          <p className="text-xs text-[#4D5072] leading-relaxed dark:text-[#9DA6CC]">{loadErrorMessage}</p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
             <Link
               href={buildSchoolRoute(school.slug, "admissions")}
-              className="inline-flex items-center justify-center rounded-[12px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white hover:bg-[#4F27E8]"
+              className="inline-flex items-center justify-center rounded-[12px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white hover:bg-[#4F27E8] dark:bg-[#7C5CFF] dark:hover:bg-[#663CF6]"
             >
               Retry Loading Admissions
             </Link>
             <Link
               href={buildSchoolRoute(school.slug)}
-              className="inline-flex items-center justify-center rounded-[12px] border border-[#D6DBF0] bg-white px-4 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6]"
+              className="inline-flex items-center justify-center rounded-[12px] border border-[#D6DBF0] bg-white px-4 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6] dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:hover:border-[#8B5CF6]"
             >
               Back to Dashboard
             </Link>
