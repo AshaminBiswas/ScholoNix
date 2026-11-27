@@ -8,6 +8,59 @@ export interface SignupChartPoint {
   count: number;
 }
 
+export interface VerticalBarPoint {
+  label: string;
+  count: number;
+}
+
+export function PlatformVerticalBarChart({
+  bars,
+}: {
+  bars: VerticalBarPoint[];
+}) {
+  const safeBars = useMemo(
+    () => (bars.length > 0 ? bars.slice(0, 7) : [{ label: "No Data", count: 0 }]),
+    [bars],
+  );
+  const maxCount = Math.max(4, ...safeBars.map((b) => b.count));
+
+  return (
+    <div className="w-full pt-2">
+      <div className="flex h-48 items-end justify-between gap-2.5 sm:gap-4 border-b border-[#E5E8F8] px-1 sm:px-2 pb-2 dark:border-[#232746]">
+        {safeBars.map((bar, idx) => {
+          const heightPct = maxCount > 0 ? Math.max(bar.count > 0 ? 12 : 4, Math.round((bar.count / maxCount) * 100)) : 4;
+          return (
+            <div
+              key={`${bar.label}-${idx}`}
+              className="group flex-1 flex flex-col items-center justify-end h-full min-w-0"
+            >
+              <span className="mb-1.5 text-[11px] font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                {bar.count}
+              </span>
+              <div
+                style={{ height: `${heightPct}%` }}
+                className="w-full max-w-[42px] rounded-t-[10px] bg-gradient-to-b from-[#9B76FF] via-[#7C3AED] to-[#5B21B6] shadow-[0_6px_14px_rgba(102,60,246,0.22)] transition-all duration-300 group-hover:brightness-110 dark:from-[#A78BFA] dark:via-[#7C3AED] dark:to-[#4F27E8]"
+                title={`${bar.label}: ${bar.count}`}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2.5 sm:gap-4 px-1 sm:px-2">
+        {safeBars.map((bar, idx) => (
+          <span
+            key={`lbl-${bar.label}-${idx}`}
+            className="flex-1 text-center text-[10px] sm:text-[11px] font-bold text-[#4D5072] truncate dark:text-[#9DA6CC]"
+            title={bar.label}
+          >
+            {bar.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function PlatformSignupAreaChart({
   points,
 }: {
@@ -19,12 +72,12 @@ export function PlatformSignupAreaChart({
   const height = 210;
   const padLeft = 36;
   const padRight = 16;
-  const padTop = 18;
+  const padTop = 22;
   const padBottom = 30;
   const plotW = width - padLeft - padRight;
   const plotH = height - padTop - padBottom;
 
-  const { maxVal, yTicks, coords, linePath, areaPath, xLabelIndices } = useMemo(() => {
+  const { yTicks, coords, linePath, areaPath, xLabelIndices } = useMemo(() => {
     const safePts = points.length > 0 ? points : [{ label: "Today", count: 0 }];
     const rawMax = Math.max(4, ...safePts.map((p) => p.count));
     const step = rawMax <= 8 ? 2 : Math.ceil(rawMax / 4 / 2) * 2;
@@ -62,7 +115,6 @@ export function PlatformSignupAreaChart({
     indices.add(safePts.length - 1);
 
     return {
-      maxVal: computedMax,
       yTicks: ticks,
       coords: pts,
       linePath: d,
@@ -70,8 +122,6 @@ export function PlatformSignupAreaChart({
       xLabelIndices: indices,
     };
   }, [points, plotH, plotW]);
-
-  void maxVal;
 
   return (
     <div className="relative w-full select-none">
@@ -83,12 +133,11 @@ export function PlatformSignupAreaChart({
       >
         <defs>
           <linearGradient id="snxAreaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.28" />
+            <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.32" />
             <stop offset="100%" stopColor="#7C3AED" stopOpacity="0.02" />
           </linearGradient>
         </defs>
 
-        {/* Horizontal & vertical gridlines */}
         {yTicks.map((tick, idx) => {
           const y = padTop + plotH - (tick / yTicks[yTicks.length - 1]!) * plotH;
           return (
@@ -129,19 +178,18 @@ export function PlatformSignupAreaChart({
           ) : null,
         )}
 
-        {/* Area & Line */}
         <path d={areaPath} fill="url(#snxAreaGrad)" />
         <path
           d={linePath}
           fill="none"
           stroke="#663CF6"
-          strokeWidth="2.5"
+          strokeWidth="2.75"
           strokeLinecap="round"
         />
 
-        {/* Data points & X-axis labels */}
         {coords.map((pt, idx) => {
           const isHovered = hoverIdx === idx;
+          const showLabel = coords.length <= 12 && pt.count > 0;
           return (
             <g key={`p-${idx}`}>
               {xLabelIndices.has(idx) && (
@@ -152,6 +200,16 @@ export function PlatformSignupAreaChart({
                   className="fill-[#76799C] dark:fill-[#9DA6CC] text-[10px] font-semibold"
                 >
                   {pt.label}
+                </text>
+              )}
+              {showLabel && (
+                <text
+                  x={pt.x}
+                  y={pt.y - 8}
+                  textAnchor="middle"
+                  className="fill-[#08093B] dark:fill-[#F3F5FF] text-[10px] font-extrabold"
+                >
+                  {pt.count}
                 </text>
               )}
               <circle
@@ -202,6 +260,7 @@ export interface DonutSegment {
   count: number;
   percentage: number;
   color: string;
+  valueLabel?: string;
 }
 
 export function PlatformDonutChart({
@@ -214,7 +273,7 @@ export function PlatformDonutChart({
   segments: DonutSegment[];
 }) {
   const total = segments.reduce((sum, s) => sum + s.count, 0);
-  const size = 128;
+  const size = 136;
   const strokeWidth = 22;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -223,8 +282,8 @@ export function PlatformDonutChart({
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-5">
-      <div className="relative h-32 w-32 shrink-0 flex items-center justify-center">
-        <svg viewBox={`0 0 ${size} ${size}`} className="h-32 w-32 -rotate-90">
+      <div className="relative h-34 w-34 shrink-0 flex items-center justify-center">
+        <svg viewBox={`0 0 ${size} ${size}`} className="h-34 w-34 -rotate-90 drop-shadow-xs">
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -232,7 +291,7 @@ export function PlatformDonutChart({
             fill="none"
             stroke="currentColor"
             strokeWidth={strokeWidth}
-            className="text-[#F0F2FA] dark:text-[#1F2447]"
+            className="text-[#EFF1FC] dark:text-[#1F2447]"
           />
           {total > 0 &&
             segments
@@ -257,11 +316,11 @@ export function PlatformDonutChart({
                 );
               })}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-          <span className="text-xl font-black tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-3">
+          <span className="text-lg font-black tracking-tight text-[#08093B] truncate max-w-full dark:text-[#F3F5FF]">
             {centerValue}
           </span>
-          <span className="text-[11px] font-bold text-[#76799C] dark:text-[#9DA6CC]">
+          <span className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">
             {centerLabel}
           </span>
         </div>
@@ -278,7 +337,7 @@ export function PlatformDonutChart({
               <span className="truncate">{seg.label}</span>
             </span>
             <span className="font-extrabold text-[#08093B] whitespace-nowrap dark:text-[#F3F5FF]">
-              {seg.count}{" "}
+              {seg.valueLabel ?? seg.count}{" "}
               <span className="font-semibold text-[#76799C] dark:text-[#9DA6CC]">
                 ({seg.percentage}%)
               </span>

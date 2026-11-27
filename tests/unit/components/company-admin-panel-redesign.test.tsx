@@ -233,6 +233,11 @@ describe("CompanyAdminPanel Command Center Redesign", () => {
     fireEvent.click(themeBtn);
     expect(document.documentElement.classList.contains("dark")).toBe(true);
 
+    expect(screen.getByTitle("Clients")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }));
+    expect(screen.getByTitle("Schools")).toBeTruthy();
+    expect(screen.getByTitle("Global Users")).toBeTruthy();
+
     // Navigate to Settings tab
     fireEvent.click(screen.getByTitle("Settings"));
     expect(screen.getByText(/Company Portal & Account Settings/i)).toBeTruthy();

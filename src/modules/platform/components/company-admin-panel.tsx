@@ -7,6 +7,7 @@ import {
   AlertCircle,
   ArrowRight,
   Bell,
+  Briefcase,
   Building2,
   CheckCircle2,
   ChevronDown,
@@ -14,6 +15,7 @@ import {
   ChevronsRight,
   CreditCard,
   Headphones,
+  HelpCircle,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
@@ -80,6 +82,7 @@ export function CompanyAdminPanel({
   const [activeTab, setActiveTab] = useState<PlatformTab>("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [clientsMenuOpen, setClientsMenuOpen] = useState(true);
   const [billingMenuOpen, setBillingMenuOpen] = useState(false);
   const [securityMenuOpen, setSecurityMenuOpen] = useState(false);
 
@@ -225,15 +228,15 @@ export function CompanyAdminPanel({
     overview.kpis.openSupportTickets;
 
   const navBtnCls = (isActive: boolean) =>
-    `w-full flex items-center justify-between gap-2.5 rounded-[12px] px-3 py-2.5 text-xs font-bold transition cursor-pointer ${
+    `w-full flex items-center justify-between gap-2.5 rounded-[12px] px-3 py-2 text-xs font-bold transition cursor-pointer ${
       isActive
-        ? "bg-gradient-to-r from-[#8B5CF6] via-[#663CF6] to-[#4F27E8] text-white shadow-sm"
-        : "text-[#383A63] hover:bg-white/75 hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:bg-[#1B1F3F] dark:hover:text-[#F3F5FF]"
+        ? "bg-gradient-to-r from-[#8B5CF6] via-[#663CF6] to-[#4F27E8] text-white shadow-[0_6px_16px_rgba(102,60,246,0.28)]"
+        : "text-[#383A63] hover:bg-white/80 hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:bg-[#1B1F3F] dark:hover:text-[#F3F5FF]"
     }`;
 
   const renderSidebarContent = (collapsed: boolean) => (
     <div className="flex h-full flex-col justify-between p-3.5 overflow-y-auto no-scrollbar">
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         {/* Brand Header & Collapse Toggle */}
         <div
           className={`flex items-center gap-2 px-1 pt-0.5 ${
@@ -261,7 +264,7 @@ export function CompanyAdminPanel({
             onClick={toggleSidebarCollapsed}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="hidden lg:inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#D6DBF0] bg-white text-[#663CF6] shadow-xs hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#1B1F3F] dark:text-[#C4B5FD] dark:hover:border-[#8B5CF6]"
+            className="hidden lg:inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#D6DBF0] bg-white/90 text-[#663CF6] shadow-xs hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#1B1F3F] dark:text-[#C4B5FD] dark:hover:border-[#8B5CF6]"
           >
             {collapsed ? (
               <ChevronsRight className="h-3.5 w-3.5" />
@@ -271,15 +274,13 @@ export function CompanyAdminPanel({
           </button>
         </div>
 
-        {/* Subtle Command Center Pill */}
+        {/* Workspace Subtitle Badge */}
         {!collapsed && (
-          <div className="rounded-[12px] border border-[#DDD6FE] bg-white/75 px-3 py-2 dark:border-[#342B63] dark:bg-[#181538]">
-            <div className="flex items-center justify-between gap-2 text-[11px] font-extrabold text-[#663CF6] dark:text-[#CBB8FF]">
-              <span className="flex items-center gap-2 truncate">
-                <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">Company Control Center</span>
-              </span>
-            </div>
+          <div className="rounded-[10px] border border-[#E4DDFC] bg-white/70 px-3 py-1.5 dark:border-[#342B63] dark:bg-[#181538]">
+            <p className="flex items-center gap-2 text-[11px] font-extrabold text-[#4F27E8] truncate dark:text-[#CBB8FF]">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Company Admin Panel</span>
+            </p>
           </div>
         )}
 
@@ -298,42 +299,83 @@ export function CompanyAdminPanel({
             </span>
           </button>
 
-          <button
-            type="button"
-            title="Schools"
-            aria-current={activeTab === "schools" ? "page" : undefined}
-            onClick={() => navigateTab("schools")}
-            className={navBtnCls(activeTab === "schools")}
-          >
-            <span className="flex items-center gap-2.5 min-w-0">
-              <Building2 className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="truncate">Schools</span>}
-            </span>
-            {!collapsed && schools.length > 0 && (
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
-                  activeTab === "schools"
-                    ? "bg-white/20 text-white"
-                    : "bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]"
-                }`}
-              >
-                {schools.length}
+          {/* Clients Accordion (Schools & Global Users) */}
+          <div>
+            <button
+              type="button"
+              title="Clients"
+              aria-expanded={clientsMenuOpen || activeTab === "schools" || activeTab === "users"}
+              onClick={() => {
+                if (collapsed) {
+                  navigateTab("schools");
+                } else {
+                  setClientsMenuOpen((v) => !v);
+                }
+              }}
+              className={navBtnCls(activeTab === "schools" || activeTab === "users")}
+            >
+              <span className="flex items-center gap-2.5 min-w-0">
+                <Briefcase className="h-4 w-4 shrink-0" />
+                {!collapsed && <span className="truncate">Clients</span>}
               </span>
+              {!collapsed && (
+                <span className="flex items-center gap-1.5 shrink-0">
+                  {schools.length > 0 && (
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
+                        activeTab === "schools" || activeTab === "users"
+                          ? "bg-white/20 text-white"
+                          : "bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]"
+                      }`}
+                    >
+                      {schools.length}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform ${
+                      clientsMenuOpen || activeTab === "schools" || activeTab === "users"
+                        ? "rotate-180"
+                        : ""
+                    }`}
+                  />
+                </span>
+              )}
+            </button>
+            {!collapsed && (clientsMenuOpen || activeTab === "schools" || activeTab === "users") && (
+              <div className="mt-1 ml-5 space-y-0.5 border-l border-[#D6DBF0] pl-2.5 dark:border-[#272B4D]">
+                <button
+                  type="button"
+                  title="Schools"
+                  aria-current={activeTab === "schools" ? "page" : undefined}
+                  onClick={() => navigateTab("schools")}
+                  className={`w-full flex items-center justify-between gap-2 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
+                    activeTab === "schools"
+                      ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
+                      : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <Building2 className="h-3 w-3 shrink-0" />
+                    <span className="truncate">Schools</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  title="Global Users"
+                  aria-current={activeTab === "users" ? "page" : undefined}
+                  onClick={() => navigateTab("users")}
+                  className={`w-full flex items-center gap-1.5 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
+                    activeTab === "users"
+                      ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
+                      : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
+                  }`}
+                >
+                  <Users className="h-3 w-3 shrink-0" />
+                  <span className="truncate">Global Users</span>
+                </button>
+              </div>
             )}
-          </button>
-
-          <button
-            type="button"
-            title="Global Users"
-            aria-current={activeTab === "users" ? "page" : undefined}
-            onClick={() => navigateTab("users")}
-            className={navBtnCls(activeTab === "users")}
-          >
-            <span className="flex items-center gap-2.5 min-w-0">
-              <Users className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="truncate">Global Users</span>}
-            </span>
-          </button>
+          </div>
 
           {/* Plans & Billing Accordion */}
           <div>
@@ -364,13 +406,13 @@ export function CompanyAdminPanel({
               )}
             </button>
             {!collapsed && (billingMenuOpen || activeTab === "billing") && (
-              <div className="mt-1 ml-6 space-y-0.5 border-l border-[#D6DBF0] pl-2.5 dark:border-[#272B4D]">
+              <div className="mt-1 ml-5 space-y-0.5 border-l border-[#D6DBF0] pl-2.5 dark:border-[#272B4D]">
                 <button
                   type="button"
                   onClick={() => navigateTab("billing")}
                   className={`w-full text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
                     activeTab === "billing"
-                      ? "text-[#663CF6] bg-[#EDE7FF]/70 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
+                      ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
                       : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
                   }`}
                 >
@@ -437,13 +479,13 @@ export function CompanyAdminPanel({
             </button>
             {!collapsed &&
               (securityMenuOpen || activeTab === "audit" || activeTab === "admins") && (
-                <div className="mt-1 ml-6 space-y-0.5 border-l border-[#D6DBF0] pl-2.5 dark:border-[#272B4D]">
+                <div className="mt-1 ml-5 space-y-0.5 border-l border-[#D6DBF0] pl-2.5 dark:border-[#272B4D]">
                   <button
                     type="button"
                     onClick={() => navigateTab("admins")}
                     className={`w-full flex items-center gap-1.5 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
                       activeTab === "admins"
-                        ? "text-[#663CF6] bg-[#EDE7FF]/70 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
+                        ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
                         : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
                     }`}
                   >
@@ -455,7 +497,7 @@ export function CompanyAdminPanel({
                     onClick={() => navigateTab("audit")}
                     className={`w-full flex items-center gap-1.5 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
                       activeTab === "audit"
-                        ? "text-[#663CF6] bg-[#EDE7FF]/70 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
+                        ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
                         : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
                     }`}
                   >
@@ -494,10 +536,10 @@ export function CompanyAdminPanel({
         </nav>
       </div>
 
-      {/* Bottom Need Help Support Card & Footer */}
+      {/* Bottom Support Card & Footer */}
       <div className="space-y-2.5 pt-3">
         {!collapsed ? (
-          <div className="rounded-[16px] border border-[#DDD6FE] bg-white/80 p-3.5 space-y-2.5 shadow-xs dark:border-[#322960] dark:bg-[#181538]">
+          <div className="rounded-[16px] border border-[#DDD6FE] bg-white/85 p-3.5 space-y-2.5 shadow-xs dark:border-[#322960] dark:bg-[#181538]">
             <div className="flex items-start gap-2.5">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
                 <LifeBuoy className="h-4 w-4" />
@@ -541,10 +583,10 @@ export function CompanyAdminPanel({
   );
 
   return (
-    <div className="min-h-screen bg-[#F5F3FC] text-[#1B1D45] flex dark:bg-[#090B1A] dark:text-[#DCE1F9]">
-      {/* Desktop Collapsible Lavender Sidebar */}
+    <div className="min-h-screen bg-gradient-to-br from-[#F3EDFF] via-[#ECF2FE] to-[#DFF3FE] text-[#1B1D45] flex dark:from-[#080A1A] dark:via-[#0D1128] dark:to-[#0A172B] dark:text-[#DCE1F9]">
+      {/* Desktop Frosted Lavender Sidebar */}
       <aside
-        className={`hidden lg:block shrink-0 border-r border-[#DFE3F5] bg-gradient-to-b from-[#F4F0FC] via-[#EFEAFD] to-[#EAE3FC] sticky top-0 h-screen transition-all duration-200 dark:border-[#232746] dark:bg-gradient-to-b dark:from-[#0E1026] dark:via-[#10132C] dark:to-[#111430] ${
+        className={`hidden lg:block shrink-0 border-r border-white/80 bg-white/75 backdrop-blur-xl sticky top-0 h-screen transition-all duration-200 dark:border-[#232746] dark:bg-[#0E1026]/95 ${
           sidebarCollapsed ? "w-[78px]" : "w-64"
         }`}
       >
@@ -558,7 +600,7 @@ export function CompanyAdminPanel({
             className="fixed inset-0 bg-black/50 backdrop-blur-xs"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <aside className="relative w-72 max-w-[85vw] bg-gradient-to-b from-[#F4F0FC] via-[#EFEAFD] to-[#EAE3FC] h-full shadow-2xl dark:bg-gradient-to-b dark:from-[#0E1026] dark:via-[#10132C] dark:to-[#111430]">
+          <aside className="relative w-72 max-w-[85vw] bg-gradient-to-b from-[#F4F0FC] via-[#EFEAFD] to-[#EAE3FC] h-full shadow-2xl dark:from-[#0E1026] dark:via-[#10132C] dark:to-[#111430]">
             {renderSidebarContent(false)}
           </aside>
         </div>
@@ -566,8 +608,8 @@ export function CompanyAdminPanel({
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* Sticky Top Utility Bar */}
-        <header className="sticky top-0 z-30 h-16 border-b border-[#DFE3F5] bg-white/85 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 dark:border-[#232746] dark:bg-[#0E1026]/90">
+        {/* Sticky Frosted Top Utility Bar */}
+        <header className="sticky top-0 z-30 h-16 border-b border-white/80 bg-white/75 backdrop-blur-xl px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 dark:border-[#232746] dark:bg-[#0E1026]/90">
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
             <button
               type="button"
@@ -587,14 +629,14 @@ export function CompanyAdminPanel({
             <button
               type="button"
               onClick={() => setQuickSearchOpen(true)}
-              className="inline-flex items-center justify-between gap-2 sm:gap-3 rounded-full border border-[#CAD0EB] bg-[#FAF8FE] px-3 sm:px-4 py-2 text-xs font-semibold text-[#76799C] hover:border-[#663CF6] w-full max-w-[190px] sm:max-w-xs md:max-w-md min-w-0 cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#9DA6CC] dark:hover:border-[#8B5CF6]"
+              className="inline-flex items-center justify-between gap-2 sm:gap-3 rounded-full border border-[#D6DBF0] bg-white/85 px-3 sm:px-4 py-2 text-xs font-semibold text-[#76799C] shadow-2xs hover:border-[#663CF6] w-full max-w-[190px] sm:max-w-xs md:max-w-md min-w-0 cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#9DA6CC] dark:hover:border-[#8B5CF6]"
             >
               <span className="flex items-center gap-2 truncate min-w-0">
-                <Search className="h-3.5 w-3.5 shrink-0" />
+                <Search className="h-3.5 w-3.5 shrink-0 text-[#663CF6] dark:text-[#A78BFA]" />
                 <span className="truncate hidden sm:inline">Search schools, users, invoices, tickets...</span>
                 <span className="truncate sm:hidden">Search...</span>
               </span>
-              <kbd className="hidden md:inline-block shrink-0 rounded-md border border-[#CAD0EB] bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#4D5072] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#B4BDD9]">
+              <kbd className="hidden md:inline-block shrink-0 rounded-md border border-[#D6DBF0] bg-[#FAF8FE] px-1.5 py-0.5 text-[10px] font-bold text-[#4D5072] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#B4BDD9]">
                 Ctrl + K
               </kbd>
             </button>
@@ -611,7 +653,7 @@ export function CompanyAdminPanel({
                   setNotificationsOpen((v) => !v);
                   setProfileMenuOpen(false);
                 }}
-                className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#D6DBF0] bg-white text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#272B4D] dark:bg-[#141731] dark:text-[#C5CCF0]"
+                className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#D6DBF0] bg-white/90 text-[#4D5072] shadow-2xs hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#272B4D] dark:bg-[#141731] dark:text-[#C5CCF0]"
               >
                 <Bell className="h-4 w-4" />
                 {alertCount > 0 && (
@@ -628,7 +670,7 @@ export function CompanyAdminPanel({
                     <button
                       type="button"
                       onClick={() => setNotificationsOpen(false)}
-                      className="text-[11px] font-bold text-[#76799C] cursor-pointer"
+                      className="text-[11px] font-bold text-[#76799C] hover:text-[#08093B] cursor-pointer dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
                     >
                       Close
                     </button>
@@ -666,6 +708,16 @@ export function CompanyAdminPanel({
               )}
             </div>
 
+            <button
+              type="button"
+              aria-label="Help & Support Queue"
+              title="Open Support Queue"
+              onClick={() => navigateTab("support")}
+              className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full border border-[#D6DBF0] bg-white/90 text-[#4D5072] shadow-2xs hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#272B4D] dark:bg-[#141731] dark:text-[#C5CCF0]"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+
             <ThemeToggle />
 
             {/* User Profile Pill Dropdown */}
@@ -677,7 +729,7 @@ export function CompanyAdminPanel({
                   setProfileMenuOpen((v) => !v);
                   setNotificationsOpen(false);
                 }}
-                className="flex items-center gap-2 rounded-full border border-[#D6DBF0] bg-white pl-1.5 pr-3 py-1 hover:border-[#663CF6] cursor-pointer dark:border-[#272B4D] dark:bg-[#141731]"
+                className="flex items-center gap-2 rounded-full border border-[#D6DBF0] bg-white/90 pl-1.5 pr-2.5 sm:pr-3 py-1 shadow-2xs hover:border-[#663CF6] cursor-pointer dark:border-[#272B4D] dark:bg-[#141731]"
               >
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#8B5CF6] to-[#4F27E8] text-[11px] font-black text-white">
                   {getInitials(adminUser.name)}
@@ -690,7 +742,7 @@ export function CompanyAdminPanel({
                     {adminUser.platformRole || "SUPER_ADMIN"}
                   </span>
                 </span>
-                <ChevronDown className="h-3.5 w-3.5 text-[#76799C]" />
+                <ChevronDown className="h-3.5 w-3.5 text-[#76799C] dark:text-[#9DA6CC]" />
               </button>
 
               {profileMenuOpen && (
@@ -708,7 +760,7 @@ export function CompanyAdminPanel({
                     onClick={() => navigateTab("settings")}
                     className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-[#1B1D45] hover:bg-[#FAF8FE] cursor-pointer dark:text-[#DCE1F9] dark:hover:bg-[#1B2042]"
                   >
-                    <Settings className="h-3.5 w-3.5 text-[#663CF6]" />
+                    <Settings className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" />
                     <span>Settings &amp; Passkeys</span>
                   </button>
                   <button
@@ -716,7 +768,7 @@ export function CompanyAdminPanel({
                     onClick={() => navigateTab("admins")}
                     className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold text-[#1B1D45] hover:bg-[#FAF8FE] cursor-pointer dark:text-[#DCE1F9] dark:hover:bg-[#1B2042]"
                   >
-                    <UserCog className="h-3.5 w-3.5 text-[#663CF6]" />
+                    <UserCog className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#A78BFA]" />
                     <span>Team &amp; 2FA Controls</span>
                   </button>
                   <button
@@ -840,7 +892,7 @@ export function CompanyAdminPanel({
         >
           <div className="w-full max-w-lg rounded-[20px] border border-[#D6DBF0] bg-white p-4 shadow-2xl dark:border-[#272B4D] dark:bg-[#141731] space-y-3">
             <div className="flex items-center gap-2 border-b border-[#EEF1FA] pb-2.5 dark:border-[#232746]">
-              <Search className="h-4 w-4 text-[#663CF6]" />
+              <Search className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" />
               <input
                 type="text"
                 autoFocus
@@ -852,7 +904,7 @@ export function CompanyAdminPanel({
               <button
                 type="button"
                 onClick={() => setQuickSearchOpen(false)}
-                className="text-xs font-bold text-[#76799C] cursor-pointer"
+                className="text-xs font-bold text-[#76799C] cursor-pointer dark:text-[#9DA6CC]"
               >
                 Esc
               </button>
