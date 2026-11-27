@@ -29,6 +29,10 @@ export const platformService = {
     return platformRepository.getOverview(periodDays);
   },
 
+  async getOverviewWithSchools(periodDays: PlatformOverviewPeriodDays = 30) {
+    return platformRepository.getOverviewWithSchools(periodDays);
+  },
+
   async listSchools(params?: { q?: string; status?: string; plan?: string }) {
     return platformRepository.listSchools(params);
   },

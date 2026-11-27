@@ -357,6 +357,227 @@ function calcGrowthPct(total: number, addedInPeriod: number): number {
   return addedInPeriod > 0 ? 100 : 0;
 }
 
+async function querySchoolsWithTx(
+  tx: Prisma.TransactionClient,
+  caps: PlatformSchemaCaps,
+  params?: { q?: string; status?: string; plan?: string },
+): Promise<PlatformSchoolEntry[]> {
+  const q = (params?.q || "").trim();
+  const qUpper = q.toUpperCase();
+  const qLower = q.toLowerCase();
+  const statusFilter = (params?.status || "").trim().toUpperCase();
+  const planFilter = (params?.plan || "").trim().toUpperCase();
+
+  const where: any = {};
+  if (q) {
+    where.OR = [
+      { uniqueId: { contains: qUpper, mode: "insensitive" } },
+      { code: { contains: q, mode: "insensitive" } },
+      { slug: { contains: qLower, mode: "insensitive" } },
+      { name: { contains: q, mode: "insensitive" } },
+      { contactEmail: { contains: qLower, mode: "insensitive" } },
+      { contactPhone: { contains: q } },
+      { city: { contains: q, mode: "insensitive" } },
+      { state: { contains: q, mode: "insensitive" } },
+    ];
+  }
+  if (statusFilter && statusFilter !== "ALL") {
+    where.status = statusFilter;
+  }
+  if (planFilter && planFilter !== "ALL" && caps.hasSchoolSaasCols) {
+    where.plan = planFilter;
+  }
+
+  const rows = (await (tx.school as any).findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      ...getSchoolSelect(caps),
+      users: {
+        select: {
+          id: true,
+          schoolId: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          status: true,
+          emailVerified: true,
+          phoneVerified: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "asc" },
+        take: 30,
+      },
+      _count: {
+        select: {
+          users: true,
+          admissionApplications: true,
+          admissionEnquiries: true,
+        },
+      },
+    },
+  })) as any[];
+
+  const schoolIds = rows.map((r) => r.id);
+  const admittedMap = new Map<string, number>();
+  const staffMap = new Map<string, number>();
+  const studentUsersMap = new Map<string, number>();
+  const feePaidMap = new Map<string, number>();
+  const saasBilledMap = new Map<string, number>();
+
+  if (schoolIds.length > 0) {
+    const admittedRows = await tx.admissionApplication.groupBy({
+      by: ["schoolId"],
+      where: { schoolId: { in: schoolIds }, status: "ADMITTED" },
+      _count: { _all: true },
+    });
+    const userRoleRows = await tx.user.groupBy({
+      by: ["schoolId", "role"],
+      where: { schoolId: { in: schoolIds } },
+      _count: { _all: true },
+    });
+    for (const a of admittedRows) {
+      admittedMap.set(a.schoolId, a._count._all);
+    }
+    for (const ur of userRoleRows) {
+      if (!ur.schoolId) continue;
+      if (ur.role === "STUDENT") {
+        studentUsersMap.set(ur.schoolId, (studentUsersMap.get(ur.schoolId) ?? 0) + ur._count._all);
+      } else if (ur.role !== "PARENT") {
+        staffMap.set(ur.schoolId, (staffMap.get(ur.schoolId) ?? 0) + ur._count._all);
+      }
+    }
+
+    if (caps.hasFeePayments && (tx as any).admissionFeePayment) {
+      const payRows = await (tx as any).admissionFeePayment.groupBy({
+        by: ["schoolId"],
+        where: { schoolId: { in: schoolIds } },
+        _sum: { amountPaise: true },
+      });
+      for (const p of payRows) {
+        feePaidMap.set(p.schoolId, Number(p._sum?.amountPaise || 0));
+      }
+    }
+
+    if (caps.hasInvoicesTable && (tx as any).platformSubscriptionInvoice) {
+      const invRows = await (tx as any).platformSubscriptionInvoice.groupBy({
+        by: ["schoolId"],
+        where: { schoolId: { in: schoolIds }, status: "PAID" },
+        _sum: { amountPaise: true },
+      });
+      for (const inv of invRows) {
+        saasBilledMap.set(inv.schoolId, Number(inv._sum?.amountPaise || 0));
+      }
+    }
+  }
+
+  return rows.map((row) => ({
+    school: mapSchoolItem(row),
+    users: (row.users || []).map((u: any) => ({
+      id: u.id,
+      schoolId: u.schoolId,
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      role: u.role,
+      status: u.status,
+      emailVerified: Boolean(u.emailVerified),
+      phoneVerified: Boolean(u.phoneVerified),
+      createdAt: new Date(u.createdAt).toISOString(),
+    })),
+    counts: {
+      users: row._count?.users ?? 0,
+      staffCount: staffMap.get(row.id) ?? 0,
+      studentCount: Math.max(
+        admittedMap.get(row.id) ?? 0,
+        studentUsersMap.get(row.id) ?? 0,
+      ),
+      applications: row._count?.admissionApplications ?? 0,
+      enquiries: row._count?.admissionEnquiries ?? 0,
+      admitted: admittedMap.get(row.id) ?? 0,
+      feeCollectedPaise: feePaidMap.get(row.id) ?? 0,
+      saasBilledPaise: saasBilledMap.get(row.id) ?? 0,
+    },
+  }));
+}
+
+async function queryInvoicesWithTx(
+  tx: Prisma.TransactionClient,
+  caps: PlatformSchemaCaps,
+  filters?: { schoolId?: string; status?: string },
+): Promise<PlatformInvoiceRecord[]> {
+  if (!caps.hasInvoicesTable || !(tx as any).platformSubscriptionInvoice) return [];
+  const where: any = {};
+  if (filters?.schoolId) where.schoolId = filters.schoolId;
+  if (filters?.status && filters.status !== "ALL") where.status = filters.status;
+  const rows = await (tx as any).platformSubscriptionInvoice.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: 150,
+    include: { school: { select: { name: true, uniqueId: true } } },
+  });
+  return (rows as any[]).map(mapInvoiceRow);
+}
+
+async function querySupportTicketsWithTx(
+  tx: Prisma.TransactionClient,
+  caps: PlatformSchemaCaps,
+  status?: string,
+): Promise<PlatformSupportTicketRecord[]> {
+  if (!caps.hasTicketsTable || !(tx as any).platformSupportTicket) {
+    return Object.values(platformMemoryStore.tickets);
+  }
+  const where: any = {};
+  if (status && status !== "ALL") where.status = status;
+  const rows = await (tx as any).platformSupportTicket.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: 150,
+  });
+  return (rows as any[]).map(mapTicketRow);
+}
+
+async function queryAuditLogsWithTx(
+  tx: Prisma.TransactionClient,
+  params?: { schoolId?: string; q?: string },
+): Promise<PlatformAuditLogRecord[]> {
+  const q = (params?.q || "").trim().toLowerCase();
+  const where: any = {};
+  if (params?.schoolId) where.schoolId = params.schoolId;
+  if (q) {
+    where.OR = [
+      { action: { contains: q, mode: "insensitive" } },
+      { entityType: { contains: q, mode: "insensitive" } },
+      { entityId: { contains: q, mode: "insensitive" } },
+    ];
+  }
+  const rows = await tx.auditLog.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: 150,
+    include: {
+      school: { select: { name: true } },
+      user: { select: { name: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    schoolId: r.schoolId,
+    schoolName: r.school?.name ?? "Platform",
+    actorId: r.actorId,
+    actorName: r.user?.name ?? null,
+    action: r.action,
+    entityType: r.entityType,
+    entityId: r.entityId,
+    metadata: (r.metadata as Record<string, unknown>) ?? null,
+    ipAddress: r.ipAddress,
+    userAgent: r.userAgent,
+    createdAt: r.createdAt.toISOString(),
+  }));
+}
+
 export const platformRepository = {
   async listSchools(params?: {
     q?: string;
@@ -364,7 +585,6 @@ export const platformRepository = {
     plan?: string;
   }): Promise<PlatformSchoolEntry[]> {
     const q = (params?.q || "").trim();
-    const qUpper = q.toUpperCase();
     const qLower = q.toLowerCase();
     const statusFilter = (params?.status || "").trim().toUpperCase();
     const planFilter = (params?.plan || "").trim().toUpperCase();
@@ -372,147 +592,7 @@ export const platformRepository = {
     if (await authRepository.canUsePrismaForPlatform()) {
       return runPlatformTx(async (tx) => {
         const caps = await getPlatformSchemaCaps(tx);
-        const where: any = {};
-        if (q) {
-          where.OR = [
-            { uniqueId: { contains: qUpper, mode: "insensitive" } },
-            { code: { contains: q, mode: "insensitive" } },
-            { slug: { contains: qLower, mode: "insensitive" } },
-            { name: { contains: q, mode: "insensitive" } },
-            { contactEmail: { contains: qLower, mode: "insensitive" } },
-            { contactPhone: { contains: q } },
-            { city: { contains: q, mode: "insensitive" } },
-            { state: { contains: q, mode: "insensitive" } },
-          ];
-        }
-        if (statusFilter && statusFilter !== "ALL") {
-          where.status = statusFilter;
-        }
-        if (planFilter && planFilter !== "ALL" && caps.hasSchoolSaasCols) {
-          where.plan = planFilter;
-        }
-
-        const rows = (await (tx.school as any).findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          take: 100,
-          select: {
-            ...getSchoolSelect(caps),
-            users: {
-              select: {
-                id: true,
-                schoolId: true,
-                name: true,
-                email: true,
-                phone: true,
-                role: true,
-                status: true,
-                emailVerified: true,
-                phoneVerified: true,
-                createdAt: true,
-              },
-              orderBy: { createdAt: "asc" },
-              take: 30,
-            },
-            _count: {
-              select: {
-                users: true,
-                admissionApplications: true,
-                admissionEnquiries: true,
-              },
-            },
-          },
-        })) as any[];
-
-        const schoolIds = rows.map((r) => r.id);
-        const admittedMap = new Map<string, number>();
-        const staffMap = new Map<string, number>();
-        const studentUsersMap = new Map<string, number>();
-        const feePaidMap = new Map<string, number>();
-        const saasBilledMap = new Map<string, number>();
-
-        if (schoolIds.length > 0) {
-          const [admittedRows, staffRows, studentUserRows] = await Promise.all([
-            tx.admissionApplication.groupBy({
-              by: ["schoolId"],
-              where: { schoolId: { in: schoolIds }, status: "ADMITTED" },
-              _count: { _all: true },
-            }),
-            tx.user.groupBy({
-              by: ["schoolId"],
-              where: {
-                schoolId: { in: schoolIds },
-                role: { notIn: ["STUDENT", "PARENT"] },
-              },
-              _count: { _all: true },
-            }),
-            tx.user.groupBy({
-              by: ["schoolId"],
-              where: { schoolId: { in: schoolIds }, role: "STUDENT" },
-              _count: { _all: true },
-            }),
-          ]);
-          for (const a of admittedRows) {
-            admittedMap.set(a.schoolId, a._count._all);
-          }
-          for (const st of staffRows) {
-            if (st.schoolId) staffMap.set(st.schoolId, st._count._all);
-          }
-          for (const su of studentUserRows) {
-            if (su.schoolId) studentUsersMap.set(su.schoolId, su._count._all);
-          }
-
-          if (caps.hasFeePayments && (tx as any).admissionFeePayment) {
-            const payRows = await (tx as any).admissionFeePayment.groupBy({
-              by: ["schoolId"],
-              where: { schoolId: { in: schoolIds } },
-              _sum: { amountPaise: true },
-            });
-            for (const p of payRows) {
-              feePaidMap.set(p.schoolId, Number(p._sum?.amountPaise || 0));
-            }
-          }
-
-          if (caps.hasInvoicesTable && (tx as any).platformSubscriptionInvoice) {
-            const invRows = await (tx as any).platformSubscriptionInvoice.groupBy({
-              by: ["schoolId"],
-              where: { schoolId: { in: schoolIds }, status: "PAID" },
-              _sum: { amountPaise: true },
-            });
-            for (const inv of invRows) {
-              saasBilledMap.set(inv.schoolId, Number(inv._sum?.amountPaise || 0));
-            }
-          }
-        }
-
-        return rows.map((row) => ({
-          school: mapSchoolItem(row),
-          users: (row.users || []).map((u: any) => ({
-            id: u.id,
-            schoolId: u.schoolId,
-            name: u.name,
-            email: u.email,
-            phone: u.phone,
-            role: u.role,
-            status: u.status,
-            emailVerified: Boolean(u.emailVerified),
-            phoneVerified: Boolean(u.phoneVerified),
-            createdAt: new Date(u.createdAt).toISOString(),
-          })),
-          counts: {
-            users: row._count?.users ?? 0,
-            staffCount: staffMap.get(row.id) ?? 0,
-            studentCount: Math.max(
-              admittedMap.get(row.id) ?? 0,
-              studentUsersMap.get(row.id) ?? 0,
-            ),
-            applications: row._count?.admissionApplications ?? 0,
-            enquiries: row._count?.admissionEnquiries ?? 0,
-            admitted: admittedMap.get(row.id) ?? 0,
-            feeCollectedPaise: feePaidMap.get(row.id) ?? 0,
-            saasBilledPaise: saasBilledMap.get(row.id) ?? 0,
-          },
-        }));
+        return querySchoolsWithTx(tx, caps, params);
       });
     }
 
@@ -1418,17 +1498,7 @@ export const platformRepository = {
     if (await authRepository.canUsePrismaForPlatform()) {
       return runPlatformTx(async (tx) => {
         const caps = await getPlatformSchemaCaps(tx);
-        if (!caps.hasInvoicesTable || !(tx as any).platformSubscriptionInvoice) return [];
-        const where: any = {};
-        if (filters?.schoolId) where.schoolId = filters.schoolId;
-        if (filters?.status && filters.status !== "ALL") where.status = filters.status;
-        const rows = await (tx as any).platformSubscriptionInvoice.findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          take: 150,
-          include: { school: { select: { name: true, uniqueId: true } } },
-        });
-        return (rows as any[]).map(mapInvoiceRow);
+        return queryInvoicesWithTx(tx, caps, filters);
       });
     }
 
@@ -1657,17 +1727,7 @@ export const platformRepository = {
     if (await authRepository.canUsePrismaForPlatform()) {
       return runPlatformTx(async (tx) => {
         const caps = await getPlatformSchemaCaps(tx);
-        if (!caps.hasTicketsTable || !(tx as any).platformSupportTicket) {
-          return Object.values(platformMemoryStore.tickets);
-        }
-        const where: any = {};
-        if (status && status !== "ALL") where.status = status;
-        const rows = await (tx as any).platformSupportTicket.findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          take: 150,
-        });
-        return (rows as any[]).map(mapTicketRow);
+        return querySupportTicketsWithTx(tx, caps, status);
       });
     }
     return Object.values(platformMemoryStore.tickets)
@@ -1729,40 +1789,7 @@ export const platformRepository = {
   }): Promise<PlatformAuditLogRecord[]> {
     const q = (params?.q || "").trim().toLowerCase();
     if (await authRepository.canUsePrismaForPlatform()) {
-      return runPlatformTx(async (tx) => {
-        const where: any = {};
-        if (params?.schoolId) where.schoolId = params.schoolId;
-        if (q) {
-          where.OR = [
-            { action: { contains: q, mode: "insensitive" } },
-            { entityType: { contains: q, mode: "insensitive" } },
-            { entityId: { contains: q, mode: "insensitive" } },
-          ];
-        }
-        const rows = await tx.auditLog.findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          take: 150,
-          include: {
-            school: { select: { name: true } },
-            user: { select: { name: true } },
-          },
-        });
-        return rows.map((r) => ({
-          id: r.id,
-          schoolId: r.schoolId,
-          schoolName: r.school?.name ?? "Platform",
-          actorId: r.actorId,
-          actorName: r.user?.name ?? null,
-          action: r.action,
-          entityType: r.entityType,
-          entityId: r.entityId,
-          metadata: (r.metadata as Record<string, unknown>) ?? null,
-          ipAddress: r.ipAddress,
-          userAgent: r.userAgent,
-          createdAt: r.createdAt.toISOString(),
-        }));
-      });
+      return runPlatformTx((tx) => queryAuditLogsWithTx(tx, params));
     }
 
     const store = authRepository.getPlatformAuthStore();
@@ -1946,14 +1973,71 @@ export const platformRepository = {
   },
 
   async getOverview(periodDays: PlatformOverviewPeriodDays = 30): Promise<PlatformOverviewData> {
+    const { overview } = await this.getOverviewWithSchools(periodDays);
+    return overview;
+  },
+
+  async getOverviewWithSchools(periodDays: PlatformOverviewPeriodDays = 30): Promise<{
+    overview: PlatformOverviewData;
+    schools: PlatformSchoolEntry[];
+  }> {
     const reqStart = Date.now();
-    const [schools, invoices, tickets, auditLogs, health] = await Promise.all([
-      this.listSchools(),
-      this.listInvoices(),
-      this.listSupportTickets(),
-      this.listAuditLogs(),
-      this.getHealthSnapshot(),
-    ]);
+    const redisConfigured = Boolean(
+      process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
+    );
+
+    let schools: PlatformSchoolEntry[];
+    let invoices: PlatformInvoiceRecord[];
+    let tickets: PlatformSupportTicketRecord[];
+    let auditLogs: PlatformAuditLogRecord[];
+    let health: PlatformHealthSnapshot;
+
+    if (await authRepository.canUsePrismaForPlatform()) {
+      // Execute all platform overview queries on ONE transaction connection so
+      // small serverless/pgbouncer pools never hit P2028 transaction pool exhaustion.
+      const dbStart = Date.now();
+      const [dbData, redisHealth] = await Promise.all([
+        runPlatformTx(async (tx) => {
+          const caps = await getPlatformSchemaCaps(tx);
+          const s = await querySchoolsWithTx(tx, caps);
+          const inv = await queryInvoicesWithTx(tx, caps);
+          const t = await querySupportTicketsWithTx(tx, caps);
+          const a = await queryAuditLogsWithTx(tx);
+          return { caps, schools: s, invoices: inv, tickets: t, auditLogs: a };
+        }),
+        checkRedisHealth().catch(() => null),
+      ]);
+      const nowIso = new Date().toISOString();
+      schools = dbData.schools;
+      invoices = dbData.invoices;
+      tickets = dbData.tickets;
+      auditLogs = dbData.auditLogs;
+      health = {
+        databaseConnected: true,
+        dbLatencyMs: Date.now() - dbStart,
+        redisConfigured,
+        redisLatencyMs:
+          redisHealth && redisHealth.provider !== "unconfigured" ? redisHealth.latencyMs : null,
+        avgApiResponseMs: Date.now() - reqStart,
+        blockedRequests24h: 0,
+        lastCheckedIso: nowIso,
+        platformSchemaProvisioned:
+          dbData.caps.hasSchoolSaasCols &&
+          dbData.caps.hasInvoicesTable &&
+          dbData.caps.hasTicketsTable &&
+          dbData.caps.hasAnnouncementsTable,
+        admissionsSchemaProvisioned:
+          dbData.caps.hasFeeLedgers && dbData.caps.hasFeePayments,
+        serverTimeIso: nowIso,
+        environment: process.env.NODE_ENV || "development",
+      };
+    } else {
+      schools = await this.listSchools();
+      invoices = await this.listInvoices();
+      tickets = await this.listSupportTickets();
+      auditLogs = await this.listAuditLogs();
+      health = await this.getHealthSnapshot();
+    }
 
     const nowMs = Date.now();
     const windowStartMs = nowMs - periodDays * 86_400_000;
@@ -2169,7 +2253,7 @@ export const platformRepository = {
           ? 100
           : 0;
 
-    return {
+    const overview: PlatformOverviewData = {
       periodDays,
       kpis: {
         totalSchools,
@@ -2216,5 +2300,6 @@ export const platformRepository = {
         lastCheckedIso: new Date().toISOString(),
       },
     };
+    return { overview, schools };
   },
 };

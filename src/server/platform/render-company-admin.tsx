@@ -64,10 +64,13 @@ export async function renderCompanyAdminPage(routeSlug: string): Promise<React.R
       );
     }
 
-    const [initialOverview, initialSchools] = await Promise.all([
-      platformService.getOverview(),
-      platformService.listSchools(),
-    ]);
+    const { overview: initialOverview, schools: initialSchools } =
+      typeof platformService.getOverviewWithSchools === "function"
+        ? await platformService.getOverviewWithSchools()
+        : {
+            overview: await platformService.getOverview(),
+            schools: await platformService.listSchools(),
+          };
     return (
       <CompanyAdminPanel
         adminUser={{
