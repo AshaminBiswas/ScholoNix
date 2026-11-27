@@ -1,473 +1,427 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
-import type { Route } from "next";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Search,
+  Activity,
+  AlertCircle,
   Building2,
-  KeyRound,
-  Users,
-  FileText,
-  MessageSquare,
-  ExternalLink,
-  Copy,
-  Check,
-  ShieldCheck,
+  CheckCircle2,
+  CreditCard,
+  LayoutDashboard,
+  LifeBuoy,
   LogOut,
-  Loader2,
-  MapPin,
-  Mail,
-  Phone,
-  Globe,
+  Megaphone,
+  Menu,
+  Search,
+  ShieldCheck,
+  UserCog,
+  Users,
+  X,
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-
-export interface AdminSchoolEntry {
-  school: {
-    id: string;
-    name: string;
-    slug: string;
-    uniqueId: string | null;
-    code: string;
-    category: string | null;
-    affiliationBoard: string | null;
-    contactPhone: string | null;
-    contactEmail: string | null;
-    website: string | null;
-    addressLine: string | null;
-    city: string | null;
-    state: string | null;
-    pinCode: string | null;
-    country: string;
-    status: string;
-    plan: string | null;
-    createdAt: string | Date;
-  };
-  users: Array<{
-    id: string;
-    name: string;
-    email: string | null;
-    phone: string | null;
-    role: string;
-    status: string;
-    emailVerified: boolean;
-    phoneVerified: boolean;
-    createdAt: string | Date;
-  }>;
-  counts: {
-    users: number;
-    applications: number;
-    enquiries: number;
-  };
-}
+import type {
+  PlatformAdminRoleValue,
+  PlatformOverviewData,
+  PlatformSchoolEntry,
+  PlatformTab,
+} from "@/modules/platform/types";
+import { PlatformOverviewTab } from "./platform-overview-tab";
+import { PlatformSchoolsTab } from "./platform-schools-tab";
+import { PlatformAdminsTab } from "./platform-admins-tab";
+import {
+  PlatformAnnouncementsTab,
+  PlatformAuditHealthTab,
+  PlatformBillingTab,
+  PlatformSupportTab,
+  PlatformUsersTab,
+} from "./platform-operations-tabs";
 
 interface CompanyAdminPanelProps {
   adminUser: {
     id: string;
     name: string;
     email: string | null;
+    platformRole?: PlatformAdminRoleValue;
+    twoFactorEnabled?: boolean;
+    passkeyCount?: number;
   };
-  initialSchools: AdminSchoolEntry[];
+  initialOverview: PlatformOverviewData;
+  initialSchools: PlatformSchoolEntry[];
 }
 
-export function CompanyAdminPanel({ adminUser, initialSchools }: CompanyAdminPanelProps) {
+const NAV_ITEMS: Array<{ id: PlatformTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+  { id: "overview", label: "Platform Overview", icon: LayoutDashboard },
+  { id: "schools", label: "Schools & Data", icon: Building2 },
+  { id: "admins", label: "Company Admins", icon: UserCog },
+  { id: "users", label: "School Users", icon: Users },
+  { id: "billing", label: "SaaS Billing", icon: CreditCard },
+  { id: "support", label: "Support & Feedback", icon: LifeBuoy },
+  { id: "audit", label: "Audit & Health", icon: Activity },
+  { id: "announcements", label: "Announcements", icon: Megaphone },
+];
+
+export function CompanyAdminPanel({
+  adminUser,
+  initialOverview,
+  initialSchools,
+}: CompanyAdminPanelProps) {
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [schools, setSchools] = useState<AdminSchoolEntry[]>(initialSchools);
-  const [selectedId, setSelectedId] = useState<string | null>(
+  const [activeTab, setActiveTab] = useState<PlatformTab>("overview");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [overview, setOverview] = useState<PlatformOverviewData>(initialOverview);
+  const [schools, setSchools] = useState<PlatformSchoolEntry[]>(initialSchools);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(
     initialSchools[0]?.school.id ?? null,
   );
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [quickSearchOpen, setQuickSearchOpen] = useState(false);
+  const [quickQuery, setQuickQuery] = useState("");
 
-  const selectedEntry =
-    schools.find((entry) => entry.school.id === selectedId) ?? schools[0] ?? null;
+  const showToast = (type: "success" | "error", text: string) => {
+    setToast({ type, text });
+  };
 
-  const runSearch = async (searchTerm: string) => {
-    setSearchError(null);
-    setIsSearching(true);
-    try {
-      const qs = searchTerm.trim()
-        ? `?q=${encodeURIComponent(searchTerm.trim())}`
-        : "";
-      const res = await fetch(`/api/platform/schools${qs}`, { cache: "no-store" });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json?.error?.message || "Unable to search registered schools.");
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setQuickSearchOpen((prev) => !prev);
+      } else if (e.key === "Escape") {
+        setQuickSearchOpen(false);
       }
-      const nextSchools: AdminSchoolEntry[] = json.schools || [];
-      setSchools(nextSchools);
-      setSelectedId(nextSchools[0]?.school.id ?? null);
-    } catch (err: unknown) {
-      setSearchError(err instanceof Error ? err.message : "Failed to search schools.");
-    } finally {
-      setIsSearching(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const refreshOverview = async () => {
+    try {
+      const res = await fetch("/api/platform/overview", { cache: "no-store" });
+      const json = await res.json();
+      if (res.ok && json.success && json.data) {
+        setOverview(json.data);
+      }
+    } catch {
+      // keep current snapshot
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    void runSearch(query);
+  const refreshSchools = async (filters?: { q?: string; status?: string; plan?: string }) => {
+    const qs = new URLSearchParams();
+    if (filters?.q?.trim()) qs.set("q", filters.q.trim());
+    if (filters?.status && filters.status !== "ALL") qs.set("status", filters.status);
+    if (filters?.plan && filters.plan !== "ALL") qs.set("plan", filters.plan);
+
+    const res = await fetch(`/api/platform/schools?${qs.toString()}`, { cache: "no-store" });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json?.error?.message || "Failed to refresh schools directory.");
+    }
+    const nextSchools: PlatformSchoolEntry[] = json.schools || [];
+    setSchools(nextSchools);
+    if (nextSchools.length > 0 && !nextSchools.some((e) => e.school.id === selectedSchoolId)) {
+      setSelectedSchoolId(nextSchools[0]!.school.id);
+    }
+    void refreshOverview();
   };
 
-  const handleCopy = (key: string, value: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(value).catch(() => {});
-    }
-    setCopiedId(key);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
+  const quickResults = useMemo(() => {
+    const q = quickQuery.trim().toLowerCase();
+    if (!q) return schools.slice(0, 6);
+    return schools
+      .filter((e) =>
+        [e.school.name, e.school.uniqueId, e.school.slug, e.school.city, e.school.contactEmail].some(
+          (f) => (f ? f.toLowerCase().includes(q) : false),
+        ),
+      )
+      .slice(0, 8);
+  }, [schools, quickQuery]);
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await Promise.all([
+        fetch("/api/platform/auth/logout", { method: "POST" }),
+        fetch("/api/auth/logout", { method: "POST" }),
+      ]);
     } catch {
       // ignore
     }
-    router.push("/login");
+    router.refresh();
   };
 
-  return (
-    <div className="min-h-screen bg-[#F4F6FC] text-[#1B1D45] dark:bg-[#090B1A] dark:text-[#DCE1F9]">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-[#D6DBF0] bg-white/95 backdrop-blur-md dark:border-[#232746] dark:bg-[#0E1026]/95">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <BrandLogo className="h-8" asLink={false} />
-            <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-[#EDE7FF] px-2.5 py-1 text-[11px] font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Company Admin Panel</span>
-            </span>
-          </div>
+  const handleSelectSchoolFromAnywhere = (schoolId: string) => {
+    setSelectedSchoolId(schoolId);
+    setActiveTab("schools");
+    setQuickSearchOpen(false);
+    setMobileMenuOpen(false);
+  };
 
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <div className="hidden md:block text-right">
-              <p className="text-xs font-bold text-[#08093B] dark:text-[#F3F5FF]">{adminUser.name}</p>
-              <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
-                {adminUser.email || "Platform Super Admin"}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#D6DBF0] bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 cursor-pointer dark:border-[#2E345B] dark:bg-[#141731] dark:text-red-400 dark:hover:bg-red-950/50"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span>Sign Out</span>
-            </button>
-          </div>
+  const sidebarContent = (
+    <div className="flex h-full flex-col justify-between p-4">
+      <div className="space-y-5">
+        <div className="flex items-center justify-between px-1">
+          <BrandLogo className="h-8" asLink={false} />
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(false)}
+            className="lg:hidden rounded-lg p-1 text-[#76799C]"
+            aria-label="Close navigation menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
-      </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
-        {/* Search Bar Card */}
-        <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 sm:p-6 shadow-xs dark:border-[#272B4D] dark:bg-[#141731]">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-                School Directory &amp; Unique ID Lookup
-              </h1>
-              <p className="mt-1 text-xs text-[#4D5072] dark:text-[#9DA6CC]">
-                Search any registered school by its Unique School ID (e.g. SNX-2026-XXXXXX), school name, code, or contact email/phone.
-              </p>
-            </div>
-            <span className="inline-flex w-fit items-center rounded-full bg-[#FAF8FE] border border-[#D6DBF0] px-3 py-1 text-xs font-bold text-[#663CF6] dark:bg-[#10142C] dark:border-[#2E345B] dark:text-[#C4B5FD]">
-              {schools.length} school{schools.length === 1 ? "" : "s"} found
-            </span>
+        <div className="rounded-[14px] border border-[#DDD6FE] bg-[#FAF8FE] px-3 py-2.5 dark:border-[#3B306E] dark:bg-[#1B1740]">
+          <div className="flex items-center gap-2 text-xs font-extrabold text-[#663CF6] dark:text-[#CBB8FF]">
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            <span>Company Control Center</span>
           </div>
+          <p className="mt-0.5 text-[10px] font-semibold text-[#76799C] dark:text-[#9DA6CC]">
+            Multi-tenant SaaS Governance
+          </p>
+        </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2.5">
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C] dark:text-[#9DA6CC]" />
-              <input
-                type="search"
-                aria-label="Search by Unique School ID or school details"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Enter Unique School ID (e.g. SNX-2026-7K4M9P), name, or email..."
-                className="w-full rounded-[12px] border border-[#CAD0EB] bg-[#FAF8FE] pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-[#08093B] placeholder-[#76799C] focus:border-[#663CF6] focus:bg-white focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:placeholder-[#7A83AD] dark:focus:border-[#8B5CF6]"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={isSearching}
-              className="inline-flex items-center justify-center gap-2 rounded-[12px] bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:opacity-95 disabled:opacity-60 cursor-pointer"
-            >
-              {isSearching ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-              <span>{isSearching ? "Searching..." : "Search School"}</span>
-            </button>
-            {query && (
+        <nav aria-label="Company Admin Navigation" className="space-y-1">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = activeTab === item.id;
+            return (
               <button
+                key={item.id}
                 type="button"
+                aria-current={active ? "page" : undefined}
                 onClick={() => {
-                  setQuery("");
-                  void runSearch("");
+                  setActiveTab(item.id);
+                  setMobileMenuOpen(false);
                 }}
-                className="rounded-[12px] border border-[#CAD0EB] bg-white px-4 py-2.5 text-xs font-bold text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:bg-[#10142C] dark:text-[#C5CCF0]"
+                className={`w-full flex items-center justify-between gap-2 rounded-[12px] px-3 py-2.5 text-xs font-bold transition cursor-pointer ${
+                  active
+                    ? "bg-gradient-to-r from-[#7C3AED] to-[#663CF6] text-white shadow-xs"
+                    : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:bg-[#1B1F3F] dark:hover:text-[#F3F5FF]"
+                }`}
               >
-                Reset
-              </button>
-            )}
-          </form>
-
-          {searchError && (
-            <div
-              role="alert"
-              className="mt-3 rounded-[12px] border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300"
-            >
-              {searchError}
-            </div>
-          )}
-        </section>
-
-        {/* Results Split Grid */}
-        {schools.length === 0 ? (
-          <div className="rounded-[20px] border border-dashed border-[#D6DBF0] bg-white p-12 text-center dark:border-[#2E345B] dark:bg-[#141731]">
-            <p className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-              No matching schools found
-            </p>
-            <p className="mt-1 text-xs text-[#76799C] dark:text-[#9DA6CC]">
-              Double-check the Unique School ID or clear the search filter to view all registered schools.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            {/* Left List (5 cols) */}
-            <section className="lg:col-span-5 space-y-2.5">
-              {schools.map((entry) => {
-                const isSelected = selectedEntry?.school.id === entry.school.id;
-                return (
-                  <button
-                    key={entry.school.id}
-                    type="button"
-                    onClick={() => setSelectedId(entry.school.id)}
-                    className={`w-full text-left rounded-[16px] border p-4 transition cursor-pointer ${
-                      isSelected
-                        ? "border-[#663CF6] bg-[#FAF8FE] shadow-sm dark:border-[#8B5CF6] dark:bg-[#1B1740]"
-                        : "border-[#D6DBF0] bg-white hover:border-[#9B76FF] dark:border-[#272B4D] dark:bg-[#141731] dark:hover:border-[#663CF6]"
+                <span className="flex items-center gap-2.5">
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span>{item.label}</span>
+                </span>
+                {item.id === "support" && overview.kpis.openSupportTickets > 0 && (
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
+                      active
+                        ? "bg-white/20 text-white"
+                        : "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-extrabold text-[#08093B] truncate dark:text-[#F3F5FF]">
-                          {entry.school.name}
-                        </p>
-                        <p className="mt-0.5 font-mono text-xs font-bold text-[#663CF6] dark:text-[#A78BFA]">
-                          {entry.school.uniqueId || "No Unique ID"}
-                        </p>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-[#EDE7FF] px-2.5 py-0.5 text-[10px] font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
-                        {entry.school.status}
-                      </span>
-                    </div>
-                    <div className="mt-2.5 flex flex-wrap items-center gap-3 text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
-                      <span>{entry.school.city || "—"}, {entry.school.state || "—"}</span>
-                      <span>·</span>
-                      <span>{entry.counts.users} users</span>
-                      <span>·</span>
-                      <span>{entry.counts.applications} apps</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </section>
+                    {overview.kpis.openSupportTickets}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
-            {/* Right Detail Panel (7 cols) */}
-            {selectedEntry && (
-              <section className="lg:col-span-7 rounded-[20px] border border-[#D6DBF0] bg-white p-6 shadow-xs space-y-6 dark:border-[#272B4D] dark:bg-[#141731]">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-[#DFE3F5] pb-4 dark:border-[#232746]">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-5 w-5 text-[#663CF6] dark:text-[#A78BFA]" />
-                      <h2 className="text-lg font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-                        {selectedEntry.school.name}
-                      </h2>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#EDE7FF] px-2.5 py-1 font-mono text-xs font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
-                        <KeyRound className="h-3.5 w-3.5" />
-                        <span>{selectedEntry.school.uniqueId || "N/A"}</span>
-                      </span>
-                      {selectedEntry.school.uniqueId && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleCopy(
-                              selectedEntry.school.id,
-                              selectedEntry.school.uniqueId!,
-                            )
-                          }
-                          className="inline-flex items-center gap-1 rounded-[8px] border border-[#D6DBF0] px-2 py-1 text-[11px] font-bold text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#2E345B] dark:text-[#C5CCF0]"
-                        >
-                          {copiedId === selectedEntry.school.id ? (
-                            <Check className="h-3 w-3 text-emerald-600" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                          <span>
-                            {copiedId === selectedEntry.school.id ? "Copied" : "Copy ID"}
-                          </span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
+      <div className="space-y-2 border-t border-[#E6E9F6] pt-3 dark:border-[#232746]">
+        <div className="px-2">
+          <p className="text-xs font-extrabold text-[#08093B] truncate dark:text-[#F3F5FF]">
+            {adminUser.name}
+          </p>
+          <p className="text-[10px] text-[#76799C] truncate dark:text-[#9DA6CC]">
+            {adminUser.email || "Platform Super Admin"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-1.5 rounded-[10px] border border-[#D6DBF0] bg-white px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 cursor-pointer dark:border-[#2E345B] dark:bg-[#10142C] dark:text-rose-400"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </div>
+  );
 
-                  <Link
-                    href={`/${selectedEntry.school.slug}` as Route}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] bg-[#663CF6] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#4F27E8]"
-                  >
-                    <span>Open School Portal</span>
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
+  return (
+    <div className="min-h-screen bg-[#F4F6FC] text-[#1B1D45] flex dark:bg-[#090B1A] dark:text-[#DCE1F9]">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:block w-64 shrink-0 border-r border-[#D6DBF0] bg-white sticky top-0 h-screen dark:border-[#232746] dark:bg-[#0E1026]">
+        {sidebarContent}
+      </aside>
 
-                {/* Metrics */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-3.5 dark:border-[#272B4D] dark:bg-[#10142C]">
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#76799C] dark:text-[#9DA6CC]">
-                      <Users className="h-3.5 w-3.5 text-[#663CF6]" />
-                      <span>Users</span>
-                    </div>
-                    <p className="mt-1 text-xl font-black text-[#08093B] dark:text-[#F3F5FF]">
-                      {selectedEntry.counts.users}
-                    </p>
-                  </div>
-                  <div className="rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-3.5 dark:border-[#272B4D] dark:bg-[#10142C]">
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#76799C] dark:text-[#9DA6CC]">
-                      <FileText className="h-3.5 w-3.5 text-[#663CF6]" />
-                      <span>Applications</span>
-                    </div>
-                    <p className="mt-1 text-xl font-black text-[#08093B] dark:text-[#F3F5FF]">
-                      {selectedEntry.counts.applications}
-                    </p>
-                  </div>
-                  <div className="rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-3.5 dark:border-[#272B4D] dark:bg-[#10142C]">
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#76799C] dark:text-[#9DA6CC]">
-                      <MessageSquare className="h-3.5 w-3.5 text-[#663CF6]" />
-                      <span>Enquiries</span>
-                    </div>
-                    <p className="mt-1 text-xl font-black text-[#08093B] dark:text-[#F3F5FF]">
-                      {selectedEntry.counts.enquiries}
-                    </p>
-                  </div>
-                </div>
+      {/* Mobile Drawer */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <aside className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl dark:bg-[#0E1026]">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
 
-                {/* School Metadata */}
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <dt className="font-semibold text-[#76799C] dark:text-[#9DA6CC]">Opaque Portal URL</dt>
-                    <dd className="mt-0.5 font-mono font-bold text-[#08093B] dark:text-[#F3F5FF]">
-                      /{selectedEntry.school.slug}/login
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="font-semibold text-[#76799C] dark:text-[#9DA6CC]">Board &amp; Category</dt>
-                    <dd className="mt-0.5 font-bold text-[#08093B] dark:text-[#F3F5FF]">
-                      {selectedEntry.school.affiliationBoard || "—"} · {selectedEntry.school.category || "—"}
-                    </dd>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Phone className="h-3.5 w-3.5 text-[#663CF6] mt-0.5 shrink-0" />
-                    <div>
-                      <dt className="font-semibold text-[#76799C] dark:text-[#9DA6CC]">Contact Phone</dt>
-                      <dd className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
-                        {selectedEntry.school.contactPhone || "—"}
-                      </dd>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Mail className="h-3.5 w-3.5 text-[#663CF6] mt-0.5 shrink-0" />
-                    <div className="min-w-0">
-                      <dt className="font-semibold text-[#76799C] dark:text-[#9DA6CC]">Contact Email</dt>
-                      <dd className="font-bold text-[#08093B] truncate dark:text-[#F3F5FF]">
-                        {selectedEntry.school.contactEmail || "—"}
-                      </dd>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Globe className="h-3.5 w-3.5 text-[#663CF6] mt-0.5 shrink-0" />
-                    <div className="min-w-0">
-                      <dt className="font-semibold text-[#76799C] dark:text-[#9DA6CC]">Plan / Code</dt>
-                      <dd className="font-bold capitalize text-[#08093B] dark:text-[#F3F5FF]">
-                        {selectedEntry.school.plan || "Starter"} · {selectedEntry.school.code || "—"}
-                      </dd>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-3.5 w-3.5 text-[#663CF6] mt-0.5 shrink-0" />
-                    <div>
-                      <dt className="font-semibold text-[#76799C] dark:text-[#9DA6CC]">Location</dt>
-                      <dd className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
-                        {[
-                          selectedEntry.school.addressLine,
-                          selectedEntry.school.city,
-                          selectedEntry.school.state,
-                          selectedEntry.school.pinCode,
-                        ]
-                          .filter(Boolean)
-                          .join(", ") || "—"}
-                      </dd>
-                    </div>
-                  </div>
-                </dl>
-
-                {/* Registered Users */}
-                <div>
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#76799C] mb-2.5 dark:text-[#9DA6CC]">
-                    Registered Accounts ({selectedEntry.users.length})
-                  </h3>
-                  {selectedEntry.users.length === 0 ? (
-                    <p className="text-xs text-[#76799C] dark:text-[#9DA6CC]">No user accounts found.</p>
-                  ) : (
-                    <div className="overflow-x-auto school-menu-scrollbar rounded-[12px] border border-[#DFE3F5] dark:border-[#272B4D]">
-                      <table className="w-full min-w-[480px] text-left text-xs border-collapse">
-                        <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase tracking-wider text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
-                          <tr>
-                            <th className="px-3 py-2">Name</th>
-                            <th className="px-3 py-2">Role</th>
-                            <th className="px-3 py-2">Contact</th>
-                            <th className="px-3 py-2">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#F1F5F9] dark:divide-[#232746]">
-                          {selectedEntry.users.map((u) => (
-                            <tr key={u.id}>
-                              <td className="px-3 py-2 font-bold text-[#08093B] dark:text-[#F3F5FF]">
-                                {u.name}
-                              </td>
-                              <td className="px-3 py-2 text-[#4D5072] dark:text-[#C5CCF0]">{u.role}</td>
-                              <td className="px-3 py-2 text-[#4D5072] dark:text-[#C5CCF0]">
-                                <div>{u.email || "—"}</div>
-                                <div className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
-                                  {u.phone || "—"}
-                                </div>
-                              </td>
-                              <td className="px-3 py-2">
-                                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                                  {u.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </section>
-            )}
+      {/* Main Content */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="sticky top-0 z-30 h-16 border-b border-[#D6DBF0] bg-white/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-3 dark:border-[#232746] dark:bg-[#0E1026]/95">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+              className="lg:hidden rounded-lg p-1.5 text-[#4D5072] hover:bg-[#FAF8FE] dark:text-[#C5CCF0]"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <h1 className="text-base sm:text-lg font-extrabold text-[#08093B] truncate dark:text-[#F3F5FF]">
+              Company Admin Panel
+            </h1>
           </div>
-        )}
-      </main>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setQuickSearchOpen(true)}
+              className="hidden sm:inline-flex items-center gap-2 rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3 py-1.5 text-xs font-semibold text-[#76799C] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#9DA6CC]"
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span>Jump to school...</span>
+              <kbd className="rounded border border-[#CAD0EB] px-1 text-[10px] font-bold dark:border-[#343B6B]">
+                Ctrl+K
+              </kbd>
+            </button>
+            <ThemeToggle />
+          </div>
+        </header>
+
+        <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto space-y-5">
+          {toast && (
+            <div
+              role={toast.type === "error" ? "alert" : "status"}
+              className={`flex items-center justify-between gap-3 rounded-[14px] border px-4 py-3 text-xs font-bold ${
+                toast.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+                  : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                {toast.type === "success" ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                )}
+                <span>{toast.text}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setToast(null)}
+                className="underline cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {activeTab === "overview" && (
+            <PlatformOverviewTab
+              overview={overview}
+              onSelectSchool={handleSelectSchoolFromAnywhere}
+              onNavigateTab={setActiveTab}
+            />
+          )}
+
+          {activeTab === "schools" && (
+            <PlatformSchoolsTab
+              schools={schools}
+              selectedSchoolId={selectedSchoolId}
+              onSelectSchoolId={setSelectedSchoolId}
+              onRefreshSchools={refreshSchools}
+              onToast={showToast}
+            />
+          )}
+
+          {activeTab === "admins" && (
+            <PlatformAdminsTab
+              currentAdminId={adminUser.id}
+              currentPlatformRole={adminUser.platformRole ?? "SUPER_ADMIN"}
+              currentTwoFactorEnabled={adminUser.twoFactorEnabled}
+              onToast={showToast}
+            />
+          )}
+
+          {activeTab === "users" && <PlatformUsersTab onToast={showToast} />}
+
+          {activeTab === "billing" && (
+            <PlatformBillingTab schools={schools} onToast={showToast} />
+          )}
+
+          {activeTab === "support" && <PlatformSupportTab onToast={showToast} />}
+
+          {activeTab === "audit" && <PlatformAuditHealthTab />}
+
+          {activeTab === "announcements" && (
+            <PlatformAnnouncementsTab schools={schools} onToast={showToast} />
+          )}
+        </main>
+      </div>
+
+      {/* Ctrl+K Quick Search Modal */}
+      {quickSearchOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Quick search registered schools"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-20 p-4 backdrop-blur-xs"
+        >
+          <div className="w-full max-w-lg rounded-[20px] border border-[#D6DBF0] bg-white p-4 shadow-2xl dark:border-[#272B4D] dark:bg-[#141731] space-y-3">
+            <div className="flex items-center gap-2 border-b border-[#EEF1FA] pb-2.5 dark:border-[#232746]">
+              <Search className="h-4 w-4 text-[#663CF6]" />
+              <input
+                type="text"
+                autoFocus
+                value={quickQuery}
+                onChange={(e) => setQuickQuery(e.target.value)}
+                placeholder="Type School Name, SNX Unique ID, city, or email..."
+                className="flex-1 bg-transparent text-xs font-semibold focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setQuickSearchOpen(false)}
+                className="text-xs font-bold text-[#76799C] cursor-pointer"
+              >
+                Esc
+              </button>
+            </div>
+            <div className="max-h-72 overflow-y-auto space-y-1">
+              {quickResults.length === 0 ? (
+                <p className="py-6 text-center text-xs text-[#76799C]">No matching schools</p>
+              ) : (
+                quickResults.map((e) => (
+                  <button
+                    key={e.school.id}
+                    type="button"
+                    onClick={() => handleSelectSchoolFromAnywhere(e.school.id)}
+                    className="w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs hover:bg-[#FAF8FE] cursor-pointer dark:hover:bg-[#1B2042]"
+                  >
+                    <div>
+                      <p className="font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                        {e.school.name}
+                      </p>
+                      <p className="font-mono text-[10px] text-[#663CF6] dark:text-[#A78BFA]">
+                        {e.school.uniqueId || e.school.slug} · {e.school.city || "—"}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold text-[#76799C]">{e.school.status}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

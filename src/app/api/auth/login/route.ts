@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { checkRateLimit } from "@/server/integrations/redis";
 import { toErrorResponse, RateLimitExceededError } from "@/lib/errors";
+import { getPlatformAdminPath } from "@/server/platform/admin-route-config";
 import { authRepository } from "@/server/auth/auth-repository";
 import { getDummyPasswordHash, verifyPassword } from "@/server/security/crypto";
 import { sessionService } from "@/server/auth/session-service";
@@ -174,6 +175,23 @@ export async function POST(req: NextRequest) {
       }
 
       const activeSchool = accessCheck.school ?? user.school ?? null;
+      if (
+        user.role !== "PLATFORM_SUPER_ADMIN" &&
+        activeSchool &&
+        (activeSchool.status === "SUSPENDED" || activeSchool.status === "INACTIVE")
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "SCHOOL_SUSPENDED",
+              message:
+                "This school workspace is currently suspended or inactive. Please contact ScholoNix support.",
+            },
+          },
+          { status: 403 },
+        );
+      }
 
       // Create session
       const { token, expiresAt } = await sessionService.createSession(user, {
@@ -184,7 +202,7 @@ export async function POST(req: NextRequest) {
       const redirectTo = activeSchool?.slug
         ? `/${activeSchool.slug}`
         : user.role === "PLATFORM_SUPER_ADMIN"
-          ? "/admin"
+          ? getPlatformAdminPath()
           : "/dashboard";
 
       const response = NextResponse.json({
@@ -287,6 +305,34 @@ export async function POST(req: NextRequest) {
     }
 
     const activeSchool = accessCheck.school ?? user.school ?? null;
+    if (
+      user.role !== "PLATFORM_SUPER_ADMIN" &&
+      activeSchool &&
+      (activeSchool.status === "SUSPENDED" || activeSchool.status === "INACTIVE")
+    ) {
+      await logAuditEvent({
+        schoolId: activeSchool.id,
+        actorId: user.id,
+        action: "LOGIN_BLOCKED_SCHOOL_SUSPENDED",
+        entityType: "School",
+        entityId: activeSchool.id,
+        details: { schoolStatus: activeSchool.status },
+        ipAddress: ip,
+        userAgent,
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "SCHOOL_SUSPENDED",
+            message:
+              "This school workspace is currently suspended or inactive. Please contact ScholoNix support.",
+          },
+        },
+        { status: 403 },
+      );
+    }
 
     // Create persistent session
     const { token, expiresAt } = await sessionService.createSession(user, {
@@ -306,7 +352,7 @@ export async function POST(req: NextRequest) {
     const redirectTo = activeSchool?.slug
       ? `/${activeSchool.slug}`
       : user.role === "PLATFORM_SUPER_ADMIN"
-        ? "/admin"
+        ? getPlatformAdminPath()
         : "/dashboard";
 
     const response = NextResponse.json({

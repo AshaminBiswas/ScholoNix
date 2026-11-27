@@ -115,6 +115,17 @@ export async function resolveTenantRouteAccess(
       };
     }
 
+    if (ownSchool.status === "SUSPENDED" || ownSchool.status === "INACTIVE") {
+      return {
+        authorized: false,
+        reason: "SERVICE_UNAVAILABLE",
+        message:
+          ownSchool.status === "SUSPENDED"
+            ? "This school workspace has been temporarily suspended. Please contact ScholoNix Company Support for assistance."
+            : "This school workspace is currently inactive. Please contact ScholoNix Company Support.",
+      };
+    }
+
     return {
       authorized: true,
       session,

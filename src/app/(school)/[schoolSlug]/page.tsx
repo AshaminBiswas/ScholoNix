@@ -4,6 +4,8 @@ import { schoolDashboardService } from "@/server/school/school-dashboard-service
 import { SchoolDashboard } from "@/modules/school/components/school-dashboard";
 import { TenantUnauthorizedView } from "@/modules/school/components/tenant-unauthorized-view";
 import { TenantServiceUnavailableView } from "@/modules/school/components/tenant-service-unavailable-view";
+import { getConfiguredPlatformAdminSlug } from "@/server/platform/admin-route-config";
+import { renderCompanyAdminPage } from "@/server/platform/render-company-admin";
 import { captureException } from "@/lib/observability/sentry";
 import type { SchoolDashboardData } from "@/modules/school/types";
 
@@ -22,6 +24,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function SchoolWorkspacePage({ params }: SchoolWorkspacePageProps) {
   const { schoolSlug } = await params;
+  const configuredAdminSlug = getConfiguredPlatformAdminSlug();
+  if (configuredAdminSlug && schoolSlug.trim().toLowerCase() === configuredAdminSlug) {
+    return renderCompanyAdminPage(configuredAdminSlug);
+  }
   const access = await resolveTenantRouteAccess(schoolSlug, `/${schoolSlug}`);
 
   if (!access.authorized) {

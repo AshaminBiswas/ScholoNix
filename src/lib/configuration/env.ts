@@ -52,6 +52,12 @@ export const serverEnvSchema = z.object({
     .min(32, "AUTH_SECRET must be at least 32 characters for secure session hashing"),
   AUTH_SESSION_TTL_SECONDS: z.coerce.number().default(28800),
   AUTH_COOKIE_NAME: z.string().default("__Host-school_session"),
+  PLATFORM_ADMIN_SLUG: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9-_]{6,64}$/i, "PLATFORM_ADMIN_SLUG must be 6-64 alphanumeric, dash, or underscore characters")
+    .optional()
+    .or(z.literal("")),
 
   // Logging & Observability
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),

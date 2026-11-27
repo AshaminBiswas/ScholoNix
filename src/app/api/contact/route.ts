@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { platformRepository } from "@/server/platform/platform-repository";
 
 const contactSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100, "Name is too long"),
@@ -27,14 +28,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, email, subject, schoolName } = result.data;
+    const { name, email, phone, schoolName, role, subject, message } = result.data;
+    const referenceId = `CNTC-${Date.now().toString().slice(-6)}`;
 
-    // In a production environment, send email via nodemailer / webhook or record in CRM
-    // For development, validate payload and return a successful response
+    await platformRepository.createSupportTicket({
+      referenceCode: referenceId,
+      source: "CONTACT_FORM",
+      senderName: name,
+      senderEmail: email,
+      senderPhone: phone || null,
+      schoolName: schoolName || null,
+      role: role || null,
+      category: "Sales & Contact Inquiry",
+      subject,
+      message,
+      priority: "MEDIUM",
+    });
+
     return NextResponse.json({
       success: true,
       message: `Thank you, ${name}! We have received your inquiry regarding "${subject}" for ${schoolName || "your school"}. Our dedicated team will respond to ${email} within 24 hours.`,
-      referenceId: `CNTC-${Date.now().toString().slice(-6)}`,
+      referenceId,
     });
   } catch {
     return NextResponse.json(

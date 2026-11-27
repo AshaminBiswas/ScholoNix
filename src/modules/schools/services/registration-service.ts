@@ -43,7 +43,12 @@ export const RESERVED_SCHOOL_SLUGS = new Set([
 ]);
 
 export function isReservedSchoolSlug(slug: string): boolean {
-  return RESERVED_SCHOOL_SLUGS.has(slug.trim().toLowerCase());
+  const clean = slug.trim().toLowerCase();
+  const customAdminSlug = process.env.PLATFORM_ADMIN_SLUG?.trim().replace(/^\/+|\/+$/g, "").toLowerCase();
+  if (customAdminSlug && clean === customAdminSlug) {
+    return true;
+  }
+  return RESERVED_SCHOOL_SLUGS.has(clean);
 }
 
 /**

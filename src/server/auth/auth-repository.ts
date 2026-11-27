@@ -65,6 +65,16 @@ export interface SchoolRecord {
   logoUrl?: string | null;
   status: string;
   plan?: string | null;
+  billingCycle?: string | null;
+  subscriptionStatus?: string | null;
+  maxStudentsLimit?: number;
+  maxStaffLimit?: number;
+  enabledModules?: Record<string, unknown> | null;
+  suspendedReason?: string | null;
+  internalNotes?: string | null;
+  onboardingStep?: number;
+  onboardingDone?: boolean;
+  trialEndsAt?: Date | string | null;
   createdAt: Date;
   updatedAt?: Date | null;
 }
@@ -1704,5 +1714,23 @@ export const authRepository = {
       }
     }
     saveStore(storeMemory);
+  },
+
+  /**
+   * Internal fallback state accessor used by `platform-repository.ts` in non-DB/test mode.
+   */
+  getPlatformAuthStore(): AuthStoreState {
+    if (!isServerlessRuntime() && Object.keys(storeMemory.schools).length === 0) {
+      storeMemory = loadStore();
+    }
+    return storeMemory;
+  },
+
+  commitPlatformAuthStore(): void {
+    saveStore(storeMemory);
+  },
+
+  async canUsePrismaForPlatform(): Promise<boolean> {
+    return isPrismaWorking();
   },
 };

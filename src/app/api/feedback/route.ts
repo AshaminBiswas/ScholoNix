@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { platformRepository } from "@/server/platform/platform-repository";
 
 const feedbackSchema = z.object({
   category: z.enum([
@@ -36,12 +37,29 @@ export async function POST(request: Request) {
       );
     }
 
-    const { category, rating, email } = result.data;
+    const { category, rating, sentiment, module, feedback, role, email, schoolName } = result.data;
+    const referenceId = `FDBK-${Date.now().toString().slice(-6)}`;
+
+    await platformRepository.createSupportTicket({
+      referenceCode: referenceId,
+      source: "FEEDBACK_FORM",
+      senderName: email || schoolName || "Anonymous Educator",
+      senderEmail: email || null,
+      schoolName: schoolName || null,
+      role: role || null,
+      category,
+      subject: `${category} (${rating}/5★${module ? ` · ${module}` : ""})`,
+      message: feedback,
+      rating,
+      sentiment: sentiment || null,
+      module: module || null,
+      priority: rating <= 2 ? "HIGH" : "LOW",
+    });
 
     return NextResponse.json({
       success: true,
       message: "Thank you for sharing your feedback! Your insights help our team make ScholoNix even better for educators and parents.",
-      referenceId: `FDBK-${Date.now().toString().slice(-6)}`,
+      referenceId,
       received: {
         category,
         rating,
