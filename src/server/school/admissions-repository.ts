@@ -14,6 +14,7 @@ import {
   DEFAULT_DOCUMENT_CHECKLIST,
   DEFAULT_ENQUIRY_SOURCES,
   mergeExtendedSettings,
+  resolveClassFeePaiseForGrade,
   type AdmissionAcademicDetailsPayload,
   type AdmissionActivityRecord,
   type AdmissionApplicationRecord,
@@ -1729,6 +1730,39 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
             });
 
             const after = mapPrismaApplication(updatedRow);
+            if (
+              before.status !== "ADMITTED" &&
+              after.status === "ADMITTED" &&
+              caps.hasFeeLedgers &&
+              (tx as any).admissionFeeLedger
+            ) {
+              const settingRow = await (tx.admissionSetting as any).findUnique({
+                where: { schoolId },
+                select: getSettingSelect(caps),
+              });
+              const extCfg = mergeExtendedSettings(settingRow?.extendedConfig);
+              if (extCfg.autoApplyClassFeeOnAdmit) {
+                const classFeePaise = resolveClassFeePaiseForGrade(extCfg, after.gradeApplied);
+                if (classFeePaise > 0) {
+                  const existingLedger = await (tx as any).admissionFeeLedger.findUnique({
+                    where: { applicationId: after.id },
+                    select: { id: true },
+                  });
+                  if (!existingLedger) {
+                    await (tx as any).admissionFeeLedger.create({
+                      data: {
+                        schoolId,
+                        applicationId: after.id,
+                        academicYear: after.academicYear,
+                        totalFeePaise: classFeePaise,
+                        concessionPaise: 0,
+                        updatedByUserId: actor.id,
+                      },
+                    });
+                  }
+                }
+              }
+            }
             const summaryParts: string[] = [];
             if (transitioningFromDraft) {
               summaryParts.push(
@@ -1867,6 +1901,31 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     };
 
     store.applications[applicationId] = after;
+
+    if (before.status !== "ADMITTED" && after.status === "ADMITTED") {
+      const setting = this.getOrCreateFallbackSetting(store, schoolId);
+      const extCfg = mergeExtendedSettings(setting.extendedConfig);
+      if (extCfg.autoApplyClassFeeOnAdmit) {
+        const classFeePaise = resolveClassFeePaiseForGrade(extCfg, after.gradeApplied);
+        const alreadyHasLedger = Object.values(store.feeLedgers).some(
+          (l) => l.schoolId === schoolId && l.applicationId === after.id,
+        );
+        if (classFeePaise > 0 && !alreadyHasLedger) {
+          const ledgerId = randomUUID();
+          store.feeLedgers[ledgerId] = {
+            id: ledgerId,
+            schoolId,
+            applicationId: after.id,
+            academicYear: after.academicYear,
+            totalFeePaise: classFeePaise,
+            concessionPaise: 0,
+            concessionReason: null,
+            currency: "INR",
+            updatedAt: nowIso,
+          };
+        }
+      }
+    }
 
     const summaryParts: string[] = [];
     if (transitioningFromDraft) {
@@ -3927,13 +3986,21 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
               } as any,
             });
 
-            if (initialFeePaise > 0 && caps.hasFeeLedgers && (tx as any).admissionFeeLedger) {
+            const settingExtCfg = mergeExtendedSettings(setting.extendedConfig);
+            const resolvedInitialFeePaise =
+              initialFeePaise > 0
+                ? initialFeePaise
+                : input.totalFeeRupees === undefined && settingExtCfg.autoApplyClassFeeOnAdmit
+                  ? resolveClassFeePaiseForGrade(settingExtCfg, input.gradeApplied)
+                  : 0;
+
+            if (resolvedInitialFeePaise > 0 && caps.hasFeeLedgers && (tx as any).admissionFeeLedger) {
               await (tx as any).admissionFeeLedger.create({
                 data: {
                   schoolId,
                   applicationId: created.id,
                   academicYear: input.academicYear,
-                  totalFeePaise: initialFeePaise,
+                  totalFeePaise: resolvedInitialFeePaise,
                   concessionPaise: 0,
                   updatedByUserId: actor.id,
                 },
@@ -4016,14 +4083,22 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     };
     store.applications[record.id] = record;
 
-    if (initialFeePaise > 0) {
+    const fallbackExtCfg = mergeExtendedSettings(setting.extendedConfig);
+    const resolvedFallbackFeePaise =
+      initialFeePaise > 0
+        ? initialFeePaise
+        : input.totalFeeRupees === undefined && fallbackExtCfg.autoApplyClassFeeOnAdmit
+          ? resolveClassFeePaiseForGrade(fallbackExtCfg, input.gradeApplied)
+          : 0;
+
+    if (resolvedFallbackFeePaise > 0) {
       const ledgerId = randomUUID();
       store.feeLedgers[ledgerId] = {
         id: ledgerId,
         schoolId,
         applicationId: record.id,
         academicYear: input.academicYear,
-        totalFeePaise: initialFeePaise,
+        totalFeePaise: resolvedFallbackFeePaise,
         concessionPaise: 0,
         concessionReason: null,
         currency: "INR",

@@ -505,8 +505,8 @@ export function AdmissionsWorkspace({
       noticeCount={data.reminders.length}
       onOpenSearch={handleOpenGlobalSearch}
     >
-      {/* Page Header (Overview, Enquiries, Admitted, Settings — Applications renders custom Application Management header) */}
-      {activeTab !== "applications" && (
+      {/* Page Header (Overview, Enquiries, Admitted — Applications and Settings render their own top headers) */}
+      {activeTab !== "applications" && activeTab !== "settings" && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#08093B] tracking-tight dark:text-[#F3F5FF]">

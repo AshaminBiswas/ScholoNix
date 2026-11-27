@@ -517,6 +517,7 @@ export function AdmittedWorkspace({
         open={directAdmitOpen}
         availableGrades={availableGrades}
         academicYear={settings.currentAcademicYear}
+        extendedConfig={settings.extendedConfig}
         onClose={() => setDirectAdmitOpen(false)}
         onSubmit={handleDirectAdmit}
       />
@@ -535,6 +536,7 @@ export function AdmittedWorkspace({
       />
 
       <SetFeeLedgerModal
+        key={setLedgerStudent?.id || "closed"}
         student={setLedgerStudent}
         existingLedger={
           setLedgerStudent
@@ -542,6 +544,7 @@ export function AdmittedWorkspace({
             : undefined
         }
         students={filteredStudents}
+        extendedConfig={settings.extendedConfig}
         onClose={() => setSetLedgerStudent(null)}
         onSave={handleSaveFeeLedger}
       />

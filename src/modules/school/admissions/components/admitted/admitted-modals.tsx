@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import type {
-  AdmissionApplicationRecord,
-  AdmissionFeeLedgerRecord,
-  AdmissionFeePaymentRecord,
-  AdmissionTypeValue,
+import {
+  resolveClassFeePaiseForGrade,
+  type AdmissionApplicationRecord,
+  type AdmissionExtendedSettings,
+  type AdmissionFeeLedgerRecord,
+  type AdmissionFeePaymentRecord,
+  type AdmissionTypeValue,
 } from "@/modules/school/admissions/types";
 import { formatDateTimeIst, formatShortDate } from "../enquiries/enquiry-shared";
 import { ADMISSION_TYPE_META, formatInrFromPaise } from "./admitted-shared";
@@ -14,26 +16,35 @@ export function DirectAdmitModal({
   open,
   availableGrades,
   academicYear,
+  extendedConfig,
   onClose,
   onSubmit,
 }: {
   open: boolean;
   availableGrades: string[];
   academicYear: string;
+  extendedConfig?: AdmissionExtendedSettings;
   onClose: () => void;
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
 }) {
+  const initialGrade = availableGrades[0] || "Class I";
+  const initialConfiguredPaise = resolveClassFeePaiseForGrade(extendedConfig, initialGrade);
   const [studentName, setStudentName] = useState("");
-  const [gradeApplied, setGradeApplied] = useState(availableGrades[0] || "Class I");
+  const [gradeApplied, setGradeApplied] = useState(initialGrade);
   const [admissionType, setAdmissionType] = useState<AdmissionTypeValue>("FRESH");
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
   const [guardianEmail, setGuardianEmail] = useState("");
-  const [totalFeeRupees, setTotalFeeRupees] = useState("");
+  const [totalFeeRupees, setTotalFeeRupees] = useState(
+    initialConfiguredPaise > 0 ? String(initialConfiguredPaise / 100) : "",
+  );
+  const [feeManuallyEdited, setFeeManuallyEdited] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
+
+  const configuredGradeFeePaise = resolveClassFeePaiseForGrade(extendedConfig, gradeApplied);
 
   return (
     <div
@@ -104,7 +115,14 @@ export function DirectAdmitModal({
               <label className="block text-[11px] font-bold mb-1">Grade *</label>
               <select
                 value={gradeApplied}
-                onChange={(e) => setGradeApplied(e.target.value)}
+                onChange={(e) => {
+                  const nextGrade = e.target.value;
+                  setGradeApplied(nextGrade);
+                  if (!feeManuallyEdited) {
+                    const nextPaise = resolveClassFeePaiseForGrade(extendedConfig, nextGrade);
+                    setTotalFeeRupees(nextPaise > 0 ? String(nextPaise / 100) : "");
+                  }
+                }}
                 className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#313761] dark:bg-[#1A1F3D]"
               >
                 {availableGrades.map((g) => (
@@ -128,12 +146,29 @@ export function DirectAdmitModal({
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold mb-1">Total Annual Fee (&#8377;)</label>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label className="block text-[11px] font-bold">Total Annual Fee (&#8377;)</label>
+                {configuredGradeFeePaise > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTotalFeeRupees(String(configuredGradeFeePaise / 100));
+                      setFeeManuallyEdited(false);
+                    }}
+                    className="text-[10px] font-bold text-[#663CF6] hover:underline dark:text-[#C4B5FD]"
+                  >
+                    Use {gradeApplied} Fee ({formatInrFromPaise(configuredGradeFeePaise)})
+                  </button>
+                )}
+              </div>
               <input
                 type="number"
                 min={0}
                 value={totalFeeRupees}
-                onChange={(e) => setTotalFeeRupees(e.target.value)}
+                onChange={(e) => {
+                  setTotalFeeRupees(e.target.value);
+                  setFeeManuallyEdited(true);
+                }}
                 placeholder="Optional e.g. 50000"
                 className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#313761] dark:bg-[#1A1F3D]"
               />
@@ -378,12 +413,14 @@ export function SetFeeLedgerModal({
   student,
   existingLedger,
   students,
+  extendedConfig,
   onClose,
   onSave,
 }: {
   student: AdmissionApplicationRecord | null;
   existingLedger?: AdmissionFeeLedgerRecord;
   students: AdmissionApplicationRecord[];
+  extendedConfig?: AdmissionExtendedSettings;
   onClose: () => void;
   onSave: (payload: {
     applicationId: string;
@@ -393,8 +430,16 @@ export function SetFeeLedgerModal({
   }) => Promise<void>;
 }) {
   const [selectedId, setSelectedId] = useState(student?.id || students[0]?.id || "");
+  const activeStudent = students.find((s) => s.id === selectedId) ?? student;
+  const configuredClassFeePaise = activeStudent
+    ? resolveClassFeePaiseForGrade(extendedConfig, activeStudent.gradeApplied)
+    : 0;
   const [totalFee, setTotalFee] = useState(
-    existingLedger ? String(existingLedger.totalFeePaise / 100) : "50000",
+    existingLedger
+      ? String(existingLedger.totalFeePaise / 100)
+      : configuredClassFeePaise > 0
+        ? String(configuredClassFeePaise / 100)
+        : "50000",
   );
   const [concession, setConcession] = useState(
     existingLedger ? String(existingLedger.concessionPaise / 100) : "0",
@@ -452,7 +497,18 @@ export function SetFeeLedgerModal({
             </select>
           </div>
           <div>
-            <label className="block text-[11px] font-bold mb-1">Total Fee (&#8377;) *</label>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <label className="block text-[11px] font-bold">Total Fee (&#8377;) *</label>
+              {activeStudent && configuredClassFeePaise > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setTotalFee(String(configuredClassFeePaise / 100))}
+                  className="text-[10px] font-bold text-[#663CF6] hover:underline dark:text-[#C4B5FD]"
+                >
+                  Apply {activeStudent.gradeApplied} Plan ({formatInrFromPaise(configuredClassFeePaise)})
+                </button>
+              )}
+            </div>
             <input
               type="number"
               min={0}

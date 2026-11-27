@@ -382,10 +382,58 @@ export interface AdmissionCustomFieldItem {
   required: boolean;
 }
 
+export type AdmissionFeeFrequencyValue = "ONE_TIME" | "ANNUAL" | "QUARTERLY" | "MONTHLY";
+
+export type AdmissionFeeBillingCycleValue = "ANNUAL" | "TERM_WISE" | "QUARTERLY" | "MONTHLY";
+
+export interface AdmissionClassFeeComponentItem {
+  id: string;
+  name: string;
+  amountPaise: number;
+  frequency: AdmissionFeeFrequencyValue;
+  mandatory: boolean;
+}
+
+export interface AdmissionClassFeeStructureItem {
+  id: string;
+  grade: string;
+  billingCycle: AdmissionFeeBillingCycleValue;
+  feeItems: AdmissionClassFeeComponentItem[];
+  notes?: string;
+}
+
+export type AdmissionSubjectCategoryValue =
+  | "CORE"
+  | "LANGUAGE"
+  | "ELECTIVE"
+  | "CO_CURRICULAR"
+  | "SKILL";
+
+export interface AdmissionClassSubjectItem {
+  id: string;
+  name: string;
+  code: string;
+  stream: string;
+  category: AdmissionSubjectCategoryValue;
+  isCompulsory: boolean;
+  maxMarks: number;
+  weeklyPeriods: number;
+}
+
+export interface AdmissionClassSubjectStructureItem {
+  id: string;
+  grade: string;
+  streams: string[];
+  maxElectivesAllowed: number;
+  subjects: AdmissionClassSubjectItem[];
+  notes?: string;
+}
+
 export interface AdmissionExtendedSettings {
   admissionMode: AdmissionModeValue;
   gradeRangeFrom: string;
   gradeRangeTo: string;
+  customGrades: string[];
   admissionEnabled: boolean;
   startDate: string | null;
   lateAdmissionEnabled: boolean;
@@ -414,6 +462,9 @@ export interface AdmissionExtendedSettings {
   crmIntegrationEnabled: boolean;
   referralCodeEnabled: boolean;
   customFields: AdmissionCustomFieldItem[];
+  autoApplyClassFeeOnAdmit: boolean;
+  classFeeStructures: AdmissionClassFeeStructureItem[];
+  classSubjectStructures: AdmissionClassSubjectStructureItem[];
 }
 
 export interface AdmissionSettingRecord {
@@ -617,11 +668,55 @@ export const DEFAULT_DOCUMENT_CHECKLIST: AdmissionDocumentChecklistItem[] = [
   { key: "student_photo", label: "Passport Size Photo", submitted: false, verified: false },
 ];
 
+export function computeFeeItemAnnualPaise(item: AdmissionClassFeeComponentItem): number {
+  const safePaise = Math.max(0, Math.round(Number(item.amountPaise) || 0));
+  const multiplier =
+    item.frequency === "MONTHLY" ? 12 : item.frequency === "QUARTERLY" ? 4 : 1;
+  return safePaise * multiplier;
+}
+
+export function computeClassFeeTotalsPaise(structure?: AdmissionClassFeeStructureItem | null): {
+  compulsoryAnnualPaise: number;
+  optionalAnnualPaise: number;
+  totalAnnualPaise: number;
+} {
+  if (!structure || !Array.isArray(structure.feeItems)) {
+    return { compulsoryAnnualPaise: 0, optionalAnnualPaise: 0, totalAnnualPaise: 0 };
+  }
+  let compulsoryAnnualPaise = 0;
+  let optionalAnnualPaise = 0;
+  for (const item of structure.feeItems) {
+    const annual = computeFeeItemAnnualPaise(item);
+    if (item.mandatory) {
+      compulsoryAnnualPaise += annual;
+    } else {
+      optionalAnnualPaise += annual;
+    }
+  }
+  return {
+    compulsoryAnnualPaise,
+    optionalAnnualPaise,
+    totalAnnualPaise: compulsoryAnnualPaise + optionalAnnualPaise,
+  };
+}
+
+export function resolveClassFeePaiseForGrade(
+  extendedConfig: Partial<AdmissionExtendedSettings> | null | undefined,
+  grade: string,
+): number {
+  const structures = extendedConfig?.classFeeStructures;
+  if (!Array.isArray(structures) || structures.length === 0) return 0;
+  const target = grade.trim().toLowerCase();
+  const match = structures.find((s) => s.grade.trim().toLowerCase() === target);
+  return computeClassFeeTotalsPaise(match).compulsoryAnnualPaise;
+}
+
 export function createDefaultExtendedSettings(): AdmissionExtendedSettings {
   return {
     admissionMode: "ONLINE_OFFLINE",
     gradeRangeFrom: "Nursery",
     gradeRangeTo: "Class XII",
+    customGrades: [],
     admissionEnabled: true,
     startDate: null,
     lateAdmissionEnabled: true,
@@ -661,6 +756,9 @@ export function createDefaultExtendedSettings(): AdmissionExtendedSettings {
     crmIntegrationEnabled: true,
     referralCodeEnabled: false,
     customFields: [],
+    autoApplyClassFeeOnAdmit: true,
+    classFeeStructures: [],
+    classSubjectStructures: [],
   };
 }
 
@@ -674,6 +772,9 @@ export function mergeExtendedSettings(
   return {
     ...defaults,
     ...raw,
+    customGrades: Array.isArray(raw.customGrades)
+      ? Array.from(new Set(raw.customGrades.map((g) => String(g).trim()).filter(Boolean)))
+      : defaults.customGrades,
     documentRequirements:
       Array.isArray(raw.documentRequirements) && raw.documentRequirements.length > 0
         ? raw.documentRequirements.map((d) => ({ ...d }))
@@ -685,6 +786,30 @@ export function mergeExtendedSettings(
     customFields: Array.isArray(raw.customFields)
       ? raw.customFields.map((f) => ({ ...f }))
       : defaults.customFields,
+    autoApplyClassFeeOnAdmit:
+      typeof raw.autoApplyClassFeeOnAdmit === "boolean"
+        ? raw.autoApplyClassFeeOnAdmit
+        : defaults.autoApplyClassFeeOnAdmit,
+    classFeeStructures: Array.isArray(raw.classFeeStructures)
+      ? raw.classFeeStructures.map((cf) => ({
+          ...cf,
+          feeItems: Array.isArray(cf.feeItems)
+            ? cf.feeItems.map((item) => ({
+                ...item,
+                amountPaise: Math.max(0, Math.round(Number(item.amountPaise) || 0)),
+              }))
+            : [],
+        }))
+      : defaults.classFeeStructures,
+    classSubjectStructures: Array.isArray(raw.classSubjectStructures)
+      ? raw.classSubjectStructures.map((cs) => ({
+          ...cs,
+          streams: Array.isArray(cs.streams) ? [...cs.streams] : ["Common"],
+          subjects: Array.isArray(cs.subjects)
+            ? cs.subjects.map((sub) => ({ ...sub }))
+            : [],
+        }))
+      : defaults.classSubjectStructures,
   };
 }
 

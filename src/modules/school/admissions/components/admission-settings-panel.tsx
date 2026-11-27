@@ -35,6 +35,10 @@ import {
   type AdmissionModeValue,
   type AdmissionSettingRecord,
 } from "@/modules/school/admissions/types";
+import {
+  AdmissionClasswiseFeeCard,
+  AdmissionClasswiseSubjectCard,
+} from "./admission-classwise-structures";
 
 export interface AdmissionSettingsSavePayload {
   currentAcademicYear: string;
@@ -160,6 +164,7 @@ export function AdmissionSettingsPanel({
   const [newFieldLabel, setNewFieldLabel] = useState("");
   const [newFieldType, setNewFieldType] = useState<AdmissionCustomFieldItem["type"]>("text");
   const [newFieldRequired, setNewFieldRequired] = useState(false);
+  const [newCustomGrade, setNewCustomGrade] = useState("");
 
   const manageDocsDialogRef = useRef<HTMLDialogElement>(null);
   const customFieldsDialogRef = useRef<HTMLDialogElement>(null);
@@ -210,8 +215,36 @@ export function AdmissionSettingsPanel({
   );
 
   const gradeOptions = useMemo(() => {
-    return Array.from(new Set([...DEFAULT_ADMISSION_GRADES, ...enabledGrades]));
-  }, [enabledGrades]);
+    return Array.from(
+      new Set([
+        ...DEFAULT_ADMISSION_GRADES,
+        ...(ext.customGrades ?? []),
+        ...enabledGrades,
+        ...ext.classFeeStructures.map((c) => c.grade),
+        ...ext.classSubjectStructures.map((c) => c.grade),
+      ]),
+    );
+  }, [enabledGrades, ext.customGrades, ext.classFeeStructures, ext.classSubjectStructures]);
+
+  const handleAddCustomGrade = () => {
+    const clean = newCustomGrade.trim();
+    if (!clean) return;
+    const alreadyExists = gradeOptions.some((g) => g.toLowerCase() === clean.toLowerCase());
+    if (!alreadyExists) {
+      patchExt({ customGrades: [...(ext.customGrades ?? []), clean] });
+    }
+    setEnabledGrades((prev) =>
+      prev.some((g) => g.toLowerCase() === clean.toLowerCase()) ? prev : [...prev, clean],
+    );
+    setNewCustomGrade("");
+  };
+
+  const handleRemoveCustomGrade = (grade: string) => {
+    patchExt({
+      customGrades: (ext.customGrades ?? []).filter((g) => g !== grade),
+    });
+    setEnabledGrades((prev) => prev.filter((g) => g !== grade));
+  };
 
   const handleRangeChange = (from: string, to: string) => {
     patchExt({ gradeRangeFrom: from, gradeRangeTo: to });
@@ -388,10 +421,10 @@ export function AdmissionSettingsPanel({
       {/* Top Section Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#08093B] tracking-tight dark:text-[#F3F5FF]">
             Admission Settings
-          </h2>
-          <p className="text-xs text-[#76799C] dark:text-[#9DA6CC]">
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm font-medium text-[#4D5072] dark:text-[#9DA6CC]">
             Configure admission processes, application forms, document requirements, and approval
             workflow for <strong>{schoolName}</strong>.
           </p>
@@ -554,27 +587,69 @@ export function AdmissionSettingsPanel({
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
               {gradeOptions.map((grade) => {
                 const checked = enabledGrades.includes(grade);
+                const isCustomGrade = !(DEFAULT_ADMISSION_GRADES as readonly string[]).includes(
+                  grade,
+                );
                 return (
-                  <label
+                  <div
                     key={grade}
-                    className={`flex items-center gap-1.5 rounded-[9px] border px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer transition ${
+                    className={`flex items-center justify-between gap-1 rounded-[9px] border px-2.5 py-1.5 text-[11px] font-semibold transition ${
                       checked
                         ? "border-[#663CF6] bg-[#FAF8FE] text-[#663CF6] dark:border-[#8B5CF6] dark:bg-[#231D4B] dark:text-[#D9CEFF]"
                         : "border-[#DFE3F5] bg-white text-[#4D5072] dark:border-[#2A2F58] dark:bg-[#10142C] dark:text-[#9DA6CC]"
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      disabled={!canManageSettings}
-                      checked={checked}
-                      onChange={() => toggleGrade(grade)}
-                      className="h-3.5 w-3.5 accent-[#663CF6]"
-                    />
-                    <span className="truncate">{grade}</span>
-                  </label>
+                    <label className="flex items-center gap-1.5 min-w-0 flex-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        disabled={!canManageSettings}
+                        checked={checked}
+                        onChange={() => toggleGrade(grade)}
+                        className="h-3.5 w-3.5 shrink-0 accent-[#663CF6]"
+                      />
+                      <span className="truncate">{grade}</span>
+                    </label>
+                    {canManageSettings && isCustomGrade && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCustomGrade(grade)}
+                        aria-label={`Remove custom class ${grade}`}
+                        className="text-[10px] font-bold text-[#76799C] hover:text-rose-600 cursor-pointer shrink-0"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>
+
+            {canManageSettings && (
+              <div className="mt-2.5 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newCustomGrade}
+                  onChange={(e) => setNewCustomGrade(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddCustomGrade();
+                    }
+                  }}
+                  placeholder="Add custom class (e.g., Playgroup, Pre-Nursery)"
+                  aria-label="Custom class name"
+                  className="flex-1 rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-1.5 text-xs font-semibold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomGrade}
+                  className="inline-flex items-center gap-1 rounded-[10px] border border-[#CAD0EB] bg-[#FAF8FE] px-3 py-1.5 text-xs font-bold text-[#663CF6] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#C4B5FD]"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Add Class</span>
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -1282,6 +1357,24 @@ export function AdmissionSettingsPanel({
           </div>
         </div>
       </section>
+
+      {/* 10. Classwise Fee Structure (Fully Customizable per Class) */}
+      <AdmissionClasswiseFeeCard
+        gradeOptions={gradeOptions}
+        enabledGrades={enabledGrades}
+        ext={ext}
+        canManageSettings={canManageSettings}
+        onPatchExt={patchExt}
+      />
+
+      {/* 11. Classwise Subject Structure (Fully Customizable per Class & Stream) */}
+      <AdmissionClasswiseSubjectCard
+        gradeOptions={gradeOptions}
+        enabledGrades={enabledGrades}
+        ext={ext}
+        canManageSettings={canManageSettings}
+        onPatchExt={patchExt}
+      />
 
       {/* Bottom Notice & Action Footer */}
       <div className="rounded-[18px] border border-[#D6DBF0] bg-white px-5 py-3.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 dark:border-[#272B4D] dark:bg-[#141731]">

@@ -436,11 +436,48 @@ export const updateApplicationSchema = z.object({
   declarationAccepted: z.boolean().optional(),
 });
 
+export const classFeeComponentSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  name: z.string().trim().min(1, "Fee head name is required").max(80),
+  amountPaise: z.coerce.number().int().min(0).max(1_000_000_000),
+  frequency: z.enum(["ONE_TIME", "ANNUAL", "QUARTERLY", "MONTHLY"]).default("ANNUAL"),
+  mandatory: z.boolean().default(true),
+});
+
+export const classFeeStructureSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  grade: z.string().trim().min(1, "Class name is required").max(60),
+  billingCycle: z.enum(["ANNUAL", "TERM_WISE", "QUARTERLY", "MONTHLY"]).default("QUARTERLY"),
+  feeItems: z.array(classFeeComponentSchema).max(30),
+  notes: z.string().trim().max(300).optional().or(z.literal("")),
+});
+
+export const classSubjectItemSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  name: z.string().trim().min(1, "Subject name is required").max(80),
+  code: z.string().trim().max(24).default(""),
+  stream: z.string().trim().min(1).max(40).default("Common"),
+  category: z.enum(["CORE", "LANGUAGE", "ELECTIVE", "CO_CURRICULAR", "SKILL"]).default("CORE"),
+  isCompulsory: z.boolean().default(true),
+  maxMarks: z.coerce.number().int().min(0).max(1000).default(100),
+  weeklyPeriods: z.coerce.number().int().min(0).max(60).default(5),
+});
+
+export const classSubjectStructureSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  grade: z.string().trim().min(1, "Class name is required").max(60),
+  streams: z.array(z.string().trim().min(1).max(40)).max(15).default(["Common"]),
+  maxElectivesAllowed: z.coerce.number().int().min(0).max(20).default(0),
+  subjects: z.array(classSubjectItemSchema).max(40),
+  notes: z.string().trim().max(300).optional().or(z.literal("")),
+});
+
 export const admissionExtendedSettingsSchema = z
   .object({
     admissionMode: z.enum(["ONLINE_OFFLINE", "ONLINE_ONLY", "OFFLINE_ONLY"]).default("ONLINE_OFFLINE"),
     gradeRangeFrom: z.string().trim().min(1).max(60).default("Nursery"),
     gradeRangeTo: z.string().trim().min(1).max(60).default("Class XII"),
+    customGrades: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
     admissionEnabled: z.boolean().default(true),
     startDate: optionalDateSchema,
     lateAdmissionEnabled: z.boolean().default(true),
@@ -495,6 +532,9 @@ export const admissionExtendedSettingsSchema = z
       )
       .max(25)
       .default([]),
+    autoApplyClassFeeOnAdmit: z.boolean().default(true),
+    classFeeStructures: z.array(classFeeStructureSchema).max(40).default([]),
+    classSubjectStructures: z.array(classSubjectStructureSchema).max(40).default([]),
   })
   .superRefine((val, ctx) => {
     const quotaTotal = val.quotas.reduce((sum, q) => sum + q.percentage, 0);
@@ -511,6 +551,32 @@ export const admissionExtendedSettingsSchema = z
         message: "Maximum Age must be greater than or equal to Minimum Age.",
         path: ["maxAgeYears"],
       });
+    }
+    const feeGrades = new Set<string>();
+    for (const cf of val.classFeeStructures) {
+      const key = cf.grade.trim().toLowerCase();
+      if (feeGrades.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Duplicate fee structure configured for ${cf.grade}.`,
+          path: ["classFeeStructures"],
+        });
+        break;
+      }
+      feeGrades.add(key);
+    }
+    const subjGrades = new Set<string>();
+    for (const cs of val.classSubjectStructures) {
+      const key = cs.grade.trim().toLowerCase();
+      if (subjGrades.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Duplicate subject structure configured for ${cs.grade}.`,
+          path: ["classSubjectStructures"],
+        });
+        break;
+      }
+      subjGrades.add(key);
     }
   });
 

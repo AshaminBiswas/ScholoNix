@@ -5,6 +5,8 @@ import {
   GET as settingsGet,
   PATCH as settingsPatch,
 } from "@/app/api/school/admissions/settings/route";
+import { POST as directAdmitPost } from "@/app/api/school/admissions/admitted/route";
+import { GET as overviewGet } from "@/app/api/school/admissions/overview/route";
 import { createDefaultExtendedSettings } from "@/modules/school/admissions/types";
 import { authRepository } from "@/server/auth/auth-repository";
 import { getSessionCookieName, sessionService } from "@/server/auth/session-service";
@@ -152,5 +154,178 @@ describe("Per-School Customizable Admission Settings API", () => {
       ),
     );
     expect(badQuotaRes.status).toBe(400);
+  });
+
+  it("supports customizable classwise fee structures, classwise subject structures, custom classes, and auto fee ledger assignment on admit", async () => {
+    const schoolAlpha = await seedSchoolAdmin("classwise-alpha");
+    const schoolBeta = await seedSchoolAdmin("classwise-beta");
+
+    const customExtended = {
+      ...createDefaultExtendedSettings(),
+      customGrades: ["Pre-Nursery"],
+      autoApplyClassFeeOnAdmit: true,
+      classFeeStructures: [
+        {
+          id: "cf-class-i",
+          grade: "Class I",
+          billingCycle: "QUARTERLY" as const,
+          notes: "10% sibling concession on tuition",
+          feeItems: [
+            {
+              id: "fee-adm",
+              name: "Admission Fee",
+              amountPaise: 1_000_000, // ₹10,000 one-time
+              frequency: "ONE_TIME" as const,
+              mandatory: true,
+            },
+            {
+              id: "fee-tui",
+              name: "Tuition Fee",
+              amountPaise: 300_000, // ₹3,000 * 12 = ₹36,000
+              frequency: "MONTHLY" as const,
+              mandatory: true,
+            },
+            {
+              id: "fee-bus",
+              name: "Transport Fee",
+              amountPaise: 150_000, // Optional -> excluded from compulsory total
+              frequency: "MONTHLY" as const,
+              mandatory: false,
+            },
+          ],
+        },
+      ],
+      classSubjectStructures: [
+        {
+          id: "cs-class-xi",
+          grade: "Class XI",
+          streams: ["Common", "Science", "Commerce"],
+          maxElectivesAllowed: 1,
+          notes: "Choose 1 elective alongside stream core subjects",
+          subjects: [
+            {
+              id: "sub-eng",
+              name: "English Core",
+              code: "ENG-301",
+              stream: "Common",
+              category: "LANGUAGE" as const,
+              isCompulsory: true,
+              maxMarks: 100,
+              weeklyPeriods: 6,
+            },
+            {
+              id: "sub-phy",
+              name: "Physics",
+              code: "PHY-042",
+              stream: "Science",
+              category: "CORE" as const,
+              isCompulsory: true,
+              maxMarks: 100,
+              weeklyPeriods: 7,
+            },
+          ],
+        },
+      ],
+    };
+
+    const patchRes = await settingsPatch(
+      new NextRequest(
+        `http://localhost/api/school/admissions/settings?schoolSlug=${schoolAlpha.school.slug}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            cookie: schoolAlpha.cookieHeader,
+          },
+          body: JSON.stringify({
+            currentAcademicYear: "2026 – 2027",
+            applicationPrefix: "SCH",
+            enabledGrades: ["Pre-Nursery", "Class I", "Class XI"],
+            extendedConfig: customExtended,
+          }),
+        },
+      ),
+    );
+    expect(patchRes.status).toBe(200);
+    const patchJson = await patchRes.json();
+    expect(patchJson.settings.extendedConfig.customGrades).toEqual(["Pre-Nursery"]);
+    expect(patchJson.settings.extendedConfig.classFeeStructures).toHaveLength(1);
+    expect(patchJson.settings.extendedConfig.classSubjectStructures[0].streams).toContain("Science");
+
+    // Duplicate grade entries in classFeeStructures are rejected cleanly
+    const dupRes = await settingsPatch(
+      new NextRequest(
+        `http://localhost/api/school/admissions/settings?schoolSlug=${schoolAlpha.school.slug}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            cookie: schoolAlpha.cookieHeader,
+          },
+          body: JSON.stringify({
+            currentAcademicYear: "2026 – 2027",
+            applicationPrefix: "SCH",
+            enabledGrades: ["Class I"],
+            extendedConfig: {
+              ...customExtended,
+              classFeeStructures: [
+                customExtended.classFeeStructures[0]!,
+                { ...customExtended.classFeeStructures[0]!, id: "cf-dup" },
+              ],
+            },
+          }),
+        },
+      ),
+    );
+    expect(dupRes.status).toBe(400);
+
+    // Direct admit without explicit totalFeeRupees automatically applies Class I compulsory annual fee (₹46,000 = 4,600,000 paise)
+    const admitRes = await directAdmitPost(
+      new NextRequest(
+        `http://localhost/api/school/admissions/admitted?schoolSlug=${schoolAlpha.school.slug}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            cookie: schoolAlpha.cookieHeader,
+          },
+          body: JSON.stringify({
+            studentName: "Kabir Synthetic",
+            gradeApplied: "Class I",
+            academicYear: "2026 – 2027",
+            guardianName: "Suresh Synthetic",
+            guardianPhone: "+919876543210",
+            admissionType: "FRESH",
+          }),
+        },
+      ),
+    );
+    expect(admitRes.status).toBe(201);
+    const admitJson = await admitRes.json();
+
+    const overviewRes = await overviewGet(
+      new NextRequest(
+        `http://localhost/api/school/admissions/overview?schoolSlug=${schoolAlpha.school.slug}`,
+        { headers: { cookie: schoolAlpha.cookieHeader } },
+      ),
+    );
+    expect(overviewRes.status).toBe(200);
+    const overviewJson = await overviewRes.json();
+    const ledger = overviewJson.data.admittedFeeLedgers.find(
+      (l: { applicationId: string }) => l.applicationId === admitJson.student.id,
+    );
+    expect(ledger).toBeTruthy();
+    expect(ledger.totalFeePaise).toBe(4_600_000); // ₹10,000 + ₹36,000 (optional Transport excluded)
+
+    // Tenant B remains isolated
+    const getBetaRes = await settingsGet(
+      new NextRequest(
+        `http://localhost/api/school/admissions/settings?schoolSlug=${schoolBeta.school.slug}`,
+        { headers: { cookie: schoolBeta.cookieHeader } },
+      ),
+    );
+    const betaJson = await getBetaRes.json();
+    expect(betaJson.settings.extendedConfig.classFeeStructures).toHaveLength(0);
+    expect(betaJson.settings.extendedConfig.classSubjectStructures).toHaveLength(0);
   });
 });

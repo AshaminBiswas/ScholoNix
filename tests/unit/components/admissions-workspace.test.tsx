@@ -124,7 +124,14 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     expect(screen.getByText(/No admitted students yet/i)).toBeTruthy();
 
     await actor.click(screen.getByRole("link", { name: "Admission Settings" }));
-    expect(screen.getByRole("heading", { name: "Admission Settings" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Admission Settings", level: 1 })).toBeTruthy();
+    expect(
+      screen.queryByText(
+        "Manage enquiries, applications, document verification, and student admissions in one place.",
+      ),
+    ).toBeNull();
+    expect(document.querySelector("#admissions-download-report-btn")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Download Report" })).toBeNull();
     // Preserved core controls alongside new customizable sections
     expect(screen.getByLabelText(/Current Academic Year/i)).toBeTruthy();
     expect(screen.getByLabelText(/Application ID Prefix/i)).toBeTruthy();
@@ -133,6 +140,23 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     expect(screen.getByRole("heading", { name: "Document Requirements" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Admission Approval Workflow" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Additional Settings" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Classwise Fee Structure" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Classwise Subject Structure" })).toBeTruthy();
+
+    // Custom class creation + customizable classwise fees & subjects
+    await actor.type(screen.getByLabelText("Custom class name"), "Playgroup");
+    await actor.click(screen.getByRole("button", { name: "Add Class" }));
+    expect(screen.getAllByText("Playgroup").length).toBeGreaterThanOrEqual(1);
+
+    await actor.click(screen.getByRole("button", { name: /Load Starter Fee Plan/i }));
+    expect(screen.getByDisplayValue("Admission Fee")).toBeTruthy();
+    expect(screen.getByDisplayValue("Tuition Fee")).toBeTruthy();
+    await actor.click(screen.getByRole("button", { name: /Add Fee Head/i }));
+    expect(screen.getByDisplayValue("Custom Fee Head")).toBeTruthy();
+
+    await actor.click(screen.getByRole("button", { name: /Load Starter Subjects/i }));
+    await actor.click(screen.getByRole("button", { name: /Add Subject/i }));
+    expect(screen.getByDisplayValue("New Subject")).toBeTruthy();
   });
 
   it("does not render New Application button on Admissions Overview", () => {
@@ -176,7 +200,14 @@ describe("AdmissionsWorkspace zero-state and interactive tabs", () => {
     ).toBe("page");
 
     await actor.click(screen.getByRole("link", { name: "Admission Settings" }));
-    expect(screen.getByRole("heading", { name: "Admission Settings" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Admission Settings", level: 1 })).toBeTruthy();
+    expect(
+      screen.queryByText(
+        "Manage enquiries, applications, document verification, and student admissions in one place.",
+      ),
+    ).toBeNull();
+    expect(document.querySelector("#admissions-download-report-btn")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Download Report" })).toBeNull();
     expect(
       screen.getByRole("link", { name: "Admission Settings" }).getAttribute("aria-current"),
     ).toBe("page");
