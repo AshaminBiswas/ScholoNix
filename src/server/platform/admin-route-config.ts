@@ -8,7 +8,11 @@ const ADMIN_SLUG_REGEX = /^[a-z0-9-_]{6,64}$/;
  * `/{PLATFORM_ADMIN_SLUG}` serves the Company Admin Panel.
  */
 export function getConfiguredPlatformAdminSlug(): string | null {
-  const raw = process.env.PLATFORM_ADMIN_SLUG?.trim().replace(/^\/+|\/+$/g, "").toLowerCase();
+  const raw = process.env.PLATFORM_ADMIN_SLUG
+    ?.trim()
+    .replace(/^["']+|["']+$/g, "")
+    .replace(/^\/+|\/+$/g, "")
+    .toLowerCase();
   if (!raw || raw === "admin") return null;
   if (!ADMIN_SLUG_REGEX.test(raw)) return null;
   return raw;
