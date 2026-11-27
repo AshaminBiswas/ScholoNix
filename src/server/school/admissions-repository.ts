@@ -3,6 +3,7 @@ import "server-only";
 import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/server/database/client";
 import { BaseTenantRepository } from "@/server/repositories/base-tenant-repository";
 import { tenantCache } from "@/server/integrations/redis";
@@ -208,7 +209,8 @@ const globalForAdmissionsRepo = globalThis as unknown as {
   admissionsRepoPrismaUnavailableUntil?: number;
 };
 const PRISMA_RETRY_COOLDOWN_MS = 30_000;
-const PRISMA_DEV_OP_TIMEOUT_MS = 10_000;
+const PRISMA_DEV_OP_TIMEOUT_MS = 25_000;
+const PRISMA_TX_OPTIONS = { maxWait: 10_000, timeout: 25_000 } as const;
 
 async function canUsePrisma(): Promise<boolean> {
   if (process.env.NODE_ENV === "test") {
@@ -419,11 +421,27 @@ function handlePrismaError(operation: string, err: unknown): void {
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function setTransactionTenantContext(tx: any, schoolId: string): Promise<void> {
+async function setTransactionTenantContext(
+  tx: Prisma.TransactionClient,
+  schoolId: string,
+): Promise<void> {
   if (!UUID_REGEX.test(schoolId)) {
     return;
   }
   await tx.$queryRaw`SELECT set_config('app.current_school_id', ${schoolId}, true)`;
+}
+
+async function runTenantTx<T>(
+  schoolId: string,
+  fn: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  return db.$transaction(
+    async (tx) => {
+      await setTransactionTenantContext(tx, schoolId);
+      return fn(tx);
+    },
+    PRISMA_TX_OPTIONS,
+  );
 }
 
 function cloneDefaultChecklist(): AdmissionDocumentChecklistItem[] {
@@ -977,8 +995,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         const fresh = await runPrismaOp("getTenantSnapshot", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             const [
               settingRow,
@@ -1063,20 +1080,22 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
 
             let sourceRows = sourceRowsRaw as any[];
             if (sourceRows.length === 0 && (tx as any).admissionEnquirySource) {
-              const seeded: any[] = [];
-              for (const def of DEFAULT_ENQUIRY_SOURCES) {
-                const row = await (tx as any).admissionEnquirySource.create({
-                  data: {
+              if (typeof (tx as any).admissionEnquirySource.createMany === "function") {
+                await (tx as any).admissionEnquirySource.createMany({
+                  data: DEFAULT_ENQUIRY_SOURCES.map((def) => ({
                     schoolId,
                     name: def.name,
                     description: def.description,
                     isActive: true,
                     colorToken: def.colorToken,
-                  },
+                  })),
+                  skipDuplicates: true,
                 });
-                seeded.push(row);
+                sourceRows = await (tx as any).admissionEnquirySource.findMany({
+                  where: { schoolId },
+                  orderBy: { createdAt: "asc" },
+                });
               }
-              sourceRows = seeded;
             }
 
             const mappedPayments = (feePaymentRowsRaw as any[]).map(mapPrismaFeePayment);
@@ -1233,8 +1252,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("createApplication", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             let setting = await (tx.admissionSetting as any).findUnique({
               where: { schoolId },
@@ -1508,8 +1526,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("getApplicationById", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             const found = await (tx.admissionApplication as any).findFirst({
               where: { id: applicationId, schoolId },
@@ -1553,8 +1570,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("updateApplication", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             const existingRow = await (tx.admissionApplication as any).findFirst({
               where: { id: applicationId, schoolId },
@@ -1919,8 +1935,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("createEnquiry", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             const updatedSetting = await (tx.admissionSetting as any).upsert({
               where: { schoolId },
@@ -2157,8 +2172,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("updateEnquiry", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const existing = await tx.admissionEnquiry.findFirst({
               where: { id: enquiryId, schoolId },
             });
@@ -2340,8 +2354,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("getEnquiryById", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const row = await tx.admissionEnquiry.findFirst({
               where: { id: enquiryId, schoolId },
             });
@@ -2383,8 +2396,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("updateSettings", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             const updated = await (tx.admissionSetting as any).upsert({
               where: { schoolId },
@@ -2468,8 +2480,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("createReminder", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const created = await tx.admissionReminder.create({
               data: {
                 schoolId,
@@ -2514,8 +2525,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("toggleReminder", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const existing = await tx.admissionReminder.findFirst({
               where: { id: reminderId, schoolId },
             });
@@ -2550,8 +2560,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         await runPrismaOp("deleteReminder", async () => {
-          await db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          await runTenantTx(schoolId, async (tx) => {
             const existing = await tx.admissionReminder.findFirst({
               where: { id: reminderId, schoolId },
             });
@@ -2587,8 +2596,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("importApplications", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             let setting = await (tx.admissionSetting as any).findUnique({
               where: { schoolId },
@@ -2737,8 +2745,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("bulkUpdateApplications", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             const rows = await (tx.admissionApplication as any).findMany({
               where: { id: { in: uniqueIds }, schoolId },
@@ -2895,8 +2902,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("getEnquiryDossier", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const row = await tx.admissionEnquiry.findFirst({
               where: { id: enquiryId, schoolId },
             });
@@ -3011,8 +3017,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("listEnquirySources", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             let rows = await (tx as any).admissionEnquirySource.findMany({
               where: { schoolId },
               orderBy: { createdAt: "asc" },
@@ -3054,8 +3059,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("createEnquirySource", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const dup = await (tx as any).admissionEnquirySource.findFirst({
               where: { schoolId, name: { equals: input.name.trim(), mode: "insensitive" } },
             });
@@ -3110,8 +3114,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("updateEnquirySource", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const existing = await (tx as any).admissionEnquirySource.findFirst({
               where: { id: input.id, schoolId },
             });
@@ -3164,8 +3167,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         await runPrismaOp("deleteEnquirySource", async () => {
-          await db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          await runTenantTx(schoolId, async (tx) => {
             const existing = await (tx as any).admissionEnquirySource.findFirst({
               where: { id: sourceId, schoolId },
             });
@@ -3197,8 +3199,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("listEnquiryFollowUps", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const rows = await (tx as any).admissionEnquiryFollowUp.findMany({
               where: { schoolId },
               orderBy: { scheduledAt: "asc" },
@@ -3261,8 +3262,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("createEnquiryFollowUp", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const enq = await tx.admissionEnquiry.findFirst({
               where: { id: enquiryId, schoolId },
             });
@@ -3392,8 +3392,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("updateEnquiryFollowUp", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const existing = await (tx as any).admissionEnquiryFollowUp.findFirst({
               where: { id: input.followUpId, schoolId, enquiryId },
               include: {
@@ -3572,8 +3571,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("createEnquiryCommunication", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const enq = await tx.admissionEnquiry.findFirst({
               where: { id: enquiryId, schoolId },
             });
@@ -3677,8 +3675,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("createEnquiryNote", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const enq = await tx.admissionEnquiry.findFirst({
               where: { id: enquiryId, schoolId },
             });
@@ -3761,8 +3758,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("updateEnquiryNote", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const existing = await (tx as any).admissionEnquiryNote.findFirst({
               where: { id: input.noteId, schoolId, enquiryId },
             });
@@ -3811,8 +3807,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         await runPrismaOp("deleteEnquiryNote", async () => {
-          await db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          await runTenantTx(schoolId, async (tx) => {
             const existing = await (tx as any).admissionEnquiryNote.findFirst({
               where: { id: noteId, schoolId, enquiryId },
             });
@@ -3860,8 +3855,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("directAdmitStudent", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             const setting = await (tx.admissionSetting as any).upsert({
               where: { schoolId },
@@ -4078,8 +4072,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("updateAdmittedEnrollment", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             const existing = await (tx.admissionApplication as any).findFirst({
               where: { id: applicationId, schoolId, status: "ADMITTED" },
@@ -4172,8 +4165,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("upsertAdmittedFeeLedger", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             if (!caps.hasFeeLedgers || !caps.hasFeePayments) {
               throw new ServiceUnavailableError(
@@ -4306,8 +4298,7 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
     if (await canUsePrisma()) {
       try {
         return await runPrismaOp("recordAdmittedFeePayment", async () => {
-          return db.$transaction(async (tx) => {
-            await setTransactionTenantContext(tx, schoolId);
+          return runTenantTx(schoolId, async (tx) => {
             const caps = await getAdmissionsSchemaCaps(tx);
             if (!caps.hasFeeLedgers || !caps.hasFeePayments) {
               throw new ServiceUnavailableError(
