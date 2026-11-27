@@ -1345,58 +1345,91 @@ export const platformRepository = {
     if (await authRepository.canUsePrismaForPlatform()) {
       return runScopedTenantTx(schoolId, async (tx) => {
         const caps = await getPlatformSchemaCaps(tx);
-        const [setting, apps, enqs, ledgers, payments] = await Promise.all([
-          tx.admissionSetting.findUnique({ where: { schoolId } }),
-          tx.admissionApplication.findMany({
-            where: { schoolId },
-            orderBy: { createdAt: "desc" },
-            take: 100,
-          }),
-          tx.admissionEnquiry.findMany({
-            where: { schoolId },
-            orderBy: { createdAt: "desc" },
-            take: 100,
-          }),
-          caps.hasFeeLedgers && (tx as any).admissionFeeLedger
-            ? (tx as any).admissionFeeLedger.findMany({
-                where: { schoolId },
-                include: { application: { select: { studentName: true } } },
-                orderBy: { updatedAt: "desc" },
-                take: 100,
-              })
-            : Promise.resolve([]),
-          caps.hasFeePayments && (tx as any).admissionFeePayment
-            ? (tx as any).admissionFeePayment.findMany({
-                where: { schoolId },
-                include: { application: { select: { studentName: true } } },
-                orderBy: { paymentDate: "desc" },
-                take: 100,
-              })
-            : Promise.resolve([]),
-        ]);
+        const [setting, apps, enqs, ledgers, payments, saasInvoices, supportTickets] =
+          await Promise.all([
+            tx.admissionSetting.findUnique({ where: { schoolId } }),
+            tx.admissionApplication.findMany({
+              where: { schoolId },
+              orderBy: { createdAt: "desc" },
+              take: 150,
+            }),
+            tx.admissionEnquiry.findMany({
+              where: { schoolId },
+              orderBy: { createdAt: "desc" },
+              take: 150,
+            }),
+            caps.hasFeeLedgers && (tx as any).admissionFeeLedger
+              ? (tx as any).admissionFeeLedger.findMany({
+                  where: { schoolId },
+                  include: { application: { select: { studentName: true } } },
+                  orderBy: { updatedAt: "desc" },
+                  take: 150,
+                })
+              : Promise.resolve([]),
+            caps.hasFeePayments && (tx as any).admissionFeePayment
+              ? (tx as any).admissionFeePayment.findMany({
+                  where: { schoolId },
+                  include: { application: { select: { studentName: true } } },
+                  orderBy: { paymentDate: "desc" },
+                  take: 150,
+                })
+              : Promise.resolve([]),
+            caps.hasInvoicesTable && (tx as any).platformSubscriptionInvoice
+              ? (tx as any).platformSubscriptionInvoice.findMany({
+                  where: { schoolId },
+                  orderBy: { createdAt: "desc" },
+                  take: 100,
+                  include: { school: { select: { name: true, uniqueId: true } } },
+                })
+              : Promise.resolve([]),
+            caps.hasTicketsTable && (tx as any).platformSupportTicket
+              ? (tx as any).platformSupportTicket.findMany({
+                  where: { schoolId },
+                  orderBy: { createdAt: "desc" },
+                  take: 100,
+                })
+              : Promise.resolve([]),
+          ]);
 
         const paidByApp = new Map<string, number>();
         for (const p of payments as any[]) {
-          paidByApp.set(p.applicationId, (paidByApp.get(p.applicationId) ?? 0) + Number(p.amountPaise || 0));
+          paidByApp.set(
+            p.applicationId,
+            (paidByApp.get(p.applicationId) ?? 0) + Number(p.amountPaise || 0),
+          );
         }
 
         return {
           schoolId,
           settings: setting ? (setting as unknown as Record<string, unknown>) : null,
-          applications: apps.map((a) => ({
-            id: a.id,
-            applicationCode: a.applicationCode,
-            admissionNumber: a.admissionNumber,
-            studentName: a.studentName,
-            gradeApplied: a.gradeApplied,
-            academicYear: a.academicYear,
-            guardianName: a.guardianName,
-            guardianPhone: a.guardianPhone,
-            status: a.status,
-            verificationStatus: a.verificationStatus,
-            enrollmentStatus: (a as any).enrollmentStatus || "ACTIVE",
-            appliedAt: a.appliedAt.toISOString(),
-          })),
+          applications: apps.map((a: any) => {
+            const gd = (a.guardianDetails || {}) as Record<string, any>;
+            return {
+              id: a.id,
+              applicationCode: a.applicationCode,
+              admissionNumber: a.admissionNumber,
+              studentName: a.studentName,
+              gender: a.gender ?? null,
+              dateOfBirth: a.dateOfBirth ? new Date(a.dateOfBirth).toISOString().slice(0, 10) : null,
+              bloodGroup: a.bloodGroup ?? null,
+              studentIdNumber: a.studentIdNumber ?? null,
+              gradeApplied: a.gradeApplied,
+              academicYear: a.academicYear,
+              guardianName: a.guardianName,
+              guardianRelation: a.guardianRelation ?? null,
+              guardianPhone: a.guardianPhone,
+              guardianEmail: a.guardianEmail ?? null,
+              fatherName: typeof gd.fatherName === "string" ? gd.fatherName : null,
+              fatherPhone: typeof gd.fatherPhone === "string" ? gd.fatherPhone : null,
+              motherName: typeof gd.motherName === "string" ? gd.motherName : null,
+              motherPhone: typeof gd.motherPhone === "string" ? gd.motherPhone : null,
+              status: a.status,
+              verificationStatus: a.verificationStatus,
+              enrollmentStatus: a.enrollmentStatus || "ACTIVE",
+              appliedAt: a.appliedAt.toISOString(),
+              admittedAt: a.admittedAt ? a.admittedAt.toISOString() : null,
+            };
+          }),
           enquiries: enqs.map((e) => ({
             id: e.id,
             enquiryCode: e.enquiryCode,
@@ -1433,6 +1466,8 @@ export const platformRepository = {
             paymentMode: p.paymentMode,
             paymentDate: new Date(p.paymentDate).toISOString(),
           })),
+          saasInvoices: (saasInvoices as any[]).map(mapInvoiceRow),
+          supportTickets: (supportTickets as any[]).map(mapTicketRow),
         };
       });
     }
@@ -1442,19 +1477,30 @@ export const platformRepository = {
     return {
       schoolId,
       settings: snap.settings as unknown as Record<string, unknown>,
-      applications: snap.applications.map((a) => ({
+      applications: snap.applications.map((a: any) => ({
         id: a.id,
         applicationCode: a.applicationCode,
         admissionNumber: a.admissionNumber,
         studentName: a.studentName,
+        gender: a.gender ?? null,
+        dateOfBirth: a.dateOfBirth ?? null,
+        bloodGroup: a.bloodGroup ?? null,
+        studentIdNumber: a.studentIdNumber ?? null,
         gradeApplied: a.gradeApplied,
         academicYear: a.academicYear,
         guardianName: a.guardianName,
+        guardianRelation: a.guardianRelation ?? null,
         guardianPhone: a.guardianPhone,
+        guardianEmail: a.guardianEmail ?? null,
+        fatherName: a.guardianDetails?.fatherName ?? null,
+        fatherPhone: a.guardianDetails?.fatherPhone ?? null,
+        motherName: a.guardianDetails?.motherName ?? null,
+        motherPhone: a.guardianDetails?.motherPhone ?? null,
         status: a.status,
         verificationStatus: a.verificationStatus,
         enrollmentStatus: a.enrollmentStatus || "ACTIVE",
         appliedAt: a.appliedAt,
+        admittedAt: a.admittedAt ?? null,
       })),
       enquiries: snap.enquiries.map((e) => ({
         id: e.id,
@@ -1488,6 +1534,12 @@ export const platformRepository = {
         paymentMode: p.paymentMode,
         paymentDate: p.paymentDate,
       })),
+      saasInvoices: Object.values(platformMemoryStore.invoices)
+        .filter((i) => i.schoolId === schoolId)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
+      supportTickets: Object.values(platformMemoryStore.tickets)
+        .filter((t) => t.schoolId === schoolId)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
     };
   },
 

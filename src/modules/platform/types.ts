@@ -359,14 +359,25 @@ export interface PlatformSchoolDataInspectResult {
     applicationCode: string;
     admissionNumber: string | null;
     studentName: string;
+    gender?: string | null;
+    dateOfBirth?: string | null;
+    bloodGroup?: string | null;
+    studentIdNumber?: string | null;
     gradeApplied: string;
     academicYear: string;
     guardianName: string;
+    guardianRelation?: string | null;
     guardianPhone: string;
+    guardianEmail?: string | null;
+    fatherName?: string | null;
+    fatherPhone?: string | null;
+    motherName?: string | null;
+    motherPhone?: string | null;
     status: string;
     verificationStatus: string;
     enrollmentStatus: string;
     appliedAt: string;
+    admittedAt?: string | null;
   }>;
   enquiries: Array<{
     id: string;
@@ -400,4 +411,6 @@ export interface PlatformSchoolDataInspectResult {
     paymentMode: string;
     paymentDate: string;
   }>;
+  saasInvoices?: PlatformInvoiceRecord[];
+  supportTickets?: PlatformSupportTicketRecord[];
 }

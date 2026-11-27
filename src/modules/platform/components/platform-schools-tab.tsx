@@ -1,24 +1,33 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import {
   AlertTriangle,
   Building2,
+  Calendar,
   Check,
+  CheckCircle2,
   Copy,
+  CreditCard,
   Database,
   Download,
   ExternalLink,
   FileText,
+  GraduationCap,
+  Headphones,
   IndianRupee,
   KeyRound,
   Loader2,
   Lock,
+  Mail,
+  MapPin,
+  Phone,
   Plus,
   Search,
   Settings2,
+  ShieldCheck,
   Trash2,
   UserPlus,
   Users,
@@ -45,7 +54,17 @@ import {
 } from "./platform-shared";
 import { PlatformProvisionSchoolModal } from "./platform-provision-modal";
 
-type SchoolSubTab = "profile" | "plan" | "users" | "admissions" | "fees" | "audit";
+type SchoolSubTab =
+  | "profile"
+  | "plan"
+  | "users"
+  | "students"
+  | "admissions"
+  | "fees"
+  | "audit";
+
+const CARD_SURFACE =
+  "rounded-[18px] border border-white/80 bg-white/85 backdrop-blur-md shadow-[0_8px_24px_rgba(79,39,232,0.06)] dark:border-[#272B4D] dark:bg-[#141731]/95 dark:shadow-[0_10px_28px_rgba(3,5,18,0.45)]";
 
 const MODULE_FLAG_LABELS: Array<{ key: keyof PlatformModuleFlags; label: string; desc: string }> = [
   { key: "admissions", label: "Admissions Management", desc: "Core 4-step application & review pipeline" },
@@ -85,12 +104,16 @@ export function PlatformSchoolsTab({
 
   // Profile edit state
   const [editName, setEditName] = useState("");
+  const [editCode, setEditCode] = useState("");
   const [editBoard, setEditBoard] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editWebsite, setEditWebsite] = useState("");
+  const [editAddressLine, setEditAddressLine] = useState("");
   const [editCity, setEditCity] = useState("");
   const [editState, setEditState] = useState("");
+  const [editPinCode, setEditPinCode] = useState("");
   const [editTrialEnds, setEditTrialEnds] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [suspendReasonInput, setSuspendReasonInput] = useState("");
@@ -110,12 +133,20 @@ export function PlatformSchoolsTab({
   // Users sub-tab state
   const [schoolUsers, setSchoolUsers] = useState<PlatformSchoolUserItem[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState<
+    "ALL" | "ADMIN" | "STAFF" | "PARENT" | "STUDENT"
+  >("ALL");
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPhone, setNewUserPhone] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState("STAFF");
   const [creatingUser, setCreatingUser] = useState(false);
+
+  // Students & Parents sub-tab state
+  const [studentSearch, setStudentSearch] = useState("");
+  const [studentFilter, setStudentFilter] = useState<"ALL" | "ADMITTED" | "IN_PROGRESS">("ALL");
 
   // Deep data & audit sub-tabs state
   const [schoolData, setSchoolData] = useState<PlatformSchoolDataInspectResult | null>(null);
@@ -128,12 +159,16 @@ export function PlatformSchoolsTab({
     if (!selectedEntry) return;
     const s = selectedEntry.school;
     setEditName(s.name);
+    setEditCode(s.code || "");
     setEditBoard(s.affiliationBoard || "");
     setEditCategory(s.category || "");
     setEditPhone(s.contactPhone || "");
     setEditEmail(s.contactEmail || "");
+    setEditWebsite(s.website || "");
+    setEditAddressLine(s.addressLine || "");
     setEditCity(s.city || "");
     setEditState(s.state || "");
+    setEditPinCode(s.pinCode || "");
     setEditTrialEnds(s.trialEndsAt ? s.trialEndsAt.slice(0, 10) : "");
     setEditNotes(s.internalNotes || "");
     setSuspendReasonInput(s.suspendedReason || "");
@@ -149,9 +184,28 @@ export function PlatformSchoolsTab({
     setSchoolUsers(selectedEntry.users);
     setSchoolData(null);
     setSchoolAuditLogs([]);
+    setUserSearch("");
+    setUserRoleFilter("ALL");
+    setStudentSearch("");
+    setStudentFilter("ALL");
   }, [selectedEntry]);
 
-  // Lazy load sub-tab data when opened
+  // Load tenant inspect data (students, parents, ledgers, invoices, tickets) cleanly on school select
+  useEffect(() => {
+    if (!selectedEntry) return;
+    const schoolId = selectedEntry.school.id;
+
+    setLoadingData(true);
+    fetch(`/api/platform/schools/${schoolId}/data`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j?.success && j.data) setSchoolData(j.data);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingData(false));
+  }, [selectedEntry]);
+
+  // Load full users or audit logs when opening those sub-tabs
   useEffect(() => {
     if (!selectedEntry) return;
     const schoolId = selectedEntry.school.id;
@@ -159,29 +213,20 @@ export function PlatformSchoolsTab({
     if (subTab === "users") {
       setLoadingUsers(true);
       fetch(`/api/platform/schools/${schoolId}/users`, { cache: "no-store" })
-        .then((r) => r.json())
+        .then((r) => (r.ok ? r.json() : null))
         .then((j) => {
-          if (j.success && Array.isArray(j.users)) setSchoolUsers(j.users);
+          if (j?.success && Array.isArray(j.users)) setSchoolUsers(j.users);
         })
         .catch(() => {})
         .finally(() => setLoadingUsers(false));
-    } else if (subTab === "admissions" || subTab === "fees") {
-      setLoadingData(true);
-      fetch(`/api/platform/schools/${schoolId}/data`, { cache: "no-store" })
-        .then((r) => r.json())
-        .then((j) => {
-          if (j.success && j.data) setSchoolData(j.data);
-        })
-        .catch(() => {})
-        .finally(() => setLoadingData(false));
     } else if (subTab === "audit") {
       setLoadingAudit(true);
       fetch(`/api/platform/audit-logs?schoolId=${encodeURIComponent(schoolId)}`, {
         cache: "no-store",
       })
-        .then((r) => r.json())
+        .then((r) => (r.ok ? r.json() : null))
         .then((j) => {
-          if (j.success && Array.isArray(j.logs)) setSchoolAuditLogs(j.logs);
+          if (j?.success && Array.isArray(j.logs)) setSchoolAuditLogs(j.logs);
         })
         .catch(() => {})
         .finally(() => setLoadingAudit(false));
@@ -349,16 +394,20 @@ export function PlatformSchoolsTab({
         "Slug",
         "Status",
         "Plan",
+        "Billing Cycle",
+        "Subscription",
         "Board",
         "City",
         "State",
         "Phone",
         "Email",
         "Users",
+        "Students",
+        "Staff",
         "Applications",
-        "Enquiries",
         "Admitted",
         "Fee Collected (INR)",
+        "SaaS Billed (INR)",
       ],
       schools.map((e) => [
         e.school.uniqueId || "",
@@ -366,31 +415,112 @@ export function PlatformSchoolsTab({
         e.school.slug,
         e.school.status,
         e.school.plan,
+        e.school.billingCycle,
+        e.school.subscriptionStatus,
         e.school.affiliationBoard || "",
         e.school.city || "",
         e.school.state || "",
         e.school.contactPhone || "",
         e.school.contactEmail || "",
         e.counts.users,
+        e.counts.studentCount ?? e.counts.admitted,
+        e.counts.staffCount ?? e.counts.users,
         e.counts.applications,
-        e.counts.enquiries,
         e.counts.admitted,
         (e.counts.feeCollectedPaise / 100).toFixed(2),
+        (e.counts.saasBilledPaise / 100).toFixed(2),
       ]),
     );
   };
 
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    return schoolUsers.filter((u) => {
+      if (userRoleFilter === "ADMIN" && u.role !== "PRINCIPAL" && u.role !== "SCHOOL_ADMIN") {
+        return false;
+      }
+      if (
+        userRoleFilter === "STAFF" &&
+        !["TEACHER", "ACCOUNTANT", "STAFF"].includes(u.role)
+      ) {
+        return false;
+      }
+      if (userRoleFilter === "PARENT" && u.role !== "PARENT") return false;
+      if (userRoleFilter === "STUDENT" && u.role !== "STUDENT") return false;
+      if (!q) return true;
+      return [u.name, u.email, u.phone, u.role].some((v) =>
+        v ? v.toLowerCase().includes(q) : false,
+      );
+    });
+  }, [schoolUsers, userRoleFilter, userSearch]);
+
+  const userBreakdown = useMemo(() => {
+    const admins = schoolUsers.filter(
+      (u) => u.role === "PRINCIPAL" || u.role === "SCHOOL_ADMIN",
+    ).length;
+    const staff = schoolUsers.filter((u) =>
+      ["TEACHER", "ACCOUNTANT", "STAFF"].includes(u.role),
+    ).length;
+    const parents = schoolUsers.filter((u) => u.role === "PARENT").length;
+    const students = schoolUsers.filter((u) => u.role === "STUDENT").length;
+    return { admins, staff, parents, students };
+  }, [schoolUsers]);
+
+  const ledgerByApplicationId = useMemo(() => {
+    const map = new Map<
+      string,
+      { totalFeePaise: number; paidPaise: number; outstandingPaise: number }
+    >();
+    for (const l of schoolData?.feeLedgers ?? []) {
+      map.set(l.applicationId, {
+        totalFeePaise: l.totalFeePaise,
+        paidPaise: l.paidPaise,
+        outstandingPaise: l.outstandingPaise,
+      });
+    }
+    return map;
+  }, [schoolData?.feeLedgers]);
+
+  const filteredStudentsAndParents = useMemo(() => {
+    const apps = schoolData?.applications ?? [];
+    const q = studentSearch.trim().toLowerCase();
+    return apps.filter((a) => {
+      if (studentFilter === "ADMITTED" && a.status !== "ADMITTED") return false;
+      if (studentFilter === "IN_PROGRESS" && a.status === "ADMITTED") return false;
+      if (!q) return true;
+      return [
+        a.studentName,
+        a.applicationCode,
+        a.admissionNumber,
+        a.gradeApplied,
+        a.guardianName,
+        a.guardianPhone,
+        a.guardianEmail,
+        a.fatherName,
+        a.motherName,
+      ].some((v) => (v ? v.toLowerCase().includes(q) : false));
+    });
+  }, [schoolData?.applications, studentFilter, studentSearch]);
+
+  const selectedPlanCatalog = selectedEntry ? SAAS_PLAN_CATALOG[selectedEntry.school.plan] : null;
+  const studentUsedCount = selectedEntry
+    ? selectedEntry.counts.studentCount ?? selectedEntry.counts.admitted
+    : 0;
+  const staffUsedCount = selectedEntry
+    ? selectedEntry.counts.staffCount ?? selectedEntry.counts.users
+    : 0;
+
   return (
     <div className="space-y-5">
       {/* Search, Filter & Provision Bar */}
-      <section className="rounded-[20px] border border-[#D6DBF0] bg-white p-5 shadow-xs space-y-4 dark:border-[#272B4D] dark:bg-[#141731]">
+      <section className={`${CARD_SURFACE} p-5 space-y-4`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg sm:text-xl font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-              Registered Schools &amp; Tenant Governance
+            <h2 className="text-lg sm:text-xl font-black text-[#08093B] dark:text-[#F3F5FF]">
+              Registered Schools &amp; Client Governance
             </h2>
             <p className="text-xs text-[#4D5072] dark:text-[#9DA6CC]">
-              Provision schools, control subscriptions &amp; feature flags, manage tenant users, and inspect admissions or fee data.
+              Inspect complete school profiles, subscriptions, all user accounts, students &amp; parent details, and fee ledgers.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -405,7 +535,7 @@ export function PlatformSchoolsTab({
             <button
               type="button"
               onClick={() => setProvisionOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#7C3AED] via-[#663CF6] to-[#4F27E8] px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-95 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#8B5CF6] via-[#663CF6] to-[#4F27E8] px-4 py-2 text-xs font-extrabold text-white shadow-[0_6px_16px_rgba(102,60,246,0.28)] hover:opacity-95 cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Provision New School</span>
@@ -467,7 +597,7 @@ export function PlatformSchoolsTab({
 
       {/* Split Master-Detail */}
       {schools.length === 0 ? (
-        <div className="rounded-[20px] border border-dashed border-[#D6DBF0] bg-white p-10 text-center dark:border-[#2E345B] dark:bg-[#141731]">
+        <div className={`${CARD_SURFACE} p-10 text-center`}>
           <p className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
             No matching schools found
           </p>
@@ -477,8 +607,8 @@ export function PlatformSchoolsTab({
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-          {/* Left School Cards (4 cols) */}
-          <aside className="xl:col-span-4 space-y-2.5 max-h-[820px] overflow-y-auto school-menu-scrollbar pr-1">
+          {/* Left Client Schools Selector (3 cols) */}
+          <aside className="xl:col-span-3 space-y-2.5 max-h-[920px] overflow-y-auto school-menu-scrollbar pr-1">
             {schools.map((entry) => {
               const active = selectedEntry?.school.id === entry.school.id;
               return (
@@ -486,38 +616,29 @@ export function PlatformSchoolsTab({
                   key={entry.school.id}
                   type="button"
                   onClick={() => {
-                    setSubTab("profile");
                     onSelectSchoolId(entry.school.id);
                   }}
-                  className={`w-full text-left rounded-[16px] border p-4 transition cursor-pointer ${
+                  className={`w-full text-left rounded-[16px] border p-3.5 transition cursor-pointer ${
                     active
-                      ? "border-[#663CF6] bg-[#FAF8FE] shadow-sm dark:border-[#8B5CF6] dark:bg-[#1B1740]"
-                      : "border-[#D6DBF0] bg-white hover:border-[#9B76FF] dark:border-[#272B4D] dark:bg-[#141731]"
+                      ? "border-[#663CF6] bg-white shadow-sm ring-2 ring-[#663CF6]/15 dark:border-[#8B5CF6] dark:bg-[#1B1740]"
+                      : "border-white/80 bg-white/80 hover:border-[#9B76FF] dark:border-[#272B4D] dark:bg-[#141731]/90"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-extrabold text-[#08093B] truncate dark:text-[#F3F5FF]">
+                      <p className="text-xs sm:text-sm font-extrabold text-[#08093B] truncate dark:text-[#F3F5FF]">
                         {entry.school.name}
                       </p>
-                      <p className="mt-0.5 font-mono text-[11px] font-bold text-[#663CF6] dark:text-[#A78BFA]">
+                      <p className="mt-0.5 font-mono text-[10px] font-bold text-[#663CF6] dark:text-[#A78BFA]">
                         {entry.school.uniqueId || entry.school.slug}
                       </p>
                     </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <SchoolStatusBadge status={entry.school.status} />
-                      <PlanBadge plan={entry.school.plan} />
-                    </div>
+                    <SchoolStatusBadge status={entry.school.status} />
                   </div>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
-                    <span>{entry.school.city || "—"}, {entry.school.state || "—"}</span>
-                    <span>·</span>
-                    <span>{entry.counts.users} users</span>
-                    <span>·</span>
-                    <span>{entry.counts.admitted} admitted</span>
-                    <span>·</span>
-                    <span className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
-                      {formatInrFromPaise(entry.counts.feeCollectedPaise)}
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <PlanBadge plan={entry.school.plan} />
+                    <span className="text-[10px] font-bold text-[#4D5072] dark:text-[#9DA6CC]">
+                      {entry.counts.users} users · {entry.counts.admitted} students
                     </span>
                   </div>
                 </button>
@@ -525,74 +646,160 @@ export function PlatformSchoolsTab({
             })}
           </aside>
 
-          {/* Right School Master Workbench (8 cols) */}
+          {/* Right Redesigned School Details Workbench (9 cols) */}
           {selectedEntry && (
-            <section className="xl:col-span-8 rounded-[20px] border border-[#D6DBF0] bg-white p-5 sm:p-6 shadow-xs space-y-5 dark:border-[#272B4D] dark:bg-[#141731]">
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[#DFE3F5] pb-4 dark:border-[#232746]">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Building2 className="h-5 w-5 text-[#663CF6] dark:text-[#A78BFA]" />
-                    <h3 className="text-lg font-extrabold text-[#08093B] truncate dark:text-[#F3F5FF]">
-                      {selectedEntry.school.name}
-                    </h3>
-                    <SchoolStatusBadge status={selectedEntry.school.status} />
-                    <PlanBadge plan={selectedEntry.school.plan} />
+            <section className={`xl:col-span-9 ${CARD_SURFACE} p-5 sm:p-6 space-y-5`}>
+              {/* School Identity Hero Banner */}
+              <div className="rounded-[18px] border border-[#DDD6FE] bg-gradient-to-br from-[#F7F3FF] via-white to-[#EDF6FF] p-4 sm:p-5 dark:border-[#342B63] dark:from-[#1B1740] dark:via-[#141731] dark:to-[#112038]">
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                  <div className="min-w-0 space-y-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#8B5CF6] to-[#4F27E8] text-white shadow-xs">
+                        <Building2 className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg sm:text-xl font-black text-[#08093B] truncate dark:text-[#F3F5FF]">
+                            {selectedEntry.school.name}
+                          </h3>
+                          <SchoolStatusBadge status={selectedEntry.school.status} />
+                          <PlanBadge plan={selectedEntry.school.plan} />
+                        </div>
+                        <p className="text-[11px] font-semibold text-[#4D5072] dark:text-[#9DA6CC]">
+                          {selectedEntry.school.category || "School"} ·{" "}
+                          {selectedEntry.school.affiliationBoard || "Board Unspecified"} · Onboarded{" "}
+                          {formatDateShort(selectedEntry.school.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                      <span className="inline-flex items-center gap-1 rounded-[8px] bg-[#EDE7FF] px-2.5 py-1 font-mono font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
+                        <KeyRound className="h-3 w-3" />
+                        <span>{selectedEntry.school.uniqueId || "N/A"}</span>
+                      </span>
+                      {selectedEntry.school.uniqueId && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopy(selectedEntry.school.id, selectedEntry.school.uniqueId!)
+                          }
+                          className="inline-flex items-center gap-1 rounded-[8px] border border-[#D6DBF0] bg-white px-2 py-1 font-bold text-[#4D5072] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#C5CCF0]"
+                        >
+                          {copiedId === selectedEntry.school.id ? (
+                            <Check className="h-3 w-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                          <span>{copiedId === selectedEntry.school.id ? "Copied" : "Copy ID"}</span>
+                        </button>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-[#4D5072] dark:text-[#9DA6CC]">
+                        <MapPin className="h-3 w-3 text-[#663CF6] dark:text-[#A78BFA]" />
+                        <span>
+                          {selectedEntry.school.city || "—"}, {selectedEntry.school.state || "—"}
+                        </span>
+                      </span>
+                      {selectedEntry.school.contactPhone && (
+                        <span className="inline-flex items-center gap-1 text-[#4D5072] dark:text-[#9DA6CC]">
+                          <Phone className="h-3 w-3 text-[#663CF6] dark:text-[#A78BFA]" />
+                          <span>{selectedEntry.school.contactPhone}</span>
+                        </span>
+                      )}
+                      {selectedEntry.school.contactEmail && (
+                        <span className="inline-flex items-center gap-1 text-[#4D5072] dark:text-[#9DA6CC]">
+                          <Mail className="h-3 w-3 text-[#663CF6] dark:text-[#A78BFA]" />
+                          <span>{selectedEntry.school.contactEmail}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1 rounded-[8px] bg-[#EDE7FF] px-2.5 py-1 font-mono text-xs font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
-                      <KeyRound className="h-3.5 w-3.5" />
-                      <span>{selectedEntry.school.uniqueId || "N/A"}</span>
-                    </span>
-                    {selectedEntry.school.uniqueId && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleCopy(selectedEntry.school.id, selectedEntry.school.uniqueId!)
-                        }
-                        className="inline-flex items-center gap-1 rounded-[8px] border border-[#D6DBF0] px-2 py-1 text-[11px] font-bold text-[#4D5072] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:text-[#C5CCF0]"
-                      >
-                        {copiedId === selectedEntry.school.id ? (
-                          <Check className="h-3 w-3 text-emerald-600" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                        <span>{copiedId === selectedEntry.school.id ? "Copied" : "Copy ID"}</span>
-                      </button>
-                    )}
-                    <span className="font-mono text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
-                      /{selectedEntry.school.slug}
-                    </span>
+
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <Link
+                      href={`/${selectedEntry.school.slug}` as Route}
+                      className="inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#8B5CF6] via-[#663CF6] to-[#4F27E8] px-4 py-2 text-xs font-extrabold text-white shadow-xs hover:opacity-95"
+                    >
+                      <span>Open School Portal</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Link>
                   </div>
                 </div>
-
-                <Link
-                  href={`/${selectedEntry.school.slug}` as Route}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-[10px] bg-[#663CF6] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#4F27E8]"
-                >
-                  <span>Open School Portal</span>
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </Link>
               </div>
 
-              {/* Quick Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {/* 6-Card School KPI & Subscription Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                 <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
-                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">Users</p>
-                  <p className="text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">{selectedEntry.counts.users}</p>
+                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                    Total Users
+                  </p>
+                  <p className="mt-0.5 text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">
+                    {selectedEntry.counts.users}
+                  </p>
+                  <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
+                    {staffUsedCount} staff / {selectedEntry.school.maxStaffLimit} cap
+                  </p>
                 </div>
+
                 <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
-                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">Applications</p>
-                  <p className="text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">{selectedEntry.counts.applications}</p>
+                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                    Students
+                  </p>
+                  <p className="mt-0.5 text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">
+                    {studentUsedCount}
+                  </p>
+                  <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
+                    of {selectedEntry.school.maxStudentsLimit.toLocaleString("en-IN")} seats
+                  </p>
                 </div>
+
                 <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
-                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">Admitted</p>
-                  <p className="text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">{selectedEntry.counts.admitted}</p>
+                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                    Applications
+                  </p>
+                  <p className="mt-0.5 text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">
+                    {selectedEntry.counts.applications}
+                  </p>
+                  <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
+                    {selectedEntry.counts.enquiries} enquiries
+                  </p>
                 </div>
+
                 <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
-                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">Fees Collected</p>
-                  <p className="text-lg font-black text-[#663CF6] dark:text-[#C4B5FD]">
+                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                    Student Fees
+                  </p>
+                  <p className="mt-0.5 text-lg font-black text-[#663CF6] dark:text-[#C4B5FD]">
                     {formatInrFromPaise(selectedEntry.counts.feeCollectedPaise)}
+                  </p>
+                  <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
+                    {selectedEntry.counts.admitted} admitted
+                  </p>
+                </div>
+
+                <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
+                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                    Subscription
+                  </p>
+                  <p className="mt-0.5 text-sm font-black text-[#08093B] truncate dark:text-[#F3F5FF]">
+                    {selectedPlanCatalog?.name}
+                  </p>
+                  <p className="text-[10px] font-bold text-[#663CF6] dark:text-[#CBB8FF]">
+                    {selectedEntry.school.subscriptionStatus} · {selectedEntry.school.billingCycle}
+                  </p>
+                </div>
+
+                <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
+                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                    SaaS Billed
+                  </p>
+                  <p className="mt-0.5 text-lg font-black text-emerald-600 dark:text-emerald-400">
+                    {formatInrFromPaise(selectedEntry.counts.saasBilledPaise)}
+                  </p>
+                  <p className="text-[10px] text-[#4D5072] truncate dark:text-[#9DA6CC]">
+                    {selectedEntry.school.trialEndsAt
+                      ? `Trial: ${formatDateShort(selectedEntry.school.trialEndsAt)}`
+                      : "Active term"}
                   </p>
                 </div>
               </div>
@@ -604,6 +811,7 @@ export function PlatformSchoolsTab({
                     { id: "profile", label: "Profile & Lifecycle", icon: Building2 },
                     { id: "plan", label: "Plan & Modules", icon: Settings2 },
                     { id: "users", label: "Users & Sessions", icon: Users },
+                    { id: "students", label: "Students & Parents", icon: GraduationCap },
                     { id: "admissions", label: "Admissions Data", icon: Database },
                     { id: "fees", label: "Fee Ledgers", icon: IndianRupee },
                     { id: "audit", label: "Audit Trail", icon: FileText },
@@ -618,7 +826,7 @@ export function PlatformSchoolsTab({
                       onClick={() => setSubTab(t.id)}
                       className={`inline-flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                         active
-                          ? "bg-[#663CF6] text-white shadow-2xs"
+                          ? "bg-gradient-to-r from-[#8B5CF6] to-[#663CF6] text-white shadow-2xs"
                           : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
                       }`}
                     >
@@ -632,7 +840,7 @@ export function PlatformSchoolsTab({
               {/* SUB-TAB 1: PROFILE & LIFECYCLE */}
               {subTab === "profile" && (
                 <div className="space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                     <div>
                       <label className="block text-xs font-bold mb-1">School Name</label>
                       <input
@@ -643,11 +851,29 @@ export function PlatformSchoolsTab({
                       />
                     </div>
                     <div>
+                      <label className="block text-xs font-bold mb-1">School Code</label>
+                      <input
+                        type="text"
+                        value={editCode}
+                        onChange={(e) => setEditCode(e.target.value)}
+                        className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold dark:border-[#343B6B] dark:bg-[#10142C]"
+                      />
+                    </div>
+                    <div>
                       <label className="block text-xs font-bold mb-1">Affiliation Board</label>
                       <input
                         type="text"
                         value={editBoard}
                         onChange={(e) => setEditBoard(e.target.value)}
+                        className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold dark:border-[#343B6B] dark:bg-[#10142C]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold mb-1">Category</label>
+                      <input
+                        type="text"
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
                         className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold dark:border-[#343B6B] dark:bg-[#10142C]"
                       />
                     </div>
@@ -670,6 +896,25 @@ export function PlatformSchoolsTab({
                       />
                     </div>
                     <div>
+                      <label className="block text-xs font-bold mb-1">Website</label>
+                      <input
+                        type="text"
+                        value={editWebsite}
+                        onChange={(e) => setEditWebsite(e.target.value)}
+                        placeholder="https://school.edu.in"
+                        className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold dark:border-[#343B6B] dark:bg-[#10142C]"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold mb-1">Street Address</label>
+                      <input
+                        type="text"
+                        value={editAddressLine}
+                        onChange={(e) => setEditAddressLine(e.target.value)}
+                        className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold dark:border-[#343B6B] dark:bg-[#10142C]"
+                      />
+                    </div>
+                    <div>
                       <label className="block text-xs font-bold mb-1">City</label>
                       <input
                         type="text"
@@ -688,11 +933,11 @@ export function PlatformSchoolsTab({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold mb-1">Category</label>
+                      <label className="block text-xs font-bold mb-1">PIN Code</label>
                       <input
                         type="text"
-                        value={editCategory}
-                        onChange={(e) => setEditCategory(e.target.value)}
+                        value={editPinCode}
+                        onChange={(e) => setEditPinCode(e.target.value)}
                         className="w-full rounded-[10px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-semibold dark:border-[#343B6B] dark:bg-[#10142C]"
                       />
                     </div>
@@ -725,12 +970,16 @@ export function PlatformSchoolsTab({
                         void patchSchool(
                           {
                             name: editName,
+                            code: editCode,
                             affiliationBoard: editBoard,
                             category: editCategory,
                             contactPhone: editPhone,
                             contactEmail: editEmail,
+                            website: editWebsite,
+                            addressLine: editAddressLine,
                             city: editCity,
                             state: editState,
+                            pinCode: editPinCode,
                             trialEndsAt: editTrialEnds || null,
                             internalNotes: editNotes,
                           },
@@ -832,9 +1081,88 @@ export function PlatformSchoolsTab({
                 </div>
               )}
 
-              {/* SUB-TAB 2: PLAN, LIMITS & MODULE FLAGS */}
+              {/* SUB-TAB 2: SUBSCRIPTION, PLAN, QUOTAS, INVOICES & MODULES */}
               {subTab === "plan" && (
-                <div className="space-y-4">
+                <div className="space-y-5">
+                  {/* Current Subscription & Seat Utilization Card */}
+                  <div className="rounded-[16px] border border-[#DDD6FE] bg-[#FAF8FE] p-4 space-y-4 dark:border-[#322960] dark:bg-[#10142C]">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
+                          <CreditCard className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <p className="text-xs font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                            Active Subscription: {selectedPlanCatalog?.name} ({selectedEntry.school.billingCycle})
+                          </p>
+                          <p className="text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
+                            Rate:{" "}
+                            {selectedEntry.school.billingCycle === "YEARLY"
+                              ? `${formatInrFromPaise(selectedPlanCatalog?.yearlyTotalPaise ?? 0)} / yr`
+                              : `${formatInrFromPaise(selectedPlanCatalog?.monthlyPaise ?? 0)} / mo`}{" "}
+                            · Status: <strong>{selectedEntry.school.subscriptionStatus}</strong>
+                            {selectedEntry.school.trialEndsAt
+                              ? ` · Trial Ends ${formatDateShort(selectedEntry.school.trialEndsAt)}`
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[11px] font-extrabold text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-300">
+                        <Calendar className="h-3 w-3" />
+                        <span>Total Billed: {formatInrFromPaise(selectedEntry.counts.saasBilledPaise)}</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-[#DFE3F5] bg-white p-3 space-y-1.5 dark:border-[#272B4D] dark:bg-[#141731]">
+                        <div className="flex justify-between text-[11px] font-bold">
+                          <span>Student Seat Utilization</span>
+                          <span>
+                            {studentUsedCount} / {selectedEntry.school.maxStudentsLimit}
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-[#EDE7FF] overflow-hidden dark:bg-[#251D4A]">
+                          <div
+                            className="h-full bg-gradient-to-r from-[#8B5CF6] to-[#663CF6]"
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                Math.round(
+                                  (studentUsedCount / Math.max(1, selectedEntry.school.maxStudentsLimit)) *
+                                    100,
+                                ),
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-[#DFE3F5] bg-white p-3 space-y-1.5 dark:border-[#272B4D] dark:bg-[#141731]">
+                        <div className="flex justify-between text-[11px] font-bold">
+                          <span>Staff Seat Utilization</span>
+                          <span>
+                            {staffUsedCount} / {selectedEntry.school.maxStaffLimit}
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-[#E6F4FE] overflow-hidden dark:bg-[#10243D]">
+                          <div
+                            className="h-full bg-[#0EA5E9]"
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                Math.round(
+                                  (staffUsedCount / Math.max(1, selectedEntry.school.maxStaffLimit)) *
+                                    100,
+                                ),
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Plan & Quotas Form */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-xs font-bold mb-1">SaaS Plan</label>
@@ -959,12 +1287,84 @@ export function PlatformSchoolsTab({
                   >
                     Save Plan, Quotas &amp; Feature Flags
                   </button>
+
+                  {/* School SaaS Subscription Invoices History */}
+                  <div className="space-y-2.5 pt-2 border-t border-[#DFE3F5] dark:border-[#232746]">
+                    <p className="text-xs font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                      SaaS Subscription Invoices ({schoolData?.saasInvoices?.length ?? 0})
+                    </p>
+                    <div className="overflow-x-auto rounded-[12px] border border-[#DFE3F5] dark:border-[#272B4D]">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
+                          <tr>
+                            <th className="px-3 py-2">Invoice #</th>
+                            <th className="px-3 py-2">Plan &amp; Cycle</th>
+                            <th className="px-3 py-2">Period</th>
+                            <th className="px-3 py-2 text-right">Amount</th>
+                            <th className="px-3 py-2">Status</th>
+                            <th className="px-3 py-2">Payment</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
+                          {!schoolData?.saasInvoices || schoolData.saasInvoices.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="px-4 py-5 text-center text-[#76799C] dark:text-[#9DA6CC]">
+                                No SaaS subscription invoices issued for this school yet.
+                              </td>
+                            </tr>
+                          ) : (
+                            schoolData.saasInvoices.map((inv) => (
+                              <tr key={inv.id}>
+                                <td className="px-3 py-2 font-mono font-bold text-[#663CF6] dark:text-[#C4B5FD]">
+                                  {inv.invoiceNumber}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {SAAS_PLAN_CATALOG[inv.plan]?.name} · {inv.billingCycle}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap">
+                                  {formatDateShort(inv.periodStart)} – {formatDateShort(inv.periodEnd)}
+                                </td>
+                                <td className="px-3 py-2 text-right font-bold">
+                                  {formatInrFromPaise(inv.amountPaise)}
+                                </td>
+                                <td className="px-3 py-2 font-bold">{inv.status}</td>
+                                <td className="px-3 py-2 text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
+                                  {inv.paymentMode || "—"} {inv.paidAt ? `(${formatDateShort(inv.paidAt)})` : ""}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* SUB-TAB 3: USERS & SESSIONS */}
+              {/* SUB-TAB 3: ALL USERS DETAILS & SESSIONS */}
               {subTab === "users" && (
                 <div className="space-y-4">
+                  {/* Role Summary Chips */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="rounded-xl border border-[#DFE3F5] bg-[#FAF8FE] p-2.5 dark:border-[#272B4D] dark:bg-[#10142C]">
+                      <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Admins / Principals</p>
+                      <p className="text-base font-black text-[#08093B] dark:text-[#F3F5FF]">{userBreakdown.admins}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#DFE3F5] bg-[#FAF8FE] p-2.5 dark:border-[#272B4D] dark:bg-[#10142C]">
+                      <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Teachers / Staff</p>
+                      <p className="text-base font-black text-[#08093B] dark:text-[#F3F5FF]">{userBreakdown.staff}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#DFE3F5] bg-[#FAF8FE] p-2.5 dark:border-[#272B4D] dark:bg-[#10142C]">
+                      <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Parents</p>
+                      <p className="text-base font-black text-[#08093B] dark:text-[#F3F5FF]">{userBreakdown.parents}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#DFE3F5] bg-[#FAF8FE] p-2.5 dark:border-[#272B4D] dark:bg-[#10142C]">
+                      <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Student Logins</p>
+                      <p className="text-base font-black text-[#08093B] dark:text-[#F3F5FF]">{userBreakdown.students}</p>
+                    </div>
+                  </div>
+
+                  {/* Add User Form */}
                   <form
                     onSubmit={handleCreateSchoolUser}
                     className="rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-3.5 space-y-2.5 dark:border-[#272B4D] dark:bg-[#10142C]"
@@ -1031,6 +1431,67 @@ export function PlatformSchoolsTab({
                     </div>
                   </form>
 
+                  {/* Search + Role Filter + Export */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {(
+                        [
+                          { id: "ALL", label: `All (${schoolUsers.length})` },
+                          { id: "ADMIN", label: "Admins" },
+                          { id: "STAFF", label: "Staff" },
+                          { id: "PARENT", label: "Parents" },
+                          { id: "STUDENT", label: "Students" },
+                        ] as const
+                      ).map((rf) => (
+                        <button
+                          key={rf.id}
+                          type="button"
+                          onClick={() => setUserRoleFilter(rf.id)}
+                          className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold cursor-pointer ${
+                            userRoleFilter === rf.id
+                              ? "bg-[#663CF6] text-white"
+                              : "border border-[#D6DBF0] bg-white text-[#4D5072] dark:border-[#272B4D] dark:bg-[#10142C] dark:text-[#9DA6CC]"
+                          }`}
+                        >
+                          {rf.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="search"
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        placeholder="Filter users..."
+                        className="rounded-lg border border-[#CAD0EB] bg-white px-2.5 py-1 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          exportRowsToCsv(
+                            `${selectedEntry.school.slug}-users.csv`,
+                            ["Name", "Email", "Phone", "Role", "Status", "Email Verified", "Phone Verified", "Joined"],
+                            filteredUsers.map((u) => [
+                              u.name,
+                              u.email || "",
+                              u.phone || "",
+                              u.role,
+                              u.status,
+                              u.emailVerified ? "Yes" : "No",
+                              u.phoneVerified ? "Yes" : "No",
+                              formatDateShort(u.createdAt),
+                            ]),
+                          )
+                        }
+                        className="inline-flex items-center gap-1 rounded-lg border border-[#CAD0EB] px-2.5 py-1 text-[11px] font-bold text-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:text-[#C4B5FD]"
+                      >
+                        <Download className="h-3 w-3" />
+                        <span>Export</span>
+                      </button>
+                    </div>
+                  </div>
+
                   {loadingUsers ? (
                     <div className="py-6 text-center text-xs text-[#76799C]">Loading users...</div>
                   ) : (
@@ -1038,21 +1499,35 @@ export function PlatformSchoolsTab({
                       <table className="w-full text-left text-xs border-collapse">
                         <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
                           <tr>
-                            <th className="px-3 py-2">User</th>
+                            <th className="px-3 py-2">User &amp; Contact</th>
+                            <th className="px-3 py-2">Verification</th>
                             <th className="px-3 py-2">Role</th>
                             <th className="px-3 py-2">Status</th>
                             <th className="px-3 py-2 text-center">Sessions</th>
+                            <th className="px-3 py-2">Joined</th>
                             <th className="px-3 py-2 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
-                          {schoolUsers.map((u) => (
+                          {filteredUsers.map((u) => (
                             <tr key={u.id}>
                               <td className="px-3 py-2">
                                 <p className="font-bold text-[#08093B] dark:text-[#F3F5FF]">{u.name}</p>
                                 <p className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
                                   {u.email || "—"} · {u.phone || "—"}
                                 </p>
+                              </td>
+                              <td className="px-3 py-2 text-[10px] font-bold whitespace-nowrap">
+                                <span
+                                  className={
+                                    u.emailVerified && u.phoneVerified
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : "text-amber-600 dark:text-amber-400"
+                                  }
+                                >
+                                  {u.emailVerified ? "Email ✓" : "Email Pending"} ·{" "}
+                                  {u.phoneVerified ? "Phone ✓" : "Phone Pending"}
+                                </span>
                               </td>
                               <td className="px-3 py-2">
                                 <select
@@ -1104,7 +1579,10 @@ export function PlatformSchoolsTab({
                               <td className="px-3 py-2 text-center font-bold">
                                 {u.activeSessionCount ?? 0}
                               </td>
-                              <td className="px-3 py-2 text-right space-x-1.5">
+                              <td className="px-3 py-2 whitespace-nowrap text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
+                                {formatDateShort(u.createdAt)}
+                              </td>
+                              <td className="px-3 py-2 text-right space-x-1.5 whitespace-nowrap">
                                 {(!u.emailVerified || !u.phoneVerified) && (
                                   <button
                                     type="button"
@@ -1144,7 +1622,194 @@ export function PlatformSchoolsTab({
                 </div>
               )}
 
-              {/* SUB-TAB 4: ADMISSIONS & SETTINGS DATA EXPLORER */}
+              {/* SUB-TAB 4: STUDENTS & PARENTS DIRECTORY */}
+              {subTab === "students" && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {(
+                        [
+                          { id: "ALL", label: `All Students (${schoolData?.applications.length ?? 0})` },
+                          { id: "ADMITTED", label: "Admitted Only" },
+                          { id: "IN_PROGRESS", label: "Pending / Review" },
+                        ] as const
+                      ).map((sf) => (
+                        <button
+                          key={sf.id}
+                          type="button"
+                          onClick={() => setStudentFilter(sf.id)}
+                          className={`rounded-full px-3 py-1 text-[11px] font-extrabold cursor-pointer ${
+                            studentFilter === sf.id
+                              ? "bg-[#663CF6] text-white"
+                              : "border border-[#D6DBF0] bg-white text-[#4D5072] dark:border-[#272B4D] dark:bg-[#10142C] dark:text-[#9DA6CC]"
+                          }`}
+                        >
+                          {sf.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="search"
+                        value={studentSearch}
+                        onChange={(e) => setStudentSearch(e.target.value)}
+                        placeholder="Search student, parent, phone, class..."
+                        className="rounded-lg border border-[#CAD0EB] bg-white px-3 py-1.5 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          exportRowsToCsv(
+                            `${selectedEntry.school.slug}-students-parents.csv`,
+                            [
+                              "Admission No",
+                              "App Code",
+                              "Student Name",
+                              "Class",
+                              "Academic Year",
+                              "Gender",
+                              "DOB",
+                              "Guardian",
+                              "Relation",
+                              "Guardian Phone",
+                              "Guardian Email",
+                              "Father",
+                              "Mother",
+                              "Status",
+                              "Paid (INR)",
+                              "Outstanding (INR)",
+                            ],
+                            filteredStudentsAndParents.map((a) => {
+                              const ledger = ledgerByApplicationId.get(a.id);
+                              return [
+                                a.admissionNumber || "",
+                                a.applicationCode,
+                                a.studentName,
+                                a.gradeApplied,
+                                a.academicYear,
+                                a.gender || "",
+                                a.dateOfBirth || "",
+                                a.guardianName,
+                                a.guardianRelation || "Parent",
+                                a.guardianPhone,
+                                a.guardianEmail || "",
+                                a.fatherName ? `${a.fatherName} (${a.fatherPhone || ""})` : "",
+                                a.motherName ? `${a.motherName} (${a.motherPhone || ""})` : "",
+                                a.status,
+                                ((ledger?.paidPaise ?? 0) / 100).toFixed(2),
+                                ((ledger?.outstandingPaise ?? 0) / 100).toFixed(2),
+                              ];
+                            }),
+                          )
+                        }
+                        className="inline-flex items-center gap-1 rounded-lg border border-[#CAD0EB] px-2.5 py-1.5 text-[11px] font-bold text-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:text-[#C4B5FD]"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <span>Export CSV</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {loadingData ? (
+                    <div className="py-6 text-center text-xs text-[#76799C]">
+                      Loading student &amp; parent records...
+                    </div>
+                  ) : filteredStudentsAndParents.length === 0 ? (
+                    <p className="py-8 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]">
+                      No student or guardian records found for this filter.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-[12px] border border-[#DFE3F5] dark:border-[#272B4D]">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
+                          <tr>
+                            <th className="px-3 py-2.5">Student Details</th>
+                            <th className="px-3 py-2.5">Class &amp; Session</th>
+                            <th className="px-3 py-2.5">Parent / Guardian Details</th>
+                            <th className="px-3 py-2.5">Status</th>
+                            <th className="px-3 py-2.5 text-right">Fee Summary</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
+                          {filteredStudentsAndParents.map((a) => {
+                            const ledger = ledgerByApplicationId.get(a.id);
+                            return (
+                              <tr key={a.id}>
+                                <td className="px-3 py-2.5">
+                                  <p className="font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                                    {a.studentName}
+                                  </p>
+                                  <p className="font-mono text-[10px] text-[#663CF6] dark:text-[#C4B5FD]">
+                                    {a.admissionNumber || a.applicationCode}
+                                  </p>
+                                  {(a.gender || a.dateOfBirth || a.bloodGroup) && (
+                                    <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                      {[a.gender, a.dateOfBirth, a.bloodGroup].filter(Boolean).join(" · ")}
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <p className="font-bold">{a.gradeApplied}</p>
+                                  <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                    AY {a.academicYear}
+                                  </p>
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <p className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
+                                    {a.guardianName}{" "}
+                                    <span className="font-normal text-[#76799C] dark:text-[#9DA6CC]">
+                                      ({a.guardianRelation || "Parent"})
+                                    </span>
+                                  </p>
+                                  <p className="text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
+                                    {a.guardianPhone}
+                                    {a.guardianEmail ? ` · ${a.guardianEmail}` : ""}
+                                  </p>
+                                  {(a.fatherName || a.motherName) && (
+                                    <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                      {a.fatherName ? `F: ${a.fatherName}` : ""}
+                                      {a.fatherName && a.motherName ? " · " : ""}
+                                      {a.motherName ? `M: ${a.motherName}` : ""}
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-[#EDE7FF] px-2 py-0.5 text-[10px] font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    <span>{a.status}</span>
+                                  </span>
+                                  <p className="mt-0.5 text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                    {a.enrollmentStatus}
+                                  </p>
+                                </td>
+                                <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                                  {ledger ? (
+                                    <div>
+                                      <p className="font-bold text-emerald-600 dark:text-emerald-300">
+                                        Paid: {formatInrFromPaise(ledger.paidPaise)}
+                                      </p>
+                                      <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-300">
+                                        Due: {formatInrFromPaise(ledger.outstandingPaise)}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                      No ledger
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SUB-TAB 5: ADMISSIONS & SETTINGS DATA EXPLORER */}
               {subTab === "admissions" && (
                 <div className="space-y-4">
                   {loadingData || !schoolData ? (
@@ -1314,7 +1979,7 @@ export function PlatformSchoolsTab({
                 </div>
               )}
 
-              {/* SUB-TAB 5: STUDENT FEE LEDGERS & RECEIPTS */}
+              {/* SUB-TAB 6: STUDENT FEE LEDGERS & RECEIPTS */}
               {subTab === "fees" && (
                 <div className="space-y-4">
                   {loadingData || !schoolData ? (
@@ -1393,43 +2058,82 @@ export function PlatformSchoolsTab({
                 </div>
               )}
 
-              {/* SUB-TAB 6: SCHOOL AUDIT TRAIL */}
+              {/* SUB-TAB 7: SCHOOL AUDIT TRAIL & SUPPORT TICKETS */}
               {subTab === "audit" && (
-                <div className="space-y-3">
-                  {loadingAudit ? (
-                    <div className="py-6 text-center text-xs text-[#76799C]">Loading audit trail...</div>
-                  ) : schoolAuditLogs.length === 0 ? (
-                    <p className="py-6 text-center text-xs text-[#76799C]">
-                      No audit trail events logged for this school yet.
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-xs font-extrabold text-[#08093B] flex items-center gap-1.5 dark:text-[#F3F5FF]">
+                      <ShieldCheck className="h-3.5 w-3.5 text-[#663CF6]" />
+                      <span>Audit Trail</span>
                     </p>
-                  ) : (
-                    <div className="overflow-x-auto rounded-[12px] border border-[#DFE3F5] dark:border-[#272B4D]">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
-                          <tr>
-                            <th className="px-3 py-2">When</th>
-                            <th className="px-3 py-2">Action</th>
-                            <th className="px-3 py-2">Actor</th>
-                            <th className="px-3 py-2">Entity</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
-                          {schoolAuditLogs.map((log) => (
-                            <tr key={log.id}>
-                              <td className="px-3 py-2 whitespace-nowrap">{formatDateTime(log.createdAt)}</td>
-                              <td className="px-3 py-2 font-mono text-[11px] font-bold text-[#663CF6] dark:text-[#C4B5FD]">
-                                {log.action}
-                              </td>
-                              <td className="px-3 py-2">{log.actorName || log.actorId || "System"}</td>
-                              <td className="px-3 py-2 font-mono text-[11px]">
-                                {log.entityType}:{log.entityId.slice(0, 16)}
-                              </td>
+                    {loadingAudit ? (
+                      <div className="py-6 text-center text-xs text-[#76799C]">Loading audit trail...</div>
+                    ) : schoolAuditLogs.length === 0 ? (
+                      <p className="py-4 text-center text-xs text-[#76799C]">
+                        No audit trail events logged for this school yet.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto rounded-[12px] border border-[#DFE3F5] dark:border-[#272B4D]">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
+                            <tr>
+                              <th className="px-3 py-2">When</th>
+                              <th className="px-3 py-2">Action</th>
+                              <th className="px-3 py-2">Actor</th>
+                              <th className="px-3 py-2">Entity</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
+                            {schoolAuditLogs.map((log) => (
+                              <tr key={log.id}>
+                                <td className="px-3 py-2 whitespace-nowrap">{formatDateTime(log.createdAt)}</td>
+                                <td className="px-3 py-2 font-mono text-[11px] font-bold text-[#663CF6] dark:text-[#C4B5FD]">
+                                  {log.action}
+                                </td>
+                                <td className="px-3 py-2">{log.actorName || log.actorId || "System"}</td>
+                                <td className="px-3 py-2 font-mono text-[11px]">
+                                  {log.entityType}:{log.entityId.slice(0, 16)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-extrabold text-[#08093B] flex items-center gap-1.5 dark:text-[#F3F5FF]">
+                      <Headphones className="h-3.5 w-3.5 text-[#663CF6]" />
+                      <span>School Support Tickets ({schoolData?.supportTickets?.length ?? 0})</span>
+                    </p>
+                    {!schoolData?.supportTickets || schoolData.supportTickets.length === 0 ? (
+                      <p className="py-4 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]">
+                        No support tickets opened by this school.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {schoolData.supportTickets.map((t) => (
+                          <div
+                            key={t.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#DFE3F5] bg-[#FAF8FE] px-3.5 py-2.5 text-xs dark:border-[#272B4D] dark:bg-[#10142C]"
+                          >
+                            <div>
+                              <p className="font-mono font-bold text-[#663CF6] dark:text-[#C4B5FD]">
+                                {t.referenceCode} · {t.subject}
+                              </p>
+                              <p className="text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
+                                {t.senderName} ({t.priority}) · {formatDateShort(t.createdAt)}
+                              </p>
+                            </div>
+                            <span className="rounded-full border border-[#D6DBF0] bg-white px-2.5 py-0.5 text-[10px] font-bold dark:border-[#343B6B] dark:bg-[#141731]">
+                              {t.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </section>
