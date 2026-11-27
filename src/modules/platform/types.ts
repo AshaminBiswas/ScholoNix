@@ -6,7 +6,10 @@ export type PlatformTab =
   | "support"
   | "audit"
   | "announcements"
-  | "admins";
+  | "admins"
+  | "settings";
+
+export type PlatformOverviewPeriodDays = 7 | 30 | 90 | 365;
 
 export type PlatformAdminRoleValue =
   | "SUPER_ADMIN"
@@ -190,6 +193,8 @@ export interface PlatformSchoolEntry {
   users: PlatformSchoolUserItem[];
   counts: {
     users: number;
+    staffCount?: number;
+    studentCount?: number;
     applications: number;
     enquiries: number;
     admitted: number;
@@ -277,6 +282,10 @@ export interface PlatformHealthSnapshot {
   databaseConnected: boolean;
   dbLatencyMs: number | null;
   redisConfigured: boolean;
+  redisLatencyMs?: number | null;
+  avgApiResponseMs?: number | null;
+  blockedRequests24h?: number;
+  lastCheckedIso?: string;
   platformSchemaProvisioned: boolean;
   admissionsSchemaProvisioned: boolean;
   serverTimeIso: string;
@@ -284,6 +293,7 @@ export interface PlatformHealthSnapshot {
 }
 
 export interface PlatformOverviewData {
+  periodDays?: PlatformOverviewPeriodDays;
   kpis: {
     totalSchools: number;
     activeSchools: number;
@@ -297,11 +307,35 @@ export interface PlatformOverviewData {
     saasRevenueCollectedPaise: number;
     saasPendingPaise: number;
     openSupportTickets: number;
+    mrrPaise?: number;
+    feeVolumePeriodPaise?: number;
+    trialsExpiringNext7Days?: number;
+    schoolsDelta?: number;
+    schoolsGrowthPct?: number;
+    activeSchoolsDelta?: number;
+    activeSchoolsGrowthPct?: number;
+    usersDelta?: number;
+    usersGrowthPct?: number;
+    admissionsDelta?: number;
+    admissionsGrowthPct?: number;
+    feeVolumeGrowthPct?: number;
+    mrrGrowthPct?: number;
+    ticketsDelta?: number;
+    ticketsGrowthPct?: number;
   };
   planBreakdown: Array<{ plan: SaaSPlanValue; label: string; count: number; percentage: number }>;
+  subscriptionBreakdown?: Array<{
+    status: SaaSSubscriptionStatusValue;
+    label: string;
+    count: number;
+    percentage: number;
+  }>;
   boardBreakdown: Array<{ board: string; count: number }>;
   signupTrend: Array<{ label: string; count: number }>;
+  dailySignupTrend?: Array<{ date: string; label: string; count: number }>;
   expiringTrials: PlatformSchoolItem[];
+  recentRegistrations?: PlatformSchoolItem[];
+  recentOpenTickets?: PlatformSupportTicketRecord[];
   recentAuditLogs: PlatformAuditLogRecord[];
   health: PlatformHealthSnapshot;
 }

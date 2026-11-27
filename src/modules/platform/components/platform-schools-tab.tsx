@@ -19,11 +19,9 @@ import {
   Plus,
   Search,
   Settings2,
-  ShieldCheck,
   Trash2,
   UserPlus,
   Users,
-  X,
 } from "lucide-react";
 import {
   DEFAULT_PLATFORM_MODULE_FLAGS,
@@ -36,7 +34,6 @@ import {
   type SaaSBillingCycleValue,
   type SaaSPlanValue,
   type SaaSSubscriptionStatusValue,
-  type SchoolStatusValue,
 } from "@/modules/platform/types";
 import {
   PlanBadge,
@@ -46,6 +43,7 @@ import {
   formatDateTime,
   formatInrFromPaise,
 } from "./platform-shared";
+import { PlatformProvisionSchoolModal } from "./platform-provision-modal";
 
 type SchoolSubTab = "profile" | "plan" | "users" | "admissions" | "fees" | "audit";
 
@@ -124,27 +122,6 @@ export function PlatformSchoolsTab({
   const [loadingData, setLoadingData] = useState(false);
   const [schoolAuditLogs, setSchoolAuditLogs] = useState<PlatformAuditLogRecord[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
-
-  // Provision School form state
-  const [provForm, setProvForm] = useState({
-    name: "",
-    code: "",
-    affiliationBoard: "CBSE",
-    category: "Co-Educational School",
-    contactPhone: "",
-    contactEmail: "",
-    city: "",
-    state: "",
-    plan: "STARTER" as SaaSPlanValue,
-    status: "ACTIVE" as SchoolStatusValue,
-    trialDays: 14,
-    adminName: "",
-    adminEmail: "",
-    adminPhone: "",
-    adminPassword: "",
-    adminRole: "PRINCIPAL" as "PRINCIPAL" | "SCHOOL_ADMIN",
-  });
-  const [provisioning, setProvisioning] = useState(false);
 
   // Sync form fields when selectedEntry changes
   useEffect(() => {
@@ -273,33 +250,6 @@ export function PlatformSchoolsTab({
       onToast("error", err instanceof Error ? err.message : "Delete failed.");
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  const handleProvisionSchool = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setProvisioning(true);
-    try {
-      const res = await fetch("/api/platform/schools", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(provForm),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json?.error?.message || "Failed to provision school.");
-      }
-      onToast(
-        "success",
-        `Provisioned ${json.entry.school.name} (${json.entry.school.uniqueId}).`,
-      );
-      setProvisionOpen(false);
-      onSelectSchoolId(json.entry.school.id);
-      await onRefreshSchools({ q: query, status: statusFilter, plan: planFilter });
-    } catch (err) {
-      onToast("error", err instanceof Error ? err.message : "Provisioning failed.");
-    } finally {
-      setProvisioning(false);
     }
   };
 
@@ -1487,206 +1437,15 @@ export function PlatformSchoolsTab({
         </div>
       )}
 
-      {/* PROVISION NEW SCHOOL MODAL */}
-      {provisionOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Provision New School"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
-        >
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[20px] border border-[#D6DBF0] bg-white p-6 shadow-2xl dark:border-[#272B4D] dark:bg-[#141731] space-y-4">
-            <div className="flex items-center justify-between border-b border-[#DFE3F5] pb-3 dark:border-[#232746]">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-[#663CF6]" />
-                <h3 className="text-base font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-                  Provision New School Tenant
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setProvisionOpen(false)}
-                aria-label="Close provision modal"
-                className="rounded-full p-1 text-[#76799C] hover:bg-[#FAF8FE] cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleProvisionSchool} className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold mb-1">School Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={provForm.name}
-                    onChange={(e) => setProvForm((p) => ({ ...p, name: e.target.value }))}
-                    className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold mb-1">Affiliation Board</label>
-                  <input
-                    type="text"
-                    value={provForm.affiliationBoard}
-                    onChange={(e) => setProvForm((p) => ({ ...p, affiliationBoard: e.target.value }))}
-                    className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold mb-1">School Phone *</label>
-                  <input
-                    type="tel"
-                    required
-                    value={provForm.contactPhone}
-                    onChange={(e) => setProvForm((p) => ({ ...p, contactPhone: e.target.value }))}
-                    className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold mb-1">School Email</label>
-                  <input
-                    type="email"
-                    value={provForm.contactEmail}
-                    onChange={(e) => setProvForm((p) => ({ ...p, contactEmail: e.target.value }))}
-                    className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold mb-1">City *</label>
-                  <input
-                    type="text"
-                    required
-                    value={provForm.city}
-                    onChange={(e) => setProvForm((p) => ({ ...p, city: e.target.value }))}
-                    className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold mb-1">State *</label>
-                  <input
-                    type="text"
-                    required
-                    value={provForm.state}
-                    onChange={(e) => setProvForm((p) => ({ ...p, state: e.target.value }))}
-                    className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold mb-1">SaaS Plan</label>
-                  <select
-                    value={provForm.plan}
-                    onChange={(e) =>
-                      setProvForm((p) => ({ ...p, plan: e.target.value as SaaSPlanValue }))
-                    }
-                    className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-bold dark:border-[#343B6B] dark:bg-[#10142C]"
-                  >
-                    <option value="STARTER">Starter</option>
-                    <option value="PROFESSIONAL">Professional</option>
-                    <option value="ENTERPRISE">Enterprise</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold mb-1">Initial Status</label>
-                  <select
-                    value={provForm.status}
-                    onChange={(e) =>
-                      setProvForm((p) => ({ ...p, status: e.target.value as SchoolStatusValue }))
-                    }
-                    className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-bold dark:border-[#343B6B] dark:bg-[#10142C]"
-                  >
-                    <option value="ACTIVE">Active</option>
-                    <option value="TRIAL">Trial</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="border-t border-[#EEF1FA] pt-3 dark:border-[#232746]">
-                <p className="text-xs font-extrabold text-[#08093B] mb-2 dark:text-[#F3F5FF]">
-                  Primary Administrator Account
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold mb-1">Admin Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={provForm.adminName}
-                      onChange={(e) => setProvForm((p) => ({ ...p, adminName: e.target.value }))}
-                      className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold mb-1">Admin Role</label>
-                    <select
-                      value={provForm.adminRole}
-                      onChange={(e) =>
-                        setProvForm((p) => ({
-                          ...p,
-                          adminRole: e.target.value as "PRINCIPAL" | "SCHOOL_ADMIN",
-                        }))
-                      }
-                      className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-bold dark:border-[#343B6B] dark:bg-[#10142C]"
-                    >
-                      <option value="PRINCIPAL">Principal</option>
-                      <option value="SCHOOL_ADMIN">School Admin</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold mb-1">Admin Email *</label>
-                    <input
-                      type="email"
-                      required
-                      value={provForm.adminEmail}
-                      onChange={(e) => setProvForm((p) => ({ ...p, adminEmail: e.target.value }))}
-                      className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold mb-1">Admin Phone *</label>
-                    <input
-                      type="tel"
-                      required
-                      value={provForm.adminPhone}
-                      onChange={(e) => setProvForm((p) => ({ ...p, adminPhone: e.target.value }))}
-                      className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-bold mb-1">Initial Password (8+ chars) *</label>
-                    <input
-                      type="password"
-                      required
-                      minLength={8}
-                      value={provForm.adminPassword}
-                      onChange={(e) => setProvForm((p) => ({ ...p, adminPassword: e.target.value }))}
-                      className="w-full rounded-xl border border-[#CAD0EB] bg-white px-3 py-2 text-xs dark:border-[#343B6B] dark:bg-[#10142C]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setProvisionOpen(false)}
-                  className="rounded-xl border border-[#CAD0EB] px-4 py-2 text-xs font-bold dark:border-[#343B6B]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={provisioning}
-                  className="rounded-xl bg-[#663CF6] px-5 py-2 text-xs font-bold text-white hover:bg-[#4F27E8] disabled:opacity-50 cursor-pointer"
-                >
-                  {provisioning ? "Provisioning..." : "Create School & Admin"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <PlatformProvisionSchoolModal
+        open={provisionOpen}
+        onClose={() => setProvisionOpen(false)}
+        onToast={onToast}
+        onSuccess={async (newSchoolId) => {
+          onSelectSchoolId(newSchoolId);
+          await onRefreshSchools({ q: query, status: statusFilter, plan: planFilter });
+        }}
+      />
     </div>
   );
 }

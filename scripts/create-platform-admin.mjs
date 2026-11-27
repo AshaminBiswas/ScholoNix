@@ -60,7 +60,7 @@ async function main() {
   const { name, email, phone, password, role } = parseArgs();
   if (!name || !email || !password || password.length < 10) {
     console.error(
-      "Usage: node scripts/create-platform-admin.mjs --name=\"Name\" --email=\"admin@company.com\" --password=\"Min10Chars!\"",
+      "Usage: node scripts/create-platform-admin.mjs --name=\"Name\" --email=\"admin@company.com\" --password=\"<your-strong-password>\"",
     );
     process.exit(1);
   }

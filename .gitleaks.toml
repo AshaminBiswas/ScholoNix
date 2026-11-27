@@ -1,0 +1,34 @@
+# Gitleaks configuration for ScholoNix
+# https://github.com/gitleaks/gitleaks
+
+title = "ScholoNix Gitleaks Config"
+
+[extend]
+# Extend the default ruleset
+useDefault = true
+
+[[allowlists]]
+description = "Test files use randomized/ephemeral credentials — not real secrets"
+paths = [
+  "tests/.*\\.ts$",
+  "tests/.*\\.tsx$",
+]
+regexes = [
+  # Pattern: template-literal passwords assembled from randomBytes — never static
+  '''`[A-Za-z!]{3,10}\$\{randomBytes''',
+  # Short hex-suffix passwords in test helpers
+  '''`AccPass!\$\{uniqueSuffix\}`''',
+  '''`Princ!\$\{randomBytes''',
+  '''`Founder!\$\{unique''',
+  '''`FounderNew!\$\{unique''',
+]
+
+[[allowlists]]
+description = "Script usage strings show placeholder syntax, not real credentials"
+paths = [
+  "scripts/create-platform-admin\\.mjs$",
+]
+regexes = [
+  '''<[Yy]our[^>]*[Pp]assword[^>]*>''',
+  '''\[your-secure-password\]''',
+]

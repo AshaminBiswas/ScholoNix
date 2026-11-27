@@ -2,6 +2,7 @@ import "server-only";
 import { admissionsRepository } from "@/server/school/admissions-repository";
 import { logAuditEvent } from "@/server/security/audit-logger";
 import { platformRepository } from "./platform-repository";
+import type { PlatformOverviewPeriodDays } from "@/modules/platform/types";
 import type {
   CreateAnnouncementInput,
   CreatePlatformInvoiceInput,
@@ -24,8 +25,8 @@ interface ActorContext {
 }
 
 export const platformService = {
-  async getOverview() {
-    return platformRepository.getOverview();
+  async getOverview(periodDays: PlatformOverviewPeriodDays = 30) {
+    return platformRepository.getOverview(periodDays);
   },
 
   async listSchools(params?: { q?: string; status?: string; plan?: string }) {

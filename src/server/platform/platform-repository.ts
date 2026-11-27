@@ -4,6 +4,7 @@ import { randomBytes, randomUUID } from "crypto";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/server/database/client";
 import { authRepository } from "@/server/auth/auth-repository";
+import { checkRedisHealth } from "@/server/integrations/redis";
 import { admissionsRepository } from "@/server/school/admissions-repository";
 import { getRecentInMemoryAuditEntries } from "@/server/security/audit-logger";
 import {
@@ -23,6 +24,7 @@ import {
   type PlatformHealthSnapshot,
   type PlatformInvoiceRecord,
   type PlatformOverviewData,
+  type PlatformOverviewPeriodDays,
   type PlatformSchoolDataInspectResult,
   type PlatformSchoolEntry,
   type PlatformSchoolItem,
@@ -286,30 +288,73 @@ function mapAnnouncementRow(row: any): PlatformAnnouncementRecord {
   };
 }
 
-function buildSignupTrend(schools: Array<{ createdAt: string }>): Array<{ label: string; count: number }> {
-  const buckets = new Map<string, number>();
+function buildPeriodSignupTrend(
+  schools: Array<{ createdAt: string }>,
+  days: PlatformOverviewPeriodDays,
+): Array<{ date: string; label: string; count: number }> {
   const now = new Date();
-  for (let i = 5; i >= 0; i -= 1) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
-    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-    buckets.set(key, 0);
-  }
-  for (const s of schools) {
-    const d = new Date(s.createdAt);
-    if (Number.isNaN(d.getTime())) continue;
-    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-    if (buckets.has(key)) {
-      buckets.set(key, (buckets.get(key) ?? 0) + 1);
+
+  if (days === 365) {
+    const buckets = new Map<string, number>();
+    for (let i = 11; i >= 0; i -= 1) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      buckets.set(key, 0);
     }
+    for (const s of schools) {
+      const d = new Date(s.createdAt);
+      if (Number.isNaN(d.getTime())) continue;
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
+    }
+    return Array.from(buckets.entries()).map(([key, count]) => {
+      const [yr, mo] = key.split("-");
+      const d = new Date(Date.UTC(Number(yr), Number(mo) - 1, 1));
+      return {
+        date: key,
+        label: d.toLocaleDateString("en-IN", { month: "short", year: "2-digit", timeZone: "UTC" }),
+        count,
+      };
+    });
   }
-  return Array.from(buckets.entries()).map(([key, count]) => {
-    const [yr, mo] = key.split("-");
-    const d = new Date(Number(yr), Number(mo) - 1, 1);
-    return {
-      label: d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" }),
-      count,
-    };
-  });
+
+  // Group 90 days into 15 x 6-day buckets; 7 & 30 days into daily buckets
+  const bucketSize = days === 90 ? 6 : 1;
+  const bucketCount = days === 90 ? 15 : days;
+  const buckets: Array<{ startMs: number; endMs: number; date: string; label: string; count: number }> = [];
+  const endUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  const startUtc = endUtc - days * 86_400_000;
+
+  for (let i = 0; i < bucketCount; i += 1) {
+    const bStart = startUtc + i * bucketSize * 86_400_000;
+    const bEnd = i === bucketCount - 1 ? endUtc : bStart + bucketSize * 86_400_000;
+    const d = new Date(bStart);
+    buckets.push({
+      startMs: bStart,
+      endMs: bEnd,
+      date: d.toISOString().slice(0, 10),
+      label: d.toLocaleDateString("en-IN", { month: "short", day: "numeric", timeZone: "UTC" }),
+      count: 0,
+    });
+  }
+
+  for (const s of schools) {
+    const t = Date.parse(s.createdAt);
+    if (Number.isNaN(t) || t < startUtc || t >= endUtc) continue;
+    const idx = Math.min(
+      buckets.length - 1,
+      Math.max(0, Math.floor((t - startUtc) / (bucketSize * 86_400_000))),
+    );
+    buckets[idx]!.count += 1;
+  }
+
+  return buckets.map(({ date, label, count }) => ({ date, label, count }));
+}
+
+function calcGrowthPct(total: number, addedInPeriod: number): number {
+  const baseline = total - addedInPeriod;
+  if (baseline > 0) return Math.round((addedInPeriod / baseline) * 1000) / 10;
+  return addedInPeriod > 0 ? 100 : 0;
 }
 
 export const platformRepository = {
@@ -381,17 +426,40 @@ export const platformRepository = {
 
         const schoolIds = rows.map((r) => r.id);
         const admittedMap = new Map<string, number>();
+        const staffMap = new Map<string, number>();
+        const studentUsersMap = new Map<string, number>();
         const feePaidMap = new Map<string, number>();
         const saasBilledMap = new Map<string, number>();
 
         if (schoolIds.length > 0) {
-          const admittedRows = await tx.admissionApplication.groupBy({
-            by: ["schoolId"],
-            where: { schoolId: { in: schoolIds }, status: "ADMITTED" },
-            _count: { _all: true },
-          });
+          const [admittedRows, staffRows, studentUserRows] = await Promise.all([
+            tx.admissionApplication.groupBy({
+              by: ["schoolId"],
+              where: { schoolId: { in: schoolIds }, status: "ADMITTED" },
+              _count: { _all: true },
+            }),
+            tx.user.groupBy({
+              by: ["schoolId"],
+              where: {
+                schoolId: { in: schoolIds },
+                role: { notIn: ["STUDENT", "PARENT"] },
+              },
+              _count: { _all: true },
+            }),
+            tx.user.groupBy({
+              by: ["schoolId"],
+              where: { schoolId: { in: schoolIds }, role: "STUDENT" },
+              _count: { _all: true },
+            }),
+          ]);
           for (const a of admittedRows) {
             admittedMap.set(a.schoolId, a._count._all);
+          }
+          for (const st of staffRows) {
+            if (st.schoolId) staffMap.set(st.schoolId, st._count._all);
+          }
+          for (const su of studentUserRows) {
+            if (su.schoolId) studentUsersMap.set(su.schoolId, su._count._all);
           }
 
           if (caps.hasFeePayments && (tx as any).admissionFeePayment) {
@@ -433,6 +501,11 @@ export const platformRepository = {
           })),
           counts: {
             users: row._count?.users ?? 0,
+            staffCount: staffMap.get(row.id) ?? 0,
+            studentCount: Math.max(
+              admittedMap.get(row.id) ?? 0,
+              studentUsersMap.get(row.id) ?? 0,
+            ),
             applications: row._count?.admissionApplications ?? 0,
             enquiries: row._count?.admissionEnquiries ?? 0,
             admitted: admittedMap.get(row.id) ?? 0,
@@ -490,14 +563,22 @@ export const platformRepository = {
         .filter((inv) => inv.schoolId === s.id && inv.status === "PAID")
         .reduce((sum, inv) => sum + inv.amountPaise, 0);
 
+      const admittedCount = snapshot.applications.filter((a) => a.status === "ADMITTED").length;
+      const staffCount = users.filter(
+        (u) => u.role !== "STUDENT" && u.role !== "PARENT",
+      ).length;
+      const studentUsersCount = users.filter((u) => u.role === "STUDENT").length;
+
       results.push({
         school: mapSchoolItem(s),
         users,
         counts: {
           users: users.length,
+          staffCount,
+          studentCount: Math.max(admittedCount, studentUsersCount),
           applications: snapshot.applications.length,
           enquiries: snapshot.enquiries.length,
-          admitted: snapshot.applications.filter((a) => a.status === "ADMITTED").length,
+          admitted: admittedCount,
           feeCollectedPaise,
           saasBilledPaise,
         },
@@ -1820,36 +1901,52 @@ export const platformRepository = {
     let platformSchemaProvisioned = false;
     let admissionsSchemaProvisioned = false;
 
-    if (await authRepository.canUsePrismaForPlatform()) {
-      try {
-        await runPlatformTx(async (tx) => {
-          const caps = await getPlatformSchemaCaps(tx);
-          platformSchemaProvisioned =
-            caps.hasSchoolSaasCols &&
-            caps.hasInvoicesTable &&
-            caps.hasTicketsTable &&
-            caps.hasAnnouncementsTable;
-          admissionsSchemaProvisioned = caps.hasFeeLedgers && caps.hasFeePayments;
-        });
-        databaseConnected = true;
-        dbLatencyMs = Date.now() - start;
-      } catch {
-        databaseConnected = false;
-      }
-    }
+    const redisConfigured = Boolean(
+      process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
+    );
 
+    const [dbCheckResult, redisHealth] = await Promise.all([
+      (async () => {
+        if (!(await authRepository.canUsePrismaForPlatform())) return;
+        try {
+          await runPlatformTx(async (tx) => {
+            const caps = await getPlatformSchemaCaps(tx);
+            platformSchemaProvisioned =
+              caps.hasSchoolSaasCols &&
+              caps.hasInvoicesTable &&
+              caps.hasTicketsTable &&
+              caps.hasAnnouncementsTable;
+            admissionsSchemaProvisioned = caps.hasFeeLedgers && caps.hasFeePayments;
+          });
+          databaseConnected = true;
+          dbLatencyMs = Date.now() - start;
+        } catch {
+          databaseConnected = false;
+        }
+      })(),
+      checkRedisHealth().catch(() => null),
+    ]);
+    void dbCheckResult;
+
+    const nowIso = new Date().toISOString();
     return {
       databaseConnected,
       dbLatencyMs,
-      redisConfigured: Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
+      redisConfigured,
+      redisLatencyMs:
+        redisHealth && redisHealth.provider !== "unconfigured" ? redisHealth.latencyMs : null,
+      avgApiResponseMs: Date.now() - start,
+      blockedRequests24h: 0,
+      lastCheckedIso: nowIso,
       platformSchemaProvisioned,
       admissionsSchemaProvisioned,
-      serverTimeIso: new Date().toISOString(),
+      serverTimeIso: nowIso,
       environment: process.env.NODE_ENV || "development",
     };
   },
 
-  async getOverview(): Promise<PlatformOverviewData> {
+  async getOverview(periodDays: PlatformOverviewPeriodDays = 30): Promise<PlatformOverviewData> {
+    const reqStart = Date.now();
     const [schools, invoices, tickets, auditLogs, health] = await Promise.all([
       this.listSchools(),
       this.listInvoices(),
@@ -1858,6 +1955,12 @@ export const platformRepository = {
       this.getHealthSnapshot(),
     ]);
 
+    const nowMs = Date.now();
+    const windowStartMs = nowMs - periodDays * 86_400_000;
+    const prevWindowStartMs = windowStartMs - periodDays * 86_400_000;
+    const last24hMs = nowMs - 86_400_000;
+    const next7DaysMs = nowMs + 7 * 86_400_000;
+
     const totalSchools = schools.length;
     const activeSchools = schools.filter((s) => s.school.status === "ACTIVE").length;
     const trialSchools = schools.filter((s) => s.school.status === "TRIAL").length;
@@ -1865,11 +1968,60 @@ export const platformRepository = {
       (s) => s.school.status === "SUSPENDED" || s.school.status === "INACTIVE",
     ).length;
 
+    const schoolsDelta = schools.filter(
+      (s) => Date.parse(s.school.createdAt) >= windowStartMs,
+    ).length;
+    const activeSchoolsDelta = schools.filter(
+      (s) => s.school.status === "ACTIVE" && Date.parse(s.school.createdAt) >= windowStartMs,
+    ).length;
+
     const totalUsers = schools.reduce((sum, s) => sum + s.counts.users, 0);
     const totalApplications = schools.reduce((sum, s) => sum + s.counts.applications, 0);
     const totalEnquiries = schools.reduce((sum, s) => sum + s.counts.enquiries, 0);
     const totalAdmittedStudents = schools.reduce((sum, s) => sum + s.counts.admitted, 0);
-    const studentFeeCollectedPaise = schools.reduce((sum, s) => sum + s.counts.feeCollectedPaise, 0);
+    const studentFeeCollectedPaise = schools.reduce(
+      (sum, s) => sum + s.counts.feeCollectedPaise,
+      0,
+    );
+
+    const usersInWindow = schools.reduce(
+      (sum, s) =>
+        sum + s.users.filter((u) => Date.parse(u.createdAt) >= windowStartMs).length,
+      0,
+    );
+
+    const mrrPaise = schools.reduce((sum, s) => {
+      if (
+        (s.school.status === "ACTIVE" || s.school.status === "TRIAL") &&
+        s.school.subscriptionStatus !== "CANCELED"
+      ) {
+        const cat = SAAS_PLAN_CATALOG[s.school.plan];
+        return (
+          sum +
+          (s.school.billingCycle === "YEARLY"
+            ? cat.yearlyMonthlyEquivalentPaise
+            : cat.monthlyPaise)
+        );
+      }
+      return sum;
+    }, 0);
+
+    const newMrrPaise = schools.reduce((sum, s) => {
+      if (
+        Date.parse(s.school.createdAt) >= windowStartMs &&
+        (s.school.status === "ACTIVE" || s.school.status === "TRIAL") &&
+        s.school.subscriptionStatus !== "CANCELED"
+      ) {
+        const cat = SAAS_PLAN_CATALOG[s.school.plan];
+        return (
+          sum +
+          (s.school.billingCycle === "YEARLY"
+            ? cat.yearlyMonthlyEquivalentPaise
+            : cat.monthlyPaise)
+        );
+      }
+      return sum;
+    }, 0);
 
     const saasRevenueCollectedPaise = invoices
       .filter((i) => i.status === "PAID")
@@ -1877,19 +2029,66 @@ export const platformRepository = {
     const saasPendingPaise = invoices
       .filter((i) => i.status === "PENDING" || i.status === "OVERDUE")
       .reduce((sum, i) => sum + i.amountPaise, 0);
-    const openSupportTickets = tickets.filter(
+
+    const feePaidPeriodInvoices = invoices
+      .filter(
+        (i) =>
+          i.status === "PAID" &&
+          Date.parse(i.paidAt || i.createdAt) >= windowStartMs,
+      )
+      .reduce((sum, i) => sum + i.amountPaise, 0);
+    const feePaidPrevInvoices = invoices
+      .filter((i) => {
+        const ts = Date.parse(i.paidAt || i.createdAt);
+        return i.status === "PAID" && ts >= prevWindowStartMs && ts < windowStartMs;
+      })
+      .reduce((sum, i) => sum + i.amountPaise, 0);
+
+    // Track period fee volume using real invoice collections + school fee collections
+    const feeVolumePeriodPaise =
+      studentFeeCollectedPaise > 0 ? studentFeeCollectedPaise : feePaidPeriodInvoices;
+    const feeVolumeGrowthPct =
+      feePaidPrevInvoices > 0
+        ? Math.round(
+            ((feePaidPeriodInvoices - feePaidPrevInvoices) / feePaidPrevInvoices) * 1000,
+          ) / 10
+        : feeVolumePeriodPaise > 0
+          ? 0
+          : 0;
+
+    const openTicketsList = tickets.filter(
       (t) => t.status === "OPEN" || t.status === "IN_PROGRESS",
+    );
+    const openSupportTickets = openTicketsList.length;
+    const ticketsDelta = openTicketsList.filter(
+      (t) => Date.parse(t.createdAt) >= windowStartMs,
     ).length;
+
+    const trialsExpiringNext7Days = schools.filter((s) => {
+      if (s.school.status !== "TRIAL" || !s.school.trialEndsAt) return false;
+      const t = Date.parse(s.school.trialEndsAt);
+      return !Number.isNaN(t) && t >= nowMs - 86_400_000 && t <= next7DaysMs;
+    }).length;
 
     const planCounts = new Map<SaaSPlanValue, number>([
       ["STARTER", 0],
       ["PROFESSIONAL", 0],
       ["ENTERPRISE", 0],
     ]);
+    const subCounts = new Map<SaaSSubscriptionStatusValue, number>([
+      ["ACTIVE", 0],
+      ["TRIALING", 0],
+      ["PAST_DUE", 0],
+      ["CANCELED", 0],
+    ]);
     const boardCounts = new Map<string, number>();
 
     for (const entry of schools) {
       planCounts.set(entry.school.plan, (planCounts.get(entry.school.plan) ?? 0) + 1);
+      subCounts.set(
+        entry.school.subscriptionStatus,
+        (subCounts.get(entry.school.subscriptionStatus) ?? 0) + 1,
+      );
       const board = entry.school.affiliationBoard || "Unspecified";
       boardCounts.set(board, (boardCounts.get(board) ?? 0) + 1);
     }
@@ -1906,6 +2105,24 @@ export const platformRepository = {
       };
     });
 
+    const subLabelMap: Record<SaaSSubscriptionStatusValue, string> = {
+      ACTIVE: "Active",
+      TRIALING: "Trialing",
+      PAST_DUE: "Past Due",
+      CANCELED: "Canceled",
+    };
+    const subscriptionBreakdown: NonNullable<PlatformOverviewData["subscriptionBreakdown"]> = (
+      ["ACTIVE", "TRIALING", "PAST_DUE", "CANCELED"] as SaaSSubscriptionStatusValue[]
+    ).map((status) => {
+      const count = subCounts.get(status) ?? 0;
+      return {
+        status,
+        label: subLabelMap[status],
+        count,
+        percentage: totalSchools > 0 ? Math.round((count / totalSchools) * 1000) / 10 : 0,
+      };
+    });
+
     const boardBreakdown = Array.from(boardCounts.entries())
       .map(([board, count]) => ({ board, count }))
       .sort((a, b) => b.count - a.count)
@@ -1917,7 +2134,43 @@ export const platformRepository = {
       .sort((a, b) => Date.parse(a.trialEndsAt!) - Date.parse(b.trialEndsAt!))
       .slice(0, 6);
 
+    const recentRegistrations = [...schools]
+      .map((s) => s.school)
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .slice(0, 5);
+
+    const priorityRank: Record<string, number> = { URGENT: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+    const recentOpenTickets = [...openTicketsList]
+      .sort((a, b) => {
+        const diff = (priorityRank[b.priority] ?? 0) - (priorityRank[a.priority] ?? 0);
+        return diff !== 0 ? diff : Date.parse(b.createdAt) - Date.parse(a.createdAt);
+      })
+      .slice(0, 5);
+
+    const blockedRequests24h = auditLogs.filter(
+      (log) =>
+        Date.parse(log.createdAt) >= last24hMs &&
+        /DENIED|BLOCK|FAILED|RATE_LIMIT/i.test(log.action),
+    ).length;
+
+    const dailySignupTrend = buildPeriodSignupTrend(
+      schools.map((s) => s.school),
+      periodDays,
+    );
+    const monthlyTrend = buildPeriodSignupTrend(
+      schools.map((s) => s.school),
+      365,
+    ).slice(-6);
+
+    const mrrGrowthPct =
+      mrrPaise - newMrrPaise > 0
+        ? Math.round((newMrrPaise / (mrrPaise - newMrrPaise)) * 1000) / 10
+        : newMrrPaise > 0
+          ? 100
+          : 0;
+
     return {
+      periodDays,
       kpis: {
         totalSchools,
         activeSchools,
@@ -1931,13 +2184,37 @@ export const platformRepository = {
         saasRevenueCollectedPaise,
         saasPendingPaise,
         openSupportTickets,
+        mrrPaise,
+        feeVolumePeriodPaise,
+        trialsExpiringNext7Days,
+        schoolsDelta,
+        schoolsGrowthPct: calcGrowthPct(totalSchools, schoolsDelta),
+        activeSchoolsDelta,
+        activeSchoolsGrowthPct: calcGrowthPct(activeSchools, activeSchoolsDelta),
+        usersDelta: usersInWindow,
+        usersGrowthPct: calcGrowthPct(totalUsers, usersInWindow),
+        admissionsDelta: 0,
+        admissionsGrowthPct: 0,
+        feeVolumeGrowthPct,
+        mrrGrowthPct,
+        ticketsDelta,
+        ticketsGrowthPct: calcGrowthPct(openSupportTickets, ticketsDelta),
       },
       planBreakdown,
+      subscriptionBreakdown,
       boardBreakdown,
-      signupTrend: buildSignupTrend(schools.map((s) => s.school)),
+      signupTrend: monthlyTrend.map(({ label, count }) => ({ label, count })),
+      dailySignupTrend,
       expiringTrials,
+      recentRegistrations,
+      recentOpenTickets,
       recentAuditLogs: auditLogs.slice(0, 12),
-      health,
+      health: {
+        ...health,
+        avgApiResponseMs: Date.now() - reqStart,
+        blockedRequests24h,
+        lastCheckedIso: new Date().toISOString(),
+      },
     };
   },
 };

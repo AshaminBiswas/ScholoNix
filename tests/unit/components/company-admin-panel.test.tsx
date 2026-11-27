@@ -149,11 +149,11 @@ describe("CompanyAdminPanel UI", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Company Admin Panel", level: 1 })).toBeTruthy();
-    expect(screen.getByText("Registered Schools")).toBeTruthy();
-    expect(screen.getByText("SaaS Revenue Collected")).toBeTruthy();
+    expect(screen.getByText("Total Schools")).toBeTruthy();
+    expect(screen.getByText("MRR (Monthly Recurring)")).toBeTruthy();
 
-    // Switch to Schools & Data
-    await actor.click(screen.getByRole("button", { name: /Schools & Data/i }));
+    // Switch to Schools
+    await actor.click(screen.getByTitle("Schools"));
     expect(screen.getAllByText("Horizon Synthetic Academy").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("SNX-2026-7K4M9P").length).toBeGreaterThanOrEqual(1);
 
@@ -167,20 +167,21 @@ describe("CompanyAdminPanel UI", () => {
     expect(screen.getByText("Per-School Feature Modules")).toBeTruthy();
     expect(screen.getByText("Save Plan, Quotas & Feature Flags")).toBeTruthy();
 
-    // Switch to SaaS Billing, Support, Audit & Health, Announcements
-    await actor.click(screen.getByRole("button", { name: /SaaS Billing/i }));
+    // Switch to Plans & Billing, Support, Security & Health (Audit + Company Admins), Announcements
+    await actor.click(screen.getByTitle("Plans & Billing"));
     expect(screen.getByText(/SaaS Subscriptions & Company Billing/i)).toBeTruthy();
 
-    await actor.click(screen.getByRole("button", { name: /Support & Feedback/i }));
+    await actor.click(screen.getByTitle("Support & Feedback"));
     expect(screen.getByText(/Support, Contact & Feedback Inbox/i)).toBeTruthy();
 
+    await actor.click(screen.getByTitle("Security & Health"));
     await actor.click(screen.getByRole("button", { name: /Audit & Health/i }));
     expect(screen.getByText(/Immutable Security & Governance Audit Logs/i)).toBeTruthy();
 
     await actor.click(screen.getByRole("button", { name: /Company Admins/i }));
     expect(screen.getByText(/Company Admins & Management Team/i)).toBeTruthy();
 
-    await actor.click(screen.getByRole("button", { name: /Announcements/i }));
+    await actor.click(screen.getByTitle("Announcements"));
     expect(screen.getByText(/Platform Announcements & Maintenance Notices/i)).toBeTruthy();
   });
 });

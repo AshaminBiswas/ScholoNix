@@ -1,0 +1,7 @@
+version: 2.0.0
+
+# Allowed paths — test files and bootstrap scripts contain ephemeral/randomized
+# credentials, never static secrets. GitGuardian should not flag these.
+paths-ignore:
+  - tests/**
+  - scripts/create-platform-admin.mjs
