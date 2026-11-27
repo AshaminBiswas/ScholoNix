@@ -5,6 +5,8 @@ import Link from "next/link";
 import type { Route } from "next";
 import {
   AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
   Building2,
   Calendar,
   Check,
@@ -14,11 +16,13 @@ import {
   Database,
   Download,
   ExternalLink,
+  FileJson,
   FileText,
   GraduationCap,
   Headphones,
   IndianRupee,
   KeyRound,
+  Layers,
   Loader2,
   Lock,
   Mail,
@@ -55,6 +59,7 @@ import {
 import { PlatformProvisionSchoolModal } from "./platform-provision-modal";
 
 type SchoolSubTab =
+  | "all"
   | "profile"
   | "plan"
   | "users"
@@ -95,12 +100,14 @@ export function PlatformSchoolsTab({
   const [planFilter, setPlanFilter] = useState("ALL");
   const [searching, setSearching] = useState(false);
 
-  const [subTab, setSubTab] = useState<SchoolSubTab>("profile");
+  const [subTab, setSubTab] = useState<SchoolSubTab>("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [provisionOpen, setProvisionOpen] = useState(false);
 
-  const selectedEntry =
-    schools.find((e) => e.school.id === selectedSchoolId) ?? schools[0] ?? null;
+  const selectedEntry = selectedSchoolId
+    ? schools.find((e) => e.school.id === selectedSchoolId) ?? null
+    : null;
+  const selectedSchoolKey = selectedEntry?.school.id ?? null;
 
   // Profile edit state
   const [editName, setEditName] = useState("");
@@ -154,6 +161,11 @@ export function PlatformSchoolsTab({
   const [schoolAuditLogs, setSchoolAuditLogs] = useState<PlatformAuditLogRecord[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
 
+  // Reset active subTab when switching to a different school
+  useEffect(() => {
+    setSubTab("all");
+  }, [selectedSchoolKey]);
+
   // Sync form fields when selectedEntry changes
   useEffect(() => {
     if (!selectedEntry) return;
@@ -190,48 +202,57 @@ export function PlatformSchoolsTab({
     setStudentFilter("ALL");
   }, [selectedEntry]);
 
-  // Load tenant inspect data (students, parents, ledgers, invoices, tickets) cleanly on school select
+  // Load complete tenant inspect data, full users list, and audit trail immediately on school select
   useEffect(() => {
-    if (!selectedEntry) return;
-    const schoolId = selectedEntry.school.id;
+    if (!selectedSchoolKey) return;
+    let active = true;
 
     setLoadingData(true);
-    fetch(`/api/platform/schools/${schoolId}/data`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (j?.success && j.data) setSchoolData(j.data);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingData(false));
-  }, [selectedEntry]);
+    setLoadingUsers(true);
+    setLoadingAudit(true);
 
-  // Load full users or audit logs when opening those sub-tabs
-  useEffect(() => {
-    if (!selectedEntry) return;
-    const schoolId = selectedEntry.school.id;
-
-    if (subTab === "users") {
-      setLoadingUsers(true);
-      fetch(`/api/platform/schools/${schoolId}/users`, { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((j) => {
-          if (j?.success && Array.isArray(j.users)) setSchoolUsers(j.users);
-        })
-        .catch(() => {})
-        .finally(() => setLoadingUsers(false));
-    } else if (subTab === "audit") {
-      setLoadingAudit(true);
-      fetch(`/api/platform/audit-logs?schoolId=${encodeURIComponent(schoolId)}`, {
+    Promise.allSettled([
+      fetch(`/api/platform/schools/${selectedSchoolKey}/data`, { cache: "no-store" }).then((r) =>
+        r.ok ? r.json() : null,
+      ),
+      fetch(`/api/platform/schools/${selectedSchoolKey}/users`, { cache: "no-store" }).then((r) =>
+        r.ok ? r.json() : null,
+      ),
+      fetch(`/api/platform/audit-logs?schoolId=${encodeURIComponent(selectedSchoolKey)}`, {
         cache: "no-store",
+      }).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([dataRes, usersRes, auditRes]) => {
+        if (!active) return;
+        if (dataRes.status === "fulfilled" && dataRes.value?.success && dataRes.value.data) {
+          setSchoolData(dataRes.value.data);
+        }
+        if (
+          usersRes.status === "fulfilled" &&
+          usersRes.value?.success &&
+          Array.isArray(usersRes.value.users)
+        ) {
+          setSchoolUsers(usersRes.value.users);
+        }
+        if (
+          auditRes.status === "fulfilled" &&
+          auditRes.value?.success &&
+          Array.isArray(auditRes.value.logs)
+        ) {
+          setSchoolAuditLogs(auditRes.value.logs);
+        }
       })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((j) => {
-          if (j?.success && Array.isArray(j.logs)) setSchoolAuditLogs(j.logs);
-        })
-        .catch(() => {})
-        .finally(() => setLoadingAudit(false));
-    }
-  }, [subTab, selectedEntry]);
+      .finally(() => {
+        if (!active) return;
+        setLoadingData(false);
+        setLoadingUsers(false);
+        setLoadingAudit(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedSchoolKey]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -433,6 +454,27 @@ export function PlatformSchoolsTab({
     );
   };
 
+  const handleExportSchoolJson = () => {
+    if (!selectedEntry) return;
+    const payload = {
+      exportedAtIso: new Date().toISOString(),
+      school: selectedEntry.school,
+      counts: selectedEntry.counts,
+      users: schoolUsers,
+      tenantData: schoolData,
+      auditLogs: schoolAuditLogs,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${selectedEntry.school.slug}-complete-dossier.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const filteredUsers = useMemo(() => {
     const q = userSearch.trim().toLowerCase();
     return schoolUsers.filter((u) => {
@@ -512,332 +554,920 @@ export function PlatformSchoolsTab({
 
   return (
     <div className="space-y-5">
-      {/* Search, Filter & Provision Bar */}
-      <section className={`${CARD_SURFACE} p-5 space-y-4`}>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg sm:text-xl font-black text-[#08093B] dark:text-[#F3F5FF]">
-              Registered Schools &amp; Client Governance
-            </h2>
-            <p className="text-xs text-[#4D5072] dark:text-[#9DA6CC]">
-              Inspect complete school profiles, subscriptions, all user accounts, students &amp; parent details, and fee ledgers.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleExportSchoolsCsv}
-              className="inline-flex items-center gap-1.5 rounded-[12px] border border-[#D6DBF0] bg-white px-3.5 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span>Export CSV</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setProvisionOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#8B5CF6] via-[#663CF6] to-[#4F27E8] px-4 py-2 text-xs font-extrabold text-white shadow-[0_6px_16px_rgba(102,60,246,0.28)] hover:opacity-95 cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Provision New School</span>
-            </button>
-          </div>
-        </div>
-
-        <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
-          <div className="relative md:col-span-6">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C] dark:text-[#9DA6CC]" />
-            <input
-              type="search"
-              aria-label="Search schools by Unique ID, name, city, or email"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search Unique ID (SNX-...), name, code, city, email..."
-              className="w-full rounded-[12px] border border-[#CAD0EB] bg-[#FAF8FE] pl-10 pr-3 py-2 text-xs font-semibold text-[#08093B] focus:border-[#663CF6] focus:bg-white focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-            />
-          </div>
-          <select
-            aria-label="Filter by school status"
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              void onRefreshSchools({ q: query, status: e.target.value, plan: planFilter });
-            }}
-            className="md:col-span-2 rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-bold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="TRIAL">Trial</option>
-            <option value="SUSPENDED">Suspended</option>
-            <option value="INACTIVE">Inactive</option>
-          </select>
-          <select
-            aria-label="Filter by SaaS plan"
-            value={planFilter}
-            onChange={(e) => {
-              setPlanFilter(e.target.value);
-              void onRefreshSchools({ q: query, status: statusFilter, plan: e.target.value });
-            }}
-            className="md:col-span-2 rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-bold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
-          >
-            <option value="ALL">All Plans</option>
-            <option value="STARTER">Starter</option>
-            <option value="PROFESSIONAL">Professional</option>
-            <option value="ENTERPRISE">Enterprise</option>
-          </select>
-          <button
-            type="submit"
-            disabled={searching}
-            className="md:col-span-2 inline-flex items-center justify-center gap-1.5 rounded-[12px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white hover:bg-[#4F27E8] cursor-pointer disabled:opacity-60"
-          >
-            {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-            <span>Search ({schools.length})</span>
-          </button>
-        </form>
-      </section>
-
-      {/* Split Master-Detail */}
-      {schools.length === 0 ? (
-        <div className={`${CARD_SURFACE} p-10 text-center`}>
-          <p className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
-            No matching schools found
-          </p>
-          <p className="mt-1 text-xs text-[#76799C] dark:text-[#9DA6CC]">
-            Adjust your search filters or provision a new school above.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-          {/* Left Client Schools Selector (3 cols) */}
-          <aside className="xl:col-span-3 space-y-2.5 max-h-[920px] overflow-y-auto school-menu-scrollbar pr-1">
-            {schools.map((entry) => {
-              const active = selectedEntry?.school.id === entry.school.id;
-              return (
+      {!selectedEntry ? (
+        <>
+          {/* ALL SCHOOLS LIST MODE: Search, Filter & Provision Bar */}
+          <section className={`${CARD_SURFACE} p-5 space-y-4`}>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg sm:text-xl font-black text-[#08093B] dark:text-[#F3F5FF]">
+                  All Schools List &amp; Client Directory
+                </h2>
+                <p className="text-xs text-[#4D5072] dark:text-[#9DA6CC]">
+                  Click any school below to inspect complete profile details, subscription &amp; invoices, all user accounts, students &amp; parent records, fee ledgers, and audit trail.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <button
-                  key={entry.school.id}
                   type="button"
-                  onClick={() => {
-                    onSelectSchoolId(entry.school.id);
-                  }}
-                  className={`w-full text-left rounded-[16px] border p-3.5 transition cursor-pointer ${
-                    active
-                      ? "border-[#663CF6] bg-white shadow-sm ring-2 ring-[#663CF6]/15 dark:border-[#8B5CF6] dark:bg-[#1B1740]"
-                      : "border-white/80 bg-white/80 hover:border-[#9B76FF] dark:border-[#272B4D] dark:bg-[#141731]/90"
-                  }`}
+                  onClick={handleExportSchoolsCsv}
+                  className="inline-flex items-center gap-1.5 rounded-[12px] border border-[#D6DBF0] bg-white px-3.5 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Export CSV</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProvisionOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#8B5CF6] via-[#663CF6] to-[#4F27E8] px-4 py-2 text-xs font-extrabold text-white shadow-[0_6px_16px_rgba(102,60,246,0.28)] hover:opacity-95 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Provision New School</span>
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
+              <div className="relative md:col-span-6">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#76799C] dark:text-[#9DA6CC]" />
+                <input
+                  type="search"
+                  aria-label="Search schools by Unique ID, name, city, or email"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search Unique ID (SNX-...), name, code, city, email..."
+                  className="w-full rounded-[12px] border border-[#CAD0EB] bg-[#FAF8FE] pl-10 pr-3 py-2 text-xs font-semibold text-[#08093B] focus:border-[#663CF6] focus:bg-white focus:outline-none dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
+                />
+              </div>
+              <select
+                aria-label="Filter by school status"
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  void onRefreshSchools({ q: query, status: e.target.value, plan: planFilter });
+                }}
+                className="md:col-span-2 rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-bold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="TRIAL">Trial</option>
+                <option value="SUSPENDED">Suspended</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
+              <select
+                aria-label="Filter by SaaS plan"
+                value={planFilter}
+                onChange={(e) => {
+                  setPlanFilter(e.target.value);
+                  void onRefreshSchools({ q: query, status: statusFilter, plan: e.target.value });
+                }}
+                className="md:col-span-2 rounded-[12px] border border-[#CAD0EB] bg-white px-3 py-2 text-xs font-bold text-[#08093B] dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF]"
+              >
+                <option value="ALL">All Plans</option>
+                <option value="STARTER">Starter</option>
+                <option value="PROFESSIONAL">Professional</option>
+                <option value="ENTERPRISE">Enterprise</option>
+              </select>
+              <button
+                type="submit"
+                disabled={searching}
+                className="md:col-span-2 inline-flex items-center justify-center gap-1.5 rounded-[12px] bg-[#663CF6] px-4 py-2 text-xs font-bold text-white hover:bg-[#4F27E8] cursor-pointer disabled:opacity-60"
+              >
+                {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                <span>Search ({schools.length})</span>
+              </button>
+            </form>
+          </section>
+
+          {/* FULL-WIDTH ALL SCHOOLS LIST */}
+          {schools.length === 0 ? (
+            <div className={`${CARD_SURFACE} p-10 text-center`}>
+              <p className="text-sm font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                No matching schools found
+              </p>
+              <p className="mt-1 text-xs text-[#76799C] dark:text-[#9DA6CC]">
+                Adjust your search filters or provision a new school above.
+              </p>
+            </div>
+          ) : (
+            <section className={`${CARD_SURFACE} overflow-hidden`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-[#F6F5FD] text-[10px] font-extrabold uppercase tracking-wider text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
+                    <tr>
+                      <th className="px-4 py-3">School &amp; Unique ID</th>
+                      <th className="px-4 py-3">Status &amp; Onboarding</th>
+                      <th className="px-4 py-3">Subscription</th>
+                      <th className="px-4 py-3">Users &amp; Students</th>
+                      <th className="px-4 py-3 text-right">Student Fees / SaaS Billed</th>
+                      <th className="px-4 py-3 text-right">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
+                    {schools.map((entry) => {
+                      const studentsUsed = entry.counts.studentCount ?? entry.counts.admitted;
+                      return (
+                        <tr
+                          key={entry.school.id}
+                          className="hover:bg-[#FAF8FE] transition dark:hover:bg-[#1B1F3F]/60"
+                        >
+                          <td className="px-4 py-3.5">
+                            <button
+                              type="button"
+                              onClick={() => onSelectSchoolId(entry.school.id)}
+                              className="text-left group cursor-pointer"
+                            >
+                              <p className="text-sm font-extrabold text-[#08093B] group-hover:text-[#663CF6] transition dark:text-[#F3F5FF] dark:group-hover:text-[#C4B5FD]">
+                                {entry.school.name}
+                              </p>
+                              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px]">
+                                <span className="font-mono font-bold text-[#663CF6] dark:text-[#A78BFA]">
+                                  {entry.school.uniqueId || entry.school.slug}
+                                </span>
+                                {(entry.school.city || entry.school.state) && (
+                                  <span className="text-[#76799C] dark:text-[#9DA6CC]">
+                                    · {[entry.school.city, entry.school.state].filter(Boolean).join(", ")}
+                                  </span>
+                                )}
+                              </div>
+                              {(entry.school.contactEmail || entry.school.contactPhone) && (
+                                <p className="mt-0.5 text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                  {[entry.school.contactEmail, entry.school.contactPhone].filter(Boolean).join(" · ")}
+                                </p>
+                              )}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <SchoolStatusBadge status={entry.school.status} />
+                            <p className="mt-1 text-[10px] font-semibold text-[#76799C] dark:text-[#9DA6CC]">
+                              {entry.school.onboardingDone
+                                ? "Onboarding Complete"
+                                : `Onboarding Step ${entry.school.onboardingStep}`}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <PlanBadge plan={entry.school.plan} />
+                            </div>
+                            <p className="mt-1 text-[10px] font-semibold text-[#4D5072] dark:text-[#9DA6CC]">
+                              {entry.school.subscriptionStatus} · {entry.school.billingCycle}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <p className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
+                              {entry.counts.users} users · {studentsUsed} /{" "}
+                              {entry.school.maxStudentsLimit.toLocaleString("en-IN")} students
+                            </p>
+                            <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                              {entry.counts.applications} apps · {entry.counts.enquiries} enquiries
+                            </p>
+                          </td>
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <p className="font-bold text-[#663CF6] dark:text-[#C4B5FD]">
+                              {formatInrFromPaise(entry.counts.feeCollectedPaise)}
+                            </p>
+                            <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                              SaaS: {formatInrFromPaise(entry.counts.saasBilledPaise)}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => onSelectSchoolId(entry.school.id)}
+                              className="inline-flex items-center gap-1.5 rounded-[10px] bg-gradient-to-r from-[#8B5CF6] to-[#663CF6] px-3 py-1.5 text-[11px] font-extrabold text-white shadow-2xs hover:opacity-95 cursor-pointer"
+                            >
+                              <span>View All Details</span>
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+        </>
+      ) : (
+        /* SELECTED SCHOOL FULL DETAILS DOSSIER MODE */
+        <div className="space-y-5">
+          {/* Top Back-to-All-Schools & Export Dossier Bar */}
+          <div className={`${CARD_SURFACE} px-4 py-3 flex flex-wrap items-center justify-between gap-3`}>
+            <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+              <button
+                type="button"
+                onClick={() => onSelectSchoolId(null)}
+                className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#D6DBF0] bg-white px-3 py-1.5 text-xs font-extrabold text-[#08093B] hover:border-[#663CF6] hover:text-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#F3F5FF] dark:hover:text-[#C4B5FD]"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Back to All Schools</span>
+              </button>
+              <span className="text-xs font-semibold text-[#76799C] truncate dark:text-[#9DA6CC]">
+                Clients / Schools /{" "}
+                <strong className="text-[#08093B] dark:text-[#F3F5FF]">
+                  {selectedEntry.school.name}
+                </strong>
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportSchoolJson}
+                className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#D6DBF0] bg-white px-3 py-1.5 text-xs font-bold text-[#663CF6] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#C4B5FD]"
+              >
+                <FileJson className="h-3.5 w-3.5" />
+                <span>Download Complete School Data (JSON)</span>
+              </button>
+            </div>
+          </div>
+
+          <section className={`${CARD_SURFACE} p-5 sm:p-6 space-y-5`}>
+            {/* School Identity Hero Banner */}
+            <div className="rounded-[18px] border border-[#DDD6FE] bg-gradient-to-br from-[#F7F3FF] via-white to-[#EDF6FF] p-4 sm:p-5 dark:border-[#342B63] dark:from-[#1B1740] dark:via-[#141731] dark:to-[#112038]">
+              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                <div className="min-w-0 space-y-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#8B5CF6] to-[#4F27E8] text-white shadow-xs">
+                      <Building2 className="h-5 w-5" />
+                    </span>
                     <div className="min-w-0">
-                      <p className="text-xs sm:text-sm font-extrabold text-[#08093B] truncate dark:text-[#F3F5FF]">
-                        {entry.school.name}
-                      </p>
-                      <p className="mt-0.5 font-mono text-[10px] font-bold text-[#663CF6] dark:text-[#A78BFA]">
-                        {entry.school.uniqueId || entry.school.slug}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg sm:text-xl font-black text-[#08093B] truncate dark:text-[#F3F5FF]">
+                          {selectedEntry.school.name}
+                        </h3>
+                        <SchoolStatusBadge status={selectedEntry.school.status} />
+                        <PlanBadge plan={selectedEntry.school.plan} />
+                      </div>
+                      <p className="text-[11px] font-semibold text-[#4D5072] dark:text-[#9DA6CC]">
+                        {selectedEntry.school.category || "School"} ·{" "}
+                        {selectedEntry.school.affiliationBoard || "Board Unspecified"} · Onboarded{" "}
+                        {formatDateShort(selectedEntry.school.createdAt)} · Slug: /
+                        {selectedEntry.school.slug}
                       </p>
                     </div>
-                    <SchoolStatusBadge status={entry.school.status} />
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <PlanBadge plan={entry.school.plan} />
-                    <span className="text-[10px] font-bold text-[#4D5072] dark:text-[#9DA6CC]">
-                      {entry.counts.users} users · {entry.counts.admitted} students
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </aside>
 
-          {/* Right Redesigned School Details Workbench (9 cols) */}
-          {selectedEntry && (
-            <section className={`xl:col-span-9 ${CARD_SURFACE} p-5 sm:p-6 space-y-5`}>
-              {/* School Identity Hero Banner */}
-              <div className="rounded-[18px] border border-[#DDD6FE] bg-gradient-to-br from-[#F7F3FF] via-white to-[#EDF6FF] p-4 sm:p-5 dark:border-[#342B63] dark:from-[#1B1740] dark:via-[#141731] dark:to-[#112038]">
-                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                  <div className="min-w-0 space-y-2.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#8B5CF6] to-[#4F27E8] text-white shadow-xs">
-                        <Building2 className="h-5 w-5" />
+                  <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span className="inline-flex items-center gap-1 rounded-[8px] bg-[#EDE7FF] px-2.5 py-1 font-mono font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
+                      <KeyRound className="h-3 w-3" />
+                      <span>{selectedEntry.school.uniqueId || "N/A"}</span>
+                    </span>
+                    {selectedEntry.school.uniqueId && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCopy(selectedEntry.school.id, selectedEntry.school.uniqueId!)
+                        }
+                        className="inline-flex items-center gap-1 rounded-[8px] border border-[#D6DBF0] bg-white px-2 py-1 font-bold text-[#4D5072] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#C5CCF0]"
+                      >
+                        {copiedId === selectedEntry.school.id ? (
+                          <Check className="h-3 w-3 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                        <span>{copiedId === selectedEntry.school.id ? "Copied" : "Copy ID"}</span>
+                      </button>
+                    )}
+                    <span className="inline-flex items-center gap-1 text-[#4D5072] dark:text-[#9DA6CC]">
+                      <MapPin className="h-3 w-3 text-[#663CF6] dark:text-[#A78BFA]" />
+                      <span>
+                        {[
+                          selectedEntry.school.addressLine,
+                          selectedEntry.school.city || "—",
+                          selectedEntry.school.state || "—",
+                          selectedEntry.school.pinCode,
+                        ]
+                          .filter(Boolean)
+                          .join(", ")}
                       </span>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-lg sm:text-xl font-black text-[#08093B] truncate dark:text-[#F3F5FF]">
-                            {selectedEntry.school.name}
-                          </h3>
-                          <SchoolStatusBadge status={selectedEntry.school.status} />
-                          <PlanBadge plan={selectedEntry.school.plan} />
-                        </div>
-                        <p className="text-[11px] font-semibold text-[#4D5072] dark:text-[#9DA6CC]">
-                          {selectedEntry.school.category || "School"} ·{" "}
-                          {selectedEntry.school.affiliationBoard || "Board Unspecified"} · Onboarded{" "}
-                          {formatDateShort(selectedEntry.school.createdAt)}
-                        </p>
+                    </span>
+                    {selectedEntry.school.contactPhone && (
+                      <span className="inline-flex items-center gap-1 text-[#4D5072] dark:text-[#9DA6CC]">
+                        <Phone className="h-3 w-3 text-[#663CF6] dark:text-[#A78BFA]" />
+                        <span>{selectedEntry.school.contactPhone}</span>
+                      </span>
+                    )}
+                    {selectedEntry.school.contactEmail && (
+                      <span className="inline-flex items-center gap-1 text-[#4D5072] dark:text-[#9DA6CC]">
+                        <Mail className="h-3 w-3 text-[#663CF6] dark:text-[#A78BFA]" />
+                        <span>{selectedEntry.school.contactEmail}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <Link
+                    href={`/${selectedEntry.school.slug}` as Route}
+                    className="inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#8B5CF6] via-[#663CF6] to-[#4F27E8] px-4 py-2 text-xs font-extrabold text-white shadow-xs hover:opacity-95"
+                  >
+                    <span>Open School Portal</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* 6-Card School KPI & Subscription Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+              <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
+                <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                  Total Users
+                </p>
+                <p className="mt-0.5 text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">
+                  {schoolUsers.length || selectedEntry.counts.users}
+                </p>
+                <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
+                  {staffUsedCount} staff / {selectedEntry.school.maxStaffLimit} cap
+                </p>
+              </div>
+
+              <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
+                <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                  Students
+                </p>
+                <p className="mt-0.5 text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">
+                  {studentUsedCount}
+                </p>
+                <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
+                  of {selectedEntry.school.maxStudentsLimit.toLocaleString("en-IN")} seats
+                </p>
+              </div>
+
+              <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
+                <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                  Applications
+                </p>
+                <p className="mt-0.5 text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">
+                  {selectedEntry.counts.applications}
+                </p>
+                <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
+                  {selectedEntry.counts.enquiries} enquiries
+                </p>
+              </div>
+
+              <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
+                <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                  Student Fees
+                </p>
+                <p className="mt-0.5 text-lg font-black text-[#663CF6] dark:text-[#C4B5FD]">
+                  {formatInrFromPaise(selectedEntry.counts.feeCollectedPaise)}
+                </p>
+                <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
+                  {selectedEntry.counts.admitted} admitted
+                </p>
+              </div>
+
+              <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
+                <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                  Subscription
+                </p>
+                <p className="mt-0.5 text-sm font-black text-[#08093B] truncate dark:text-[#F3F5FF]">
+                  {selectedPlanCatalog?.name}
+                </p>
+                <p className="text-[10px] font-bold text-[#663CF6] dark:text-[#CBB8FF]">
+                  {selectedEntry.school.subscriptionStatus} · {selectedEntry.school.billingCycle}
+                </p>
+              </div>
+
+              <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
+                <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
+                  SaaS Billed
+                </p>
+                <p className="mt-0.5 text-lg font-black text-emerald-600 dark:text-emerald-400">
+                  {formatInrFromPaise(selectedEntry.counts.saasBilledPaise)}
+                </p>
+                <p className="text-[10px] text-[#4D5072] truncate dark:text-[#9DA6CC]">
+                  {selectedEntry.school.trialEndsAt
+                    ? `Trial: ${formatDateShort(selectedEntry.school.trialEndsAt)}`
+                    : "Active term"}
+                </p>
+              </div>
+            </div>
+
+            {/* Sub-tabs */}
+            <div className="flex flex-wrap gap-1.5 rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-1 dark:border-[#272B4D] dark:bg-[#10142C]">
+              {(
+                [
+                  { id: "all", label: "All Details", icon: Layers },
+                  { id: "profile", label: "Profile & Lifecycle", icon: Building2 },
+                  { id: "plan", label: "Plan & Modules", icon: Settings2 },
+                  { id: "users", label: "Users & Sessions", icon: Users },
+                  { id: "students", label: "Students & Parents", icon: GraduationCap },
+                  { id: "admissions", label: "Admissions Data", icon: Database },
+                  { id: "fees", label: "Fee Ledgers", icon: IndianRupee },
+                  { id: "audit", label: "Audit Trail", icon: FileText },
+                ] as const
+              ).map((t) => {
+                const Icon = t.icon;
+                const active = subTab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setSubTab(t.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                      active
+                        ? "bg-gradient-to-r from-[#8B5CF6] to-[#663CF6] text-white shadow-2xs"
+                        : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* SUB-TAB 0: ALL DETAILS (EVERYTHING ABOUT THE SELECTED SCHOOL) */}
+            {subTab === "all" && (
+              <div className="space-y-6">
+                {/* 1. Complete School Profile & Configuration */}
+                <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 sm:p-5 space-y-3 dark:border-[#272B4D] dark:bg-[#10142C]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h4 className="text-sm font-black text-[#08093B] flex items-center gap-2 dark:text-[#F3F5FF]">
+                      <Building2 className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" />
+                      <span>Complete School Profile &amp; Contact Information</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setSubTab("profile")}
+                      className="text-xs font-bold text-[#663CF6] hover:underline cursor-pointer dark:text-[#C4B5FD]"
+                    >
+                      Edit Profile &amp; Lifecycle →
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">School Code / Slug</p>
+                      <p className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
+                        {selectedEntry.school.code || "—"} · /{selectedEntry.school.slug}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">Website</p>
+                      <p className="font-bold text-[#08093B] truncate dark:text-[#F3F5FF]">
+                        {selectedEntry.school.website || "Not specified"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">Onboarding Stage</p>
+                      <p className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
+                        {selectedEntry.school.onboardingDone
+                          ? "Completed"
+                          : `Step ${selectedEntry.school.onboardingStep}`}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">Country</p>
+                      <p className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
+                        {selectedEntry.school.country || "IN"}
+                      </p>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">Full Address</p>
+                      <p className="font-semibold text-[#08093B] dark:text-[#F3F5FF]">
+                        {[
+                          selectedEntry.school.addressLine,
+                          selectedEntry.school.city,
+                          selectedEntry.school.state,
+                          selectedEntry.school.pinCode,
+                        ]
+                          .filter(Boolean)
+                          .join(", ") || "No address provided"}
+                      </p>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">Internal Company Notes / Suspension</p>
+                      <p className="font-semibold text-[#08093B] dark:text-[#F3F5FF]">
+                        {selectedEntry.school.suspendedReason
+                          ? `Suspended: ${selectedEntry.school.suspendedReason}`
+                          : selectedEntry.school.internalNotes || "None"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Complete Subscription, Modules & SaaS Invoices */}
+                <div className="rounded-[16px] border border-[#DDD6FE] bg-[#FAF8FE] p-4 sm:p-5 space-y-4 dark:border-[#322960] dark:bg-[#10142C]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h4 className="text-sm font-black text-[#08093B] flex items-center gap-2 dark:text-[#F3F5FF]">
+                      <CreditCard className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" />
+                      <span>
+                        Active Subscription: {selectedPlanCatalog?.name} ({selectedEntry.school.billingCycle})
+                      </span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setSubTab("plan")}
+                      className="text-xs font-bold text-[#663CF6] hover:underline cursor-pointer dark:text-[#C4B5FD]"
+                    >
+                      Manage Plan &amp; Modules →
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="rounded-xl border border-[#DFE3F5] bg-white p-3 dark:border-[#272B4D] dark:bg-[#141731]">
+                      <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">Pricing &amp; Status</p>
+                      <p className="mt-1 font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                        {selectedEntry.school.billingCycle === "YEARLY"
+                          ? `${formatInrFromPaise(selectedPlanCatalog?.yearlyTotalPaise ?? 0)} / yr`
+                          : `${formatInrFromPaise(selectedPlanCatalog?.monthlyPaise ?? 0)} / mo`}
+                      </p>
+                      <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
+                        Status: {selectedEntry.school.subscriptionStatus}
+                        {selectedEntry.school.trialEndsAt
+                          ? ` · Trial Ends ${formatDateShort(selectedEntry.school.trialEndsAt)}`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[#DFE3F5] bg-white p-3 space-y-1.5 dark:border-[#272B4D] dark:bg-[#141731]">
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span>Student Seat Utilization</span>
+                        <span>
+                          {studentUsedCount} / {selectedEntry.school.maxStudentsLimit}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-[#EDE7FF] overflow-hidden dark:bg-[#251D4A]">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#8B5CF6] to-[#663CF6]"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.round(
+                                (studentUsedCount / Math.max(1, selectedEntry.school.maxStudentsLimit)) *
+                                  100,
+                              ),
+                            )}%`,
+                          }}
+                        />
                       </div>
                     </div>
-
-                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                      <span className="inline-flex items-center gap-1 rounded-[8px] bg-[#EDE7FF] px-2.5 py-1 font-mono font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
-                        <KeyRound className="h-3 w-3" />
-                        <span>{selectedEntry.school.uniqueId || "N/A"}</span>
-                      </span>
-                      {selectedEntry.school.uniqueId && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleCopy(selectedEntry.school.id, selectedEntry.school.uniqueId!)
-                          }
-                          className="inline-flex items-center gap-1 rounded-[8px] border border-[#D6DBF0] bg-white px-2 py-1 font-bold text-[#4D5072] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#10142C] dark:text-[#C5CCF0]"
-                        >
-                          {copiedId === selectedEntry.school.id ? (
-                            <Check className="h-3 w-3 text-emerald-600" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                          <span>{copiedId === selectedEntry.school.id ? "Copied" : "Copy ID"}</span>
-                        </button>
-                      )}
-                      <span className="inline-flex items-center gap-1 text-[#4D5072] dark:text-[#9DA6CC]">
-                        <MapPin className="h-3 w-3 text-[#663CF6] dark:text-[#A78BFA]" />
+                    <div className="rounded-xl border border-[#DFE3F5] bg-white p-3 space-y-1.5 dark:border-[#272B4D] dark:bg-[#141731]">
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span>Staff Seat Utilization</span>
                         <span>
-                          {selectedEntry.school.city || "—"}, {selectedEntry.school.state || "—"}
+                          {staffUsedCount} / {selectedEntry.school.maxStaffLimit}
                         </span>
-                      </span>
-                      {selectedEntry.school.contactPhone && (
-                        <span className="inline-flex items-center gap-1 text-[#4D5072] dark:text-[#9DA6CC]">
-                          <Phone className="h-3 w-3 text-[#663CF6] dark:text-[#A78BFA]" />
-                          <span>{selectedEntry.school.contactPhone}</span>
-                        </span>
-                      )}
-                      {selectedEntry.school.contactEmail && (
-                        <span className="inline-flex items-center gap-1 text-[#4D5072] dark:text-[#9DA6CC]">
-                          <Mail className="h-3 w-3 text-[#663CF6] dark:text-[#A78BFA]" />
-                          <span>{selectedEntry.school.contactEmail}</span>
-                        </span>
-                      )}
+                      </div>
+                      <div className="h-2 rounded-full bg-[#E6F4FE] overflow-hidden dark:bg-[#10243D]">
+                        <div
+                          className="h-full bg-[#0EA5E9]"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.round(
+                                (staffUsedCount / Math.max(1, selectedEntry.school.maxStaffLimit)) *
+                                  100,
+                              ),
+                            )}%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <Link
-                      href={`/${selectedEntry.school.slug}` as Route}
-                      className="inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-[#8B5CF6] via-[#663CF6] to-[#4F27E8] px-4 py-2 text-xs font-extrabold text-white shadow-xs hover:opacity-95"
+                  <div className="flex flex-wrap gap-1.5">
+                    {MODULE_FLAG_LABELS.map((m) => {
+                      const on = selectedEntry.school.enabledModules?.[m.key] ?? true;
+                      return (
+                        <span
+                          key={m.key}
+                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                            on
+                              ? "bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-300"
+                              : "bg-slate-100 border border-slate-200 text-slate-500 line-through dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400"
+                          }`}
+                        >
+                          {m.label}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-extrabold text-[#08093B] dark:text-[#F3F5FF]">
+                      SaaS Subscription Invoices ({schoolData?.saasInvoices?.length ?? 0})
+                    </p>
+                    <div className="overflow-x-auto rounded-[12px] border border-[#DFE3F5] bg-white dark:border-[#272B4D] dark:bg-[#141731]">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
+                          <tr>
+                            <th className="px-3 py-2">Invoice #</th>
+                            <th className="px-3 py-2">Plan &amp; Cycle</th>
+                            <th className="px-3 py-2">Period</th>
+                            <th className="px-3 py-2 text-right">Amount</th>
+                            <th className="px-3 py-2">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
+                          {!schoolData?.saasInvoices || schoolData.saasInvoices.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-4 text-center text-[#76799C] dark:text-[#9DA6CC]">
+                                No SaaS subscription invoices issued yet.
+                              </td>
+                            </tr>
+                          ) : (
+                            schoolData.saasInvoices.map((inv) => (
+                              <tr key={inv.id}>
+                                <td className="px-3 py-2 font-mono font-bold text-[#663CF6] dark:text-[#C4B5FD]">
+                                  {inv.invoiceNumber}
+                                </td>
+                                <td className="px-3 py-2">{SAAS_PLAN_CATALOG[inv.plan]?.name} · {inv.billingCycle}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">
+                                  {formatDateShort(inv.periodStart)} – {formatDateShort(inv.periodEnd)}
+                                </td>
+                                <td className="px-3 py-2 text-right font-bold">{formatInrFromPaise(inv.amountPaise)}</td>
+                                <td className="px-3 py-2 font-bold">{inv.status}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. All Users & Accounts Summary */}
+                <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 sm:p-5 space-y-3 dark:border-[#272B4D] dark:bg-[#10142C]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h4 className="text-sm font-black text-[#08093B] flex items-center gap-2 dark:text-[#F3F5FF]">
+                      <Users className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" />
+                      <span>All School Users ({schoolUsers.length})</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setSubTab("users")}
+                      className="text-xs font-bold text-[#663CF6] hover:underline cursor-pointer dark:text-[#C4B5FD]"
                     >
-                      <span>Open School Portal</span>
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </Link>
+                      Manage / Create Users →
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="rounded-xl border border-[#DFE3F5] bg-white p-2.5 dark:border-[#272B4D] dark:bg-[#141731]">
+                      <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Admins / Principals</p>
+                      <p className="text-base font-black text-[#08093B] dark:text-[#F3F5FF]">{userBreakdown.admins}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#DFE3F5] bg-white p-2.5 dark:border-[#272B4D] dark:bg-[#141731]">
+                      <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Teachers / Staff</p>
+                      <p className="text-base font-black text-[#08093B] dark:text-[#F3F5FF]">{userBreakdown.staff}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#DFE3F5] bg-white p-2.5 dark:border-[#272B4D] dark:bg-[#141731]">
+                      <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Parents</p>
+                      <p className="text-base font-black text-[#08093B] dark:text-[#F3F5FF]">{userBreakdown.parents}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#DFE3F5] bg-white p-2.5 dark:border-[#272B4D] dark:bg-[#141731]">
+                      <p className="text-[10px] font-bold text-[#76799C] dark:text-[#9DA6CC]">Student Logins</p>
+                      <p className="text-base font-black text-[#08093B] dark:text-[#F3F5FF]">{userBreakdown.students}</p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto rounded-[12px] border border-[#DFE3F5] bg-white dark:border-[#272B4D] dark:bg-[#141731]">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
+                        <tr>
+                          <th className="px-3 py-2">User</th>
+                          <th className="px-3 py-2">Email &amp; Phone</th>
+                          <th className="px-3 py-2">Role</th>
+                          <th className="px-3 py-2">Status</th>
+                          <th className="px-3 py-2">Verified</th>
+                          <th className="px-3 py-2 text-center">Sessions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
+                        {loadingUsers && schoolUsers.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-4 text-center text-[#76799C]">
+                              Loading users...
+                            </td>
+                          </tr>
+                        ) : schoolUsers.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-4 text-center text-[#76799C]">
+                              No users registered for this school yet.
+                            </td>
+                          </tr>
+                        ) : (
+                          schoolUsers.map((u) => (
+                            <tr key={u.id}>
+                              <td className="px-3 py-2 font-bold text-[#08093B] dark:text-[#F3F5FF]">{u.name}</td>
+                              <td className="px-3 py-2 text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
+                                {u.email || "—"} · {u.phone || "—"}
+                              </td>
+                              <td className="px-3 py-2 font-bold">{u.role}</td>
+                              <td className="px-3 py-2">{u.status}</td>
+                              <td className="px-3 py-2 text-[10px] font-bold">
+                                {u.emailVerified ? "Email ✓" : "Email Pending"} ·{" "}
+                                {u.phoneVerified ? "Phone ✓" : "Phone Pending"}
+                              </td>
+                              <td className="px-3 py-2 text-center font-bold">{u.activeSessionCount ?? 0}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 4. Students & Parents Complete Directory */}
+                <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 sm:p-5 space-y-3 dark:border-[#272B4D] dark:bg-[#10142C]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h4 className="text-sm font-black text-[#08093B] flex items-center gap-2 dark:text-[#F3F5FF]">
+                      <GraduationCap className="h-4 w-4 text-[#663CF6] dark:text-[#A78BFA]" />
+                      <span>Students &amp; Parents Directory ({schoolData?.applications.length ?? 0})</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setSubTab("students")}
+                      className="text-xs font-bold text-[#663CF6] hover:underline cursor-pointer dark:text-[#C4B5FD]"
+                    >
+                      Filter &amp; Export Students →
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto rounded-[12px] border border-[#DFE3F5] bg-white dark:border-[#272B4D] dark:bg-[#141731]">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-[#F6F5FD] text-[10px] font-bold uppercase text-[#4D5072] border-b border-[#DFE3F5] dark:bg-[#1B1F3F] dark:text-[#B4BDD9] dark:border-[#272B4D]">
+                        <tr>
+                          <th className="px-3 py-2">Student Details</th>
+                          <th className="px-3 py-2">Class &amp; Session</th>
+                          <th className="px-3 py-2">Parent / Guardian Details</th>
+                          <th className="px-3 py-2">Status</th>
+                          <th className="px-3 py-2 text-right">Fee Summary</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#EEF1FA] dark:divide-[#232746]">
+                        {loadingData ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-5 text-center text-[#76799C]">
+                              Loading student &amp; parent records...
+                            </td>
+                          </tr>
+                        ) : !schoolData?.applications || schoolData.applications.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-5 text-center text-[#76799C]">
+                              No student or guardian records recorded for this school yet.
+                            </td>
+                          </tr>
+                        ) : (
+                          schoolData.applications.map((a) => {
+                            const ledger = ledgerByApplicationId.get(a.id);
+                            return (
+                              <tr key={a.id}>
+                                <td className="px-3 py-2.5">
+                                  <p className="font-extrabold text-[#08093B] dark:text-[#F3F5FF]">{a.studentName}</p>
+                                  <p className="font-mono text-[10px] text-[#663CF6] dark:text-[#C4B5FD]">
+                                    {a.admissionNumber || a.applicationCode}
+                                  </p>
+                                  {(a.gender || a.dateOfBirth || a.bloodGroup) && (
+                                    <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                      {[a.gender, a.dateOfBirth, a.bloodGroup].filter(Boolean).join(" · ")}
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <p className="font-bold">{a.gradeApplied}</p>
+                                  <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">AY {a.academicYear}</p>
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <p className="font-bold text-[#08093B] dark:text-[#F3F5FF]">
+                                    {a.guardianName}{" "}
+                                    <span className="font-normal text-[#76799C] dark:text-[#9DA6CC]">
+                                      ({a.guardianRelation || "Parent"})
+                                    </span>
+                                  </p>
+                                  <p className="text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
+                                    {a.guardianPhone}
+                                    {a.guardianEmail ? ` · ${a.guardianEmail}` : ""}
+                                  </p>
+                                  {(a.fatherName || a.motherName) && (
+                                    <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                                      {a.fatherName ? `F: ${a.fatherName}` : ""}
+                                      {a.fatherName && a.motherName ? " · " : ""}
+                                      {a.motherName ? `M: ${a.motherName}` : ""}
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <span className="font-bold text-[#663CF6] dark:text-[#CBB8FF]">{a.status}</span>
+                                  <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">{a.enrollmentStatus}</p>
+                                </td>
+                                <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                                  {ledger ? (
+                                    <div>
+                                      <p className="font-bold text-emerald-600 dark:text-emerald-300">
+                                        Paid: {formatInrFromPaise(ledger.paidPaise)}
+                                      </p>
+                                      <p className="text-[10px] text-amber-600 dark:text-amber-300">
+                                        Due: {formatInrFromPaise(ledger.outstandingPaise)}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] text-[#76799C]">No ledger</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 5. Enquiries, Fee Receipts, Support & Audit Summary */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 space-y-2.5 dark:border-[#272B4D] dark:bg-[#10142C]">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-xs font-black text-[#08093B] dark:text-[#F3F5FF]">
+                        Admissions Enquiries ({schoolData?.enquiries.length ?? 0}) &amp; Fee Receipts ({schoolData?.feePayments.length ?? 0})
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => setSubTab("fees")}
+                        className="text-[11px] font-bold text-[#663CF6] hover:underline cursor-pointer dark:text-[#C4B5FD]"
+                      >
+                        Open Fee Ledgers →
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-[#4D5072] dark:text-[#9DA6CC]">
+                      AY: {String(schoolData?.settings?.currentAcademicYear || "—")} · Prefix:{" "}
+                      {String(schoolData?.settings?.applicationPrefix || "APP")} · Ledgers:{" "}
+                      {schoolData?.feeLedgers.length ?? 0}
+                    </p>
+                    {schoolData?.feePayments && schoolData.feePayments.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {schoolData.feePayments.slice(0, 5).map((p) => (
+                          <div
+                            key={p.id}
+                            className="flex items-center justify-between rounded-lg border border-[#DFE3F5] bg-white px-3 py-1.5 text-[11px] dark:border-[#272B4D] dark:bg-[#141731]"
+                          >
+                            <span>
+                              <strong className="font-mono text-[#663CF6] dark:text-[#C4B5FD]">{p.receiptNumber}</strong>{" "}
+                              · {p.studentName} ({p.feeHead})
+                            </span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-300">
+                              {formatInrFromPaise(p.amountPaise)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
+                        No student fee payment receipts recorded yet.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-[16px] border border-[#DFE3F5] bg-[#FAF8FE] p-4 space-y-2.5 dark:border-[#272B4D] dark:bg-[#10142C]">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-xs font-black text-[#08093B] dark:text-[#F3F5FF]">
+                        Audit Trail ({schoolAuditLogs.length}) &amp; Support Tickets ({schoolData?.supportTickets?.length ?? 0})
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => setSubTab("audit")}
+                        className="text-[11px] font-bold text-[#663CF6] hover:underline cursor-pointer dark:text-[#C4B5FD]"
+                      >
+                        Open Audit &amp; Support →
+                      </button>
+                    </div>
+                    {schoolAuditLogs.length === 0 && (!schoolData?.supportTickets || schoolData.supportTickets.length === 0) ? (
+                      <p className="text-[11px] text-[#76799C] dark:text-[#9DA6CC]">
+                        No audit logs or support tickets recorded for this school yet.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {schoolAuditLogs.slice(0, 4).map((log) => (
+                          <div
+                            key={log.id}
+                            className="flex items-center justify-between rounded-lg border border-[#DFE3F5] bg-white px-3 py-1.5 text-[11px] dark:border-[#272B4D] dark:bg-[#141731]"
+                          >
+                            <span className="font-mono font-bold text-[#663CF6] dark:text-[#C4B5FD]">{log.action}</span>
+                            <span className="text-[#76799C] dark:text-[#9DA6CC]">
+                              {log.actorName || "System"} · {formatDateShort(log.createdAt)}
+                            </span>
+                          </div>
+                        ))}
+                        {(schoolData?.supportTickets ?? []).slice(0, 3).map((t) => (
+                          <div
+                            key={t.id}
+                            className="flex items-center justify-between rounded-lg border border-[#DFE3F5] bg-white px-3 py-1.5 text-[11px] dark:border-[#272B4D] dark:bg-[#141731]"
+                          >
+                            <span>
+                              <strong className="font-mono">{t.referenceCode}</strong> · {t.subject}
+                            </span>
+                            <span className="font-bold">{t.status}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* 6-Card School KPI & Subscription Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-                <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
-                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
-                    Total Users
-                  </p>
-                  <p className="mt-0.5 text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">
-                    {selectedEntry.counts.users}
-                  </p>
-                  <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
-                    {staffUsedCount} staff / {selectedEntry.school.maxStaffLimit} cap
-                  </p>
-                </div>
-
-                <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
-                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
-                    Students
-                  </p>
-                  <p className="mt-0.5 text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">
-                    {studentUsedCount}
-                  </p>
-                  <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
-                    of {selectedEntry.school.maxStudentsLimit.toLocaleString("en-IN")} seats
-                  </p>
-                </div>
-
-                <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
-                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
-                    Applications
-                  </p>
-                  <p className="mt-0.5 text-lg font-black text-[#08093B] dark:text-[#F3F5FF]">
-                    {selectedEntry.counts.applications}
-                  </p>
-                  <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
-                    {selectedEntry.counts.enquiries} enquiries
-                  </p>
-                </div>
-
-                <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
-                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
-                    Student Fees
-                  </p>
-                  <p className="mt-0.5 text-lg font-black text-[#663CF6] dark:text-[#C4B5FD]">
-                    {formatInrFromPaise(selectedEntry.counts.feeCollectedPaise)}
-                  </p>
-                  <p className="text-[10px] text-[#4D5072] dark:text-[#9DA6CC]">
-                    {selectedEntry.counts.admitted} admitted
-                  </p>
-                </div>
-
-                <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
-                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
-                    Subscription
-                  </p>
-                  <p className="mt-0.5 text-sm font-black text-[#08093B] truncate dark:text-[#F3F5FF]">
-                    {selectedPlanCatalog?.name}
-                  </p>
-                  <p className="text-[10px] font-bold text-[#663CF6] dark:text-[#CBB8FF]">
-                    {selectedEntry.school.subscriptionStatus} · {selectedEntry.school.billingCycle}
-                  </p>
-                </div>
-
-                <div className="rounded-[12px] border border-[#DFE3F5] bg-[#FAF8FE] p-3 dark:border-[#272B4D] dark:bg-[#10142C]">
-                  <p className="text-[10px] font-bold uppercase text-[#76799C] dark:text-[#9DA6CC]">
-                    SaaS Billed
-                  </p>
-                  <p className="mt-0.5 text-lg font-black text-emerald-600 dark:text-emerald-400">
-                    {formatInrFromPaise(selectedEntry.counts.saasBilledPaise)}
-                  </p>
-                  <p className="text-[10px] text-[#4D5072] truncate dark:text-[#9DA6CC]">
-                    {selectedEntry.school.trialEndsAt
-                      ? `Trial: ${formatDateShort(selectedEntry.school.trialEndsAt)}`
-                      : "Active term"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Sub-tabs */}
-              <div className="flex flex-wrap gap-1.5 rounded-[14px] border border-[#DFE3F5] bg-[#FAF8FE] p-1 dark:border-[#272B4D] dark:bg-[#10142C]">
-                {(
-                  [
-                    { id: "profile", label: "Profile & Lifecycle", icon: Building2 },
-                    { id: "plan", label: "Plan & Modules", icon: Settings2 },
-                    { id: "users", label: "Users & Sessions", icon: Users },
-                    { id: "students", label: "Students & Parents", icon: GraduationCap },
-                    { id: "admissions", label: "Admissions Data", icon: Database },
-                    { id: "fees", label: "Fee Ledgers", icon: IndianRupee },
-                    { id: "audit", label: "Audit Trail", icon: FileText },
-                  ] as const
-                ).map((t) => {
-                  const Icon = t.icon;
-                  const active = subTab === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setSubTab(t.id)}
-                      className={`inline-flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                        active
-                          ? "bg-gradient-to-r from-[#8B5CF6] to-[#663CF6] text-white shadow-2xs"
-                          : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
-                      }`}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      <span>{t.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* SUB-TAB 1: PROFILE & LIFECYCLE */}
+            {/* SUB-TAB 1: PROFILE & LIFECYCLE */}
               {subTab === "profile" && (
                 <div className="space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -2136,8 +2766,7 @@ export function PlatformSchoolsTab({
                   </div>
                 </div>
               )}
-            </section>
-          )}
+          </section>
         </div>
       )}
 

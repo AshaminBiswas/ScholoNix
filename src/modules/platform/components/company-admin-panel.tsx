@@ -94,7 +94,6 @@ export function CompanyAdminPanel({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [clientsMenuOpen, setClientsMenuOpen] = useState(true);
-  const [schoolsSubMenuOpen, setSchoolsSubMenuOpen] = useState(true);
   const [billingMenuOpen, setBillingMenuOpen] = useState(false);
   const [securityMenuOpen, setSecurityMenuOpen] = useState(false);
 
@@ -104,9 +103,7 @@ export function CompanyAdminPanel({
   const [loadingPeriod, setLoadingPeriod] = useState(false);
   const [overview, setOverview] = useState<PlatformOverviewData>(initialOverview);
   const [schools, setSchools] = useState<PlatformSchoolEntry[]>(initialSchools);
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(
-    initialSchools[0]?.school.id ?? null,
-  );
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [quickSearchOpen, setQuickSearchOpen] = useState(false);
@@ -190,8 +187,8 @@ export function CompanyAdminPanel({
     }
     const nextSchools: PlatformSchoolEntry[] = json.schools || [];
     setSchools(nextSchools);
-    if (nextSchools.length > 0 && !nextSchools.some((e) => e.school.id === selectedSchoolId)) {
-      setSelectedSchoolId(nextSchools[0]!.school.id);
+    if (selectedSchoolId && !nextSchools.some((e) => e.school.id === selectedSchoolId)) {
+      setSelectedSchoolId(null);
     }
     void refreshOverview(periodDays);
   };
@@ -224,7 +221,6 @@ export function CompanyAdminPanel({
     setSelectedSchoolId(schoolId);
     setActiveTab("schools");
     setClientsMenuOpen(true);
-    setSchoolsSubMenuOpen(true);
     setQuickSearchOpen(false);
     setNotificationsOpen(false);
     setMobileMenuOpen(false);
@@ -232,7 +228,12 @@ export function CompanyAdminPanel({
 
   const navigateTab = (tab: PlatformTab) => {
     setActiveTab(tab);
-    if (tab === "schools" || tab === "users") setClientsMenuOpen(true);
+    if (tab === "schools") {
+      setSelectedSchoolId(null);
+      setClientsMenuOpen(true);
+    } else if (tab === "users") {
+      setClientsMenuOpen(true);
+    }
     if (tab === "billing") setBillingMenuOpen(true);
     if (tab === "admins" || tab === "audit") setSecurityMenuOpen(true);
     setMobileMenuOpen(false);
@@ -385,81 +386,27 @@ export function CompanyAdminPanel({
             </button>
             {!collapsed && clientsMenuOpen && (
               <div className="mt-1 ml-5 space-y-0.5 border-l border-[#D6DBF0] pl-2.5 dark:border-[#272B4D]">
-                <div>
-                  <button
-                    type="button"
-                    title="Schools"
-                    aria-expanded={schoolsSubMenuOpen}
-                    aria-current={activeTab === "schools" ? "page" : undefined}
-                    onClick={() => {
-                      if (activeTab === "schools") {
-                        setSchoolsSubMenuOpen((v) => !v);
-                      } else {
-                        setSchoolsSubMenuOpen(true);
-                        navigateTab("schools");
-                      }
-                    }}
-                    className={`w-full flex items-center justify-between gap-2 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
-                      activeTab === "schools"
-                        ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
-                        : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
-                    }`}
-                  >
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      <Building2 className="h-3 w-3 shrink-0" />
-                      <span className="truncate">Schools</span>
+                <button
+                  type="button"
+                  title="Schools"
+                  aria-current={activeTab === "schools" ? "page" : undefined}
+                  onClick={() => navigateTab("schools")}
+                  className={`w-full flex items-center justify-between gap-2 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
+                    activeTab === "schools"
+                      ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
+                      : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <Building2 className="h-3 w-3 shrink-0" />
+                    <span className="truncate">Schools</span>
+                  </span>
+                  {schools.length > 0 && (
+                    <span className="rounded-full bg-[#EDE7FF] px-1.5 py-0.5 text-[10px] font-extrabold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]">
+                      {schools.length}
                     </span>
-                    <ChevronDown
-                      className={`h-3 w-3 shrink-0 transition-transform ${
-                        schoolsSubMenuOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-
-                  {schoolsSubMenuOpen && (
-                    <div className="mt-0.5 ml-3 space-y-0.5 border-l border-[#DFE3F5] pl-2 max-h-48 overflow-y-auto no-scrollbar dark:border-[#232746]">
-                      <button
-                        type="button"
-                        onClick={() => navigateTab("schools")}
-                        className={`w-full text-left rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer ${
-                          activeTab === "schools" && !selectedSchoolId
-                            ? "text-[#663CF6] bg-[#EDE7FF]/60 dark:text-[#CBB8FF] dark:bg-[#251D4A]/70"
-                            : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
-                        }`}
-                      >
-                        All Schools ({schools.length})
-                      </button>
-                      {schools.slice(0, 20).map((entry) => {
-                        const isSchoolActive =
-                          activeTab === "schools" && selectedSchoolId === entry.school.id;
-                        return (
-                          <button
-                            key={entry.school.id}
-                            type="button"
-                            onClick={() => handleSelectSchoolFromAnywhere(entry.school.id)}
-                            title={entry.school.name}
-                            className={`w-full flex items-center gap-1.5 text-left rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer ${
-                              isSchoolActive
-                                ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
-                                : "text-[#4D5072] hover:text-[#08093B] dark:text-[#9DA6CC] dark:hover:text-[#F3F5FF]"
-                            }`}
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                                entry.school.status === "ACTIVE"
-                                  ? "bg-emerald-500"
-                                  : entry.school.status === "TRIAL"
-                                    ? "bg-sky-500"
-                                    : "bg-rose-500"
-                              }`}
-                            />
-                            <span className="truncate">{entry.school.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
                   )}
-                </div>
+                </button>
 
                 <button
                   type="button"

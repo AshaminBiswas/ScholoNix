@@ -152,18 +152,24 @@ describe("CompanyAdminPanel UI", () => {
     expect(screen.getByText("Total Schools")).toBeTruthy();
     expect(screen.getByText("MRR (Monthly Recurring)")).toBeTruthy();
 
-    // Switch to Schools
+    // Switch to Schools -> opens All Schools List first
     await actor.click(screen.getByTitle("Schools"));
+    expect(screen.getByText(/All Schools List/i)).toBeTruthy();
     expect(screen.getAllByText("Horizon Synthetic Academy").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("SNX-2026-7K4M9P").length).toBeGreaterThanOrEqual(1);
 
-    // Open Provision New School modal
+    // Open Provision New School modal from All Schools List
     await actor.click(screen.getByRole("button", { name: /Provision New School/i }));
     expect(screen.getByRole("dialog", { name: "Provision New School" })).toBeTruthy();
     await actor.click(screen.getByRole("button", { name: "Close provision modal" }));
 
+    // Click on Horizon Synthetic Academy -> opens full School Details ("All Details" view)
+    await actor.click(screen.getByRole("button", { name: /View All Details/i }));
+    expect(screen.getByRole("button", { name: /Back to All Schools/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Download Complete School Data/i })).toBeTruthy();
+
     // Inspect Plan & Modules sub-tab
-    await actor.click(screen.getByRole("button", { name: /Plan & Modules/i }));
+    await actor.click(screen.getByRole("button", { name: /^Plan & Modules$/i }));
     expect(screen.getByText("Per-School Feature Modules")).toBeTruthy();
     expect(screen.getByText("Save Plan, Quotas & Feature Flags")).toBeTruthy();
 

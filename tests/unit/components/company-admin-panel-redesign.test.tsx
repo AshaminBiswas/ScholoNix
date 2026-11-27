@@ -238,18 +238,22 @@ describe("CompanyAdminPanel Command Center Redesign", () => {
     expect(screen.getByTitle("Schools")).toBeTruthy();
     expect(screen.getByTitle("Global Users")).toBeTruthy();
 
-    // Clients dropdown toggles cleanly even after selecting a child tab
+    // Clients dropdown toggles cleanly; clicking Schools opens All Schools List
     fireEvent.click(screen.getByTitle("Schools"));
     expect(screen.getByTitle("Clients").getAttribute("aria-expanded")).toBe("true");
-    // Nested Schools sub-dropdown inside Clients lists registered schools
-    expect(screen.getByTitle("Schools").getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByTitle("Schools").getAttribute("aria-expanded")).toBeNull();
+    expect(screen.getByText(/All Schools List/i)).toBeTruthy();
     expect(screen.getAllByText(/Green Valley Synthetic School/i).length).toBeGreaterThanOrEqual(1);
 
-    // Redesigned School Details sections: Plan & Modules, Users & Sessions, Students & Parents
-    fireEvent.click(screen.getByRole("button", { name: /Plan & Modules/i }));
+    // Clicking a school opens the full-page All Details view with everything about that school
+    fireEvent.click(screen.getByRole("button", { name: /View All Details/i }));
+    expect(screen.getByRole("button", { name: /Back to All Schools/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Download Complete School Data/i })).toBeTruthy();
     expect(screen.getAllByText(/Active Subscription:/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Student Seat Utilization/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/SaaS Subscription Invoices/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Admins \/ Principals/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Students & Parents Directory/i).length).toBeGreaterThanOrEqual(1);
 
     fireEvent.click(screen.getByRole("button", { name: /Users & Sessions/i }));
     expect(screen.getAllByText(/Admins \/ Principals/i).length).toBeGreaterThanOrEqual(1);
@@ -259,6 +263,10 @@ describe("CompanyAdminPanel Command Center Redesign", () => {
     fireEvent.click(screen.getByRole("button", { name: /Students & Parents/i }));
     expect(screen.getByPlaceholderText(/Search student, parent, phone, class/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: /All Students/i })).toBeTruthy();
+
+    // Returning to All Schools list cleanly works
+    fireEvent.click(screen.getByRole("button", { name: /Back to All Schools/i }));
+    expect(screen.getByText(/All Schools List/i)).toBeTruthy();
 
     fireEvent.click(screen.getByTitle("Clients"));
     expect(screen.getByTitle("Clients").getAttribute("aria-expanded")).toBe("false");
