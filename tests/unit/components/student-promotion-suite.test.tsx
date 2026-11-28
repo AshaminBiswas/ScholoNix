@@ -3,9 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StudentPromotionSuite } from "@/modules/students/components/promotions/student-promotion-suite";
 import { PlatformPromotionsGlobalTab } from "@/modules/platform/components/platform-promotions-global-tab";
-import type {
-  PlatformGlobalPromotionsData,
-  StudentPromotionOverviewData,
+import {
+  DEFAULT_PROMOTION_GRADE_BANDS,
+  DEFAULT_PROMOTION_SETTINGS_SUITE,
+  type PlatformGlobalPromotionsData,
+  type StudentPromotionOverviewData,
 } from "@/modules/students/promotion-types";
 
 const mockOverviewData: StudentPromotionOverviewData = {
@@ -86,14 +88,20 @@ const mockOverviewData: StudentPromotionOverviewData = {
       id: "rule-1",
       schoolId: "school-1",
       academicYear: "2025-2026",
+      ruleName: "Primary Promotion Rule",
       fromGrade: "Class V",
       toGrade: "Class VI",
       markAsAlumni: false,
       defaultSectionMode: "KEEP_SAME",
       targetSection: null,
-      minResultPct: 35,
+      minResultPct: 40,
       minAttendancePct: 75,
       maxFailedSubjects: 0,
+      criteriaSummary: "Min 40% in all subjects",
+      requireAssessmentsCompleted: true,
+      requireResultPublished: true,
+      requireFeeClearance: false,
+      gradeCriteria: DEFAULT_PROMOTION_GRADE_BANDS,
       isActive: true,
     },
   ],
@@ -143,6 +151,8 @@ const mockOverviewData: StudentPromotionOverviewData = {
     notifyParentsOnPromotion: true,
     requirePendingFeeClearance: false,
   },
+  settingsSuite: DEFAULT_PROMOTION_SETTINGS_SUITE,
+  schoolStaff: [{ id: "staff-1", name: "Rohan Mehta", role: "PRINCIPAL" }],
 };
 
 const mockPlatformGlobal: PlatformGlobalPromotionsData = {
@@ -187,9 +197,60 @@ describe("StudentPromotionSuite & PlatformPromotionsGlobalTab UI", () => {
   it("renders all 6 tabs cleanly with Light/Dark theme parity and opens student profile from Promotion List", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ success: true, overview: mockOverviewData }),
+      vi.fn().mockImplementation(async (url: string) => {
+        if (String(url).includes("automation/run")) {
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              result: {
+                dryRun: true,
+                evaluatedCount: 4,
+                promotedCount: 3,
+                retainedCount: 1,
+                alumniCount: 0,
+                flaggedCount: 1,
+                stepsExecuted: 5,
+                classBreakdown: [
+                  { fromGrade: "Class V", toGrade: "Class VI", count: 3, alumniCount: 0, retainCount: 1 },
+                ],
+              },
+            }),
+          };
+        }
+        if (String(url).includes("logs")) {
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              totalLogs: 1,
+              uniqueUsers: 1,
+              settingsChanges: 1,
+              promotionActions: 0,
+              logs: [
+                {
+                  id: "log-1",
+                  createdAt: "2026-03-31T10:45:00.000Z",
+                  actorId: "staff-1",
+                  actorName: "Rohan Mehta",
+                  module: "Settings",
+                  action: "Update",
+                  description: "Updated promotion scheme pass percentage",
+                  ipAddress: "127.0.0.1",
+                  status: "Success",
+                  entityType: "StudentPromotionSettings",
+                  entityId: "2025-2026",
+                },
+              ],
+              moduleSummary: [{ module: "Settings", count: 1 }],
+              topUsers: [{ userName: "Rohan Mehta", count: 1 }],
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({ success: true, overview: mockOverviewData }),
+        };
       }),
     );
 
@@ -212,6 +273,8 @@ describe("StudentPromotionSuite & PlatformPromotionsGlobalTab UI", () => {
     });
 
     expect(container.innerHTML).toContain("dark:bg-[#141731]");
+    expect(screen.queryByRole("heading", { name: /^Student Promotion$/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Download Report$/i })).toBeNull();
     expect(screen.getByText(/Promotion Trend/i)).toBeTruthy();
     expect(screen.getByText(/Promotion by Status/i)).toBeTruthy();
     expect(screen.getByText(/Promotion Progress by Class/i)).toBeTruthy();
@@ -224,19 +287,60 @@ describe("StudentPromotionSuite & PlatformPromotionsGlobalTab UI", () => {
     fireEvent.click(screen.getByText("Aanya Singh"));
     expect(onOpenProfile).toHaveBeenCalledWith("stu-1");
 
-    // Switch through Promotion Rules, Result Criteria, History, and Settings
+    // Switch through Promotion Rules (redesigned layout), Result Criteria, History, and Settings
     fireEvent.click(screen.getByRole("button", { name: /^Promotion Rules$/i }));
-    expect(screen.getByText(/Class Progression Mapping Rules/i)).toBeTruthy();
+    expect(screen.getByText(/Total Rules/i)).toBeTruthy();
+    expect(screen.getByText(/Rule Details/i)).toBeTruthy();
+    expect(screen.getAllByText(/Grade Criteria/i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/Promotion Conditions/i)).toBeTruthy();
+    expect(screen.getAllByText(/Primary Promotion Rule/i).length).toBeGreaterThanOrEqual(2);
+
+    fireEvent.click(screen.getByRole("button", { name: /Preview Logic/i }));
+    expect(screen.getByText(/Rule Logic Simulation/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Close Preview/i }));
 
     fireEvent.click(screen.getByRole("button", { name: /^Result Criteria$/i }));
-    expect(screen.getByText(/Class-wise Pass & Attendance Thresholds/i)).toBeTruthy();
+    expect(screen.getByText(/Total Criteria/i)).toBeTruthy();
+    expect(screen.getByText(/Result Criteria List/i)).toBeTruthy();
+    expect(screen.getByText(/Selected Criteria Details/i)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /^Grading Structure$/i })).toBeTruthy();
+    expect(screen.getByText(/Subject-wise Criteria/i)).toBeTruthy();
+    expect(screen.getByText(/Promotion Conditions/i)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /^History$/i }));
     expect(screen.getByText(/Promotion History Records \(Year-wise\)/i)).toBeTruthy();
     expect(screen.getByText(/Promotion Outcome \(All Years\)/i)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /^Settings$/i }));
-    expect(screen.getByText(/Promotion Governance & Workflow Settings/i)).toBeTruthy();
+    expect(screen.getByText(/Promotion Scheme/i)).toBeTruthy();
+    expect(screen.getByText(/Grade Configuration/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Academic Defaults$/i }));
+    expect(screen.getByText(/Default Academic Configuration/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Automation$/i }));
+    expect(screen.getByText(/Promotion Automation Workflow/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Run Automation Now/i }));
+    expect(screen.getByText(/Run Promotion Automation Pipeline/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Simulate Dry-Run/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Will Promote/i)).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Execute Automation Workflow/i }));
+    await waitFor(() => {
+      expect(screen.queryByText(/Run Promotion Automation Pipeline/i)).toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Notifications$/i }));
+    expect(screen.getByText(/Template Preview/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Access & Permissions$/i }));
+    expect(screen.getByText(/Permission Matrix/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Audit & Logs$/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Audit Log Records/i)).toBeTruthy();
+    });
   });
 
   it("renders Company Admin PlatformPromotionsGlobalTab and routes to school promotion suite", async () => {

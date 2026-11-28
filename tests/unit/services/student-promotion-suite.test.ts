@@ -167,6 +167,7 @@ describe("Student Promotion Suite service, performance, caching, RBAC & routing"
       academicYear: "2025-2026",
       rules: [
         {
+          ruleName: "Class V Custom Rule",
           fromGrade: "Class V",
           toGrade: "Class VI",
           markAsAlumni: false,
@@ -175,6 +176,14 @@ describe("Student Promotion Suite service, performance, caching, RBAC & routing"
           minResultPct: 40,
           minAttendancePct: 75,
           maxFailedSubjects: 1,
+          criteriaSummary: "Min 40% in all subjects",
+          requireAssessmentsCompleted: true,
+          requireResultPublished: true,
+          requireFeeClearance: true,
+          gradeCriteria: [
+            { grade: "A", minPct: 80, maxPct: 100, resultLabel: "Distinction", promote: true },
+            { grade: "F", minPct: 0, maxPct: 39, resultLabel: "Fail", promote: false },
+          ],
           isActive: true,
         },
       ],
@@ -187,14 +196,100 @@ describe("Student Promotion Suite service, performance, caching, RBAC & routing"
         notifyParentsOnPromotion: true,
         requirePendingFeeClearance: false,
       },
+      settingsSuite: {
+        general: {
+          moduleEnabled: true,
+          allowClassPromotion: true,
+          allowBulkPromotion: true,
+          allowRePromotion: false,
+          requireMandatoryConditions: true,
+          defaultPromotionType: "GRADE_BASED",
+          overallPassPct: 45,
+          minSubjectPassPct: 33,
+          considerAllSubjects: true,
+          enforceAttendance: true,
+          minAttendancePct: 75,
+          enforceFeeClearance: true,
+          enforceAssessmentCompletion: true,
+          includeCoScholastic: true,
+          checkDisciplinaryClearance: false,
+          autoPromotionEnabled: true,
+          notifyClassTeacher: true,
+          notifyParents: true,
+          notifyStudentInApp: false,
+          sendSummaryReport: true,
+        },
+      },
     });
     const updated = await studentPromotionService.getOverview(principalA, {
       academicYear: "2025-2026",
     });
     expect(spy).toHaveBeenCalledTimes(2);
-    expect(updated.rules.some((r) => r.fromGrade === "Class V" && r.minResultPct === 40)).toBe(true);
+    const savedRule = updated.rules.find((r) => r.fromGrade === "Class V");
+    expect(savedRule?.minResultPct).toBe(40);
+    expect(savedRule?.ruleName).toBe("Class V Custom Rule");
+    expect(savedRule?.requireFeeClearance).toBe(true);
+    expect(savedRule?.gradeCriteria).toHaveLength(2);
     expect(updated.settings.minResultPct).toBe(40);
+    expect(updated.settingsSuite.general.allowRePromotion).toBe(false);
+    expect(updated.settingsSuite.general.enforceFeeClearance).toBe(true);
+
+    // Audit log check + schoolB tenant isolation
+    const auditLogsA = await studentPromotionService.getAuditLogs(principalA, { page: 1, pageSize: 10 });
+    expect(auditLogsA.totalLogs).toBeGreaterThanOrEqual(1);
+    const auditLogsB = await studentPromotionService.getAuditLogs(principalB, { page: 1, pageSize: 10 });
+    expect(auditLogsB.totalLogs).toBe(0);
     spy.mockRestore();
+  });
+
+  it("evaluates dry-run and executes the 5-step promotion automation pipeline with RBAC enforcement", async () => {
+    const stuAuto = await studentService.createStudent(principalA, {
+      studentName: "Meera Nair",
+      academicYear: "2025-2026",
+      grade: "Class V",
+      section: "A",
+      status: "ACTIVE",
+      admissionType: "FRESH",
+      gender: "Female",
+      guardianName: "Suresh Nair",
+      guardianRelation: "Father",
+      guardianPhone: "9812345678",
+    });
+
+    await expect(
+      studentPromotionService.runAutomation(teacherA, {
+        academicYear: "2025-2026",
+        toAcademicYear: "2026-2027",
+        dryRun: true,
+      }),
+    ).rejects.toThrow();
+
+    const sim = await studentPromotionService.runAutomation(principalA, {
+      academicYear: "2025-2026",
+      toAcademicYear: "2026-2027",
+      dryRun: true,
+    });
+    expect(sim.dryRun).toBe(true);
+    expect(sim.evaluatedCount).toBeGreaterThanOrEqual(1);
+    expect(sim.stepsExecuted).toBe(5);
+
+    const exec = await studentPromotionService.runAutomation(principalA, {
+      academicYear: "2025-2026",
+      toAcademicYear: "2026-2027",
+      dryRun: false,
+    });
+    expect(exec.dryRun).toBe(false);
+    expect(exec.promotedCount).toBeGreaterThanOrEqual(1);
+
+    const updatedStu = await studentService.getStudentDetail(principalA, stuAuto.id);
+    expect(updatedStu.currentGrade).toBe("Class VI");
+
+    const autoLogs = await studentPromotionService.getAuditLogs(principalA, {
+      module: "Automation",
+      page: 1,
+      pageSize: 10,
+    });
+    expect(autoLogs.logs.some((l) => l.module === "Automation" && l.action === "Run")).toBe(true);
   });
 
   it("parses and builds /clients/promotions and /clients/schools/:id/promotions URLs", () => {

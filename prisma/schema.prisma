@@ -1039,20 +1039,26 @@ model StudentNoteRemark {
 }
 
 model StudentPromotionRule {
-  id                 String   @id @default(uuid()) @db.Uuid
-  schoolId           String   @map("school_id") @db.Uuid
-  academicYear       String   @map("academic_year") @db.VarChar(30)
-  fromGrade          String   @map("from_grade") @db.VarChar(60)
-  toGrade            String   @map("to_grade") @db.VarChar(60)
-  markAsAlumni       Boolean  @default(false) @map("mark_as_alumni")
-  defaultSectionMode String   @default("KEEP_SAME") @map("default_section_mode") @db.VarChar(30)
-  targetSection      String?  @map("target_section") @db.VarChar(20)
-  minResultPct       Float    @default(35) @map("min_result_pct")
-  minAttendancePct   Float    @default(75) @map("min_attendance_pct")
-  maxFailedSubjects  Int      @default(0) @map("max_failed_subjects")
-  isActive           Boolean  @default(true) @map("is_active")
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                          String   @id @default(uuid()) @db.Uuid
+  schoolId                    String   @map("school_id") @db.Uuid
+  academicYear                String   @map("academic_year") @db.VarChar(30)
+  ruleName                    String?  @map("rule_name") @db.VarChar(150)
+  fromGrade                   String   @map("from_grade") @db.VarChar(60)
+  toGrade                     String   @map("to_grade") @db.VarChar(60)
+  markAsAlumni                Boolean  @default(false) @map("mark_as_alumni")
+  defaultSectionMode          String   @default("KEEP_SAME") @map("default_section_mode") @db.VarChar(30)
+  targetSection               String?  @map("target_section") @db.VarChar(20)
+  minResultPct                Float    @default(35) @map("min_result_pct")
+  minAttendancePct            Float    @default(75) @map("min_attendance_pct")
+  maxFailedSubjects           Int      @default(0) @map("max_failed_subjects")
+  criteriaSummary             String?  @map("criteria_summary") @db.VarChar(255)
+  requireAssessmentsCompleted Boolean  @default(true) @map("require_assessments_completed")
+  requireResultPublished      Boolean  @default(true) @map("require_result_published")
+  requireFeeClearance         Boolean  @default(false) @map("require_fee_clearance")
+  gradeCriteria               Json?    @map("grade_criteria") @db.JsonB
+  isActive                    Boolean  @default(true) @map("is_active")
+  createdAt                   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 

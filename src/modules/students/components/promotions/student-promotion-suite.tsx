@@ -4,11 +4,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle2,
   ClipboardList,
-  Download,
   History,
-  Layers,
   LayoutGrid,
-  Plus,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
@@ -16,7 +13,9 @@ import {
   X,
 } from "lucide-react";
 import type {
+  PromotionGradeBand,
   PromotionSettingsConfig,
+  PromotionSettingsSuiteConfig,
   PromotionSuiteTab,
   StudentPromotionOverviewData,
 } from "@/modules/students/promotion-types";
@@ -26,9 +25,9 @@ import { PromotionListTab } from "@/modules/students/components/promotions/promo
 import {
   PromotionResultCriteriaTab,
   PromotionRulesTab,
-  PromotionSettingsTab,
 } from "@/modules/students/components/promotions/promotion-rules-criteria-tabs";
 import { PromotionHistoryTab } from "@/modules/students/components/promotions/promotion-history-tab";
+import { PromotionSettingsSuite } from "@/modules/students/components/promotions/settings/promotion-settings-suite";
 
 export interface StudentPromotionSuiteProps {
   mode: "school" | "platform";
@@ -237,6 +236,7 @@ export function StudentPromotionSuite({
   const handleSaveRulesAndSettings = async (payload: {
     academicYear: string;
     rules?: Array<{
+      ruleName?: string;
       fromGrade: string;
       toGrade: string;
       markAsAlumni: boolean;
@@ -245,9 +245,15 @@ export function StudentPromotionSuite({
       minResultPct: number;
       minAttendancePct: number;
       maxFailedSubjects: number;
+      criteriaSummary?: string;
+      requireAssessmentsCompleted?: boolean;
+      requireResultPublished?: boolean;
+      requireFeeClearance?: boolean;
+      gradeCriteria?: PromotionGradeBand[];
       isActive: boolean;
     }>;
     settings?: PromotionSettingsConfig;
+    settingsSuite?: PromotionSettingsSuiteConfig;
   }) => {
     setSaving(true);
     setFeedback(null);
@@ -300,61 +306,9 @@ export function StudentPromotionSuite({
     URL.revokeObjectURL(url);
   };
 
-  const activeTabLabel = SUITE_TABS.find((t) => t.id === activeTab)?.label || "Overview";
-
   return (
     <div className="space-y-5">
-      {/* Header matching design screenshots */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-bold text-[#76799C] dark:text-[#9DA6CC]">
-            Students <span className="mx-1">&gt;</span> Student Promotion{" "}
-            <span className="mx-1">&gt;</span>{" "}
-            <span className="text-[#4F27E8] dark:text-[#C4B5FD]">{activeTabLabel}</span>
-          </p>
-          <h2 className="mt-1 text-2xl font-black tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
-            Student Promotion
-          </h2>
-          <p className="text-xs font-medium text-[#4D5072] dark:text-[#9DA6CC]">
-            Promote students to the next academic year, verify eligibility rules, and audit class progression history.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {canPromote && (
-            <>
-              <button
-                type="button"
-                onClick={() => handleOpenModal()}
-                className="h-9 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#663CF6] to-[#4F27E8] px-4 text-xs font-bold text-white shadow-[0_6px_16px_rgba(79,39,232,0.28)] hover:opacity-95 cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>New Promotion</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("list");
-                }}
-                className="h-9 inline-flex items-center gap-1.5 rounded-xl border border-[#D9DEF2] bg-white/95 px-3.5 text-xs font-bold text-[#08093B] hover:bg-[#F3F5FD] cursor-pointer dark:border-[#2E345E] dark:bg-[#141731] dark:text-[#EEF0FF]"
-              >
-                <Layers className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#C4B5FD]" />
-                <span>Bulk Promotion</span>
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={handleDownloadReport}
-            className="h-9 inline-flex items-center gap-1.5 rounded-xl border border-[#D9DEF2] bg-white/95 px-3.5 text-xs font-bold text-[#08093B] hover:bg-[#F3F5FD] cursor-pointer dark:border-[#2E345E] dark:bg-[#141731] dark:text-[#EEF0FF]"
-          >
-            <Download className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#C4B5FD]" />
-            <span>Download Report</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 6 Horizontal Sub-Tabs matching Screenshots 1, 2, 3 */}
+      {/* 6 Horizontal Sub-Tabs */}
       <nav
         aria-label="Student promotion sections"
         className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/85 bg-white/75 p-1.5 backdrop-blur-md shadow-[0_6px_18px_rgba(79,39,232,0.05)] dark:border-[#272B4D] dark:bg-[#141731]/90"
@@ -515,14 +469,21 @@ export function StudentPromotionSuite({
           )}
 
           {activeTab === "settings" && (
-            <PromotionSettingsTab
+            <PromotionSettingsSuite
+              mode={mode}
+              schoolId={schoolId}
               data={data}
               academicYear={academicYear}
               canManageSettings={canManageSettings}
               saving={saving}
-              onSaveSettings={(settings) =>
-                handleSaveRulesAndSettings({ academicYear, settings })
-              }
+              onSaveAll={(payload) => handleSaveRulesAndSettings(payload)}
+              onSwitchSuiteTab={setActiveTab}
+              onReloadOverview={async () => {
+                await loadOverview();
+                onPromoted?.();
+              }}
+              onDownloadReport={handleDownloadReport}
+              onNotifyFeedback={setFeedback}
             />
           )}
         </>

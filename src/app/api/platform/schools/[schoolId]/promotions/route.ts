@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { toErrorResponse } from "@/lib/errors";
 import { requirePlatformSuperAdmin } from "@/server/platform/require-platform-admin";
 import { studentPromotionService } from "@/server/school/student-promotion-service";
 import {
   executePromotionBatchSchema,
+  promotionAuditFilterSchema,
   promotionFilterQuerySchema,
+  runPromotionAutomationSchema,
   upsertPromotionRulesSchema,
 } from "@/modules/students/promotion-schemas";
 
 export const dynamic = "force-dynamic";
+
+const platformTestNotificationSchema = z.object({
+  action: z.literal("testNotification"),
+  templateName: z.string().trim().min(1).max(120),
+  channel: z.string().trim().min(1).max(40),
+  recipient: z.string().trim().max(160).optional(),
+});
 
 function buildPlatformActor(
   auth: {
@@ -38,6 +48,23 @@ export async function GET(
 
     const { schoolId } = await context.params;
     const url = new URL(req.url);
+
+    if (url.searchParams.get("view") === "logs") {
+      const parsedLogs = promotionAuditFilterSchema.parse({
+        module: url.searchParams.get("module") || undefined,
+        action: url.searchParams.get("action") || undefined,
+        user: url.searchParams.get("user") || undefined,
+        status: url.searchParams.get("status") || undefined,
+        page: url.searchParams.get("page") || undefined,
+        pageSize: url.searchParams.get("pageSize") || undefined,
+      });
+      const logs = await studentPromotionService.getAuditLogs(
+        buildPlatformActor(auth, schoolId),
+        parsedLogs,
+      );
+      return NextResponse.json({ success: true, ...logs });
+    }
+
     const parsed = promotionFilterQuerySchema.parse({
       academicYear: url.searchParams.get("academicYear") || undefined,
       fromGrade: url.searchParams.get("fromGrade") || undefined,
@@ -75,6 +102,25 @@ export async function POST(
 
     const { schoolId } = await context.params;
     const body = await req.json();
+
+    if (body && body.action === "testNotification") {
+      const parsedNotif = platformTestNotificationSchema.parse(body);
+      const result = await studentPromotionService.sendTestNotification(
+        buildPlatformActor(auth, schoolId),
+        parsedNotif,
+      );
+      return NextResponse.json({ success: true, result });
+    }
+
+    if (body && body.action === "runAutomation") {
+      const parsedAuto = runPromotionAutomationSchema.parse(body);
+      const result = await studentPromotionService.runAutomation(
+        buildPlatformActor(auth, schoolId),
+        parsedAuto,
+      );
+      return NextResponse.json({ success: true, result });
+    }
+
     const parsed = executePromotionBatchSchema.parse(body);
     const result = await studentPromotionService.executeBatch(
       buildPlatformActor(auth, schoolId),

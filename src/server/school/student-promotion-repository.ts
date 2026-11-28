@@ -10,18 +10,25 @@ import { systemCache, tenantCache } from "@/server/integrations/redis";
 import { platformCache } from "@/server/platform/platform-cache";
 import { ValidationError } from "@/lib/errors";
 import { DEFAULT_ADMISSION_GRADES } from "@/modules/school/admissions/types";
-import type {
-  ClassPromotionSummaryRow,
-  PlatformGlobalPromotionsData,
-  PromotionDecisionStatus,
-  PromotionSettingsConfig,
-  StudentPromotionBatchRecord,
-  StudentPromotionDecisionRow,
-  StudentPromotionOverviewData,
-  StudentPromotionRuleRecord,
+import {
+  DEFAULT_PROMOTION_GRADE_BANDS,
+  DEFAULT_PROMOTION_SETTINGS_SUITE,
+  type ClassPromotionSummaryRow,
+  type PlatformGlobalPromotionsData,
+  type PromotionAuditLogEntry,
+  type PromotionAuditLogsResponse,
+  type PromotionDecisionStatus,
+  type PromotionGradeBand,
+  type PromotionSettingsConfig,
+  type PromotionSettingsSuiteConfig,
+  type StudentPromotionBatchRecord,
+  type StudentPromotionDecisionRow,
+  type StudentPromotionOverviewData,
+  type StudentPromotionRuleRecord,
 } from "@/modules/students/promotion-types";
 import type {
   ExecutePromotionBatchInput,
+  RunPromotionAutomationInput,
   UpsertPromotionRulesInput,
 } from "@/modules/students/promotion-schemas";
 
@@ -53,12 +60,70 @@ interface MemoryPromotionState {
   batches: StudentPromotionBatchRecord[];
   decisionsByKey: Record<string, StudentPromotionDecisionRow>;
   settings: PromotionSettingsConfig;
+  settingsSuite: PromotionSettingsSuiteConfig;
+  auditLogs: PromotionAuditLogEntry[];
 }
 
 const globalForPromos = globalThis as unknown as {
   __scholonixPromotionMemory?: Record<string, MemoryPromotionState>;
-  __scholonixPromotionCaps?: { hasTables: boolean; checkedAt: number };
+  __scholonixPromotionCaps?: { hasTables: boolean; hasRuleMetadataCols: boolean; checkedAt: number };
 };
+
+function defaultRuleName(fromGrade: string, idx?: number): string {
+  if (idx === 0 || fromGrade.toLowerCase() === "class i") {
+    return "Primary Promotion Rule";
+  }
+  return `${fromGrade} Promotion Rule`;
+}
+
+function defaultCriteriaSummary(minResultPct: number): string {
+  return `Min ${Math.round(minResultPct)}% in all subjects`;
+}
+
+function parseGradeCriteria(raw: unknown): PromotionGradeBand[] {
+  if (Array.isArray(raw) && raw.length > 0) {
+    return raw.map((item: any) => ({
+      grade: String(item.grade || "A"),
+      minPct: Number(item.minPct ?? 0),
+      maxPct: Number(item.maxPct ?? 100),
+      resultLabel: String(item.resultLabel || "Pass"),
+      promote: Boolean(item.promote),
+    }));
+  }
+  return DEFAULT_PROMOTION_GRADE_BANDS.map((band) => ({ ...band }));
+}
+
+function cloneDefaultSettingsSuite(): PromotionSettingsSuiteConfig {
+  return JSON.parse(JSON.stringify(DEFAULT_PROMOTION_SETTINGS_SUITE)) as PromotionSettingsSuiteConfig;
+}
+
+function mergeSettingsSuite(
+  base: PromotionSettingsSuiteConfig,
+  patch?: Partial<PromotionSettingsSuiteConfig> | null,
+): PromotionSettingsSuiteConfig {
+  if (!patch) return base;
+  return {
+    general: { ...base.general, ...(patch.general ?? {}) },
+    academicDefaults: { ...base.academicDefaults, ...(patch.academicDefaults ?? {}) },
+    automation: { ...base.automation, ...(patch.automation ?? {}) },
+    notifications: {
+      ...base.notifications,
+      ...(patch.notifications ?? {}),
+      channels: { ...base.notifications.channels, ...(patch.notifications?.channels ?? {}) },
+      triggers: { ...base.notifications.triggers, ...(patch.notifications?.triggers ?? {}) },
+      schedule: { ...base.notifications.schedule, ...(patch.notifications?.schedule ?? {}) },
+    },
+    accessControl: {
+      ...base.accessControl,
+      ...(patch.accessControl ?? {}),
+      policies: { ...base.accessControl.policies, ...(patch.accessControl?.policies ?? {}) },
+    },
+    resultCriteriaByGrade: {
+      ...(base.resultCriteriaByGrade ?? {}),
+      ...(patch.resultCriteriaByGrade ?? {}),
+    },
+  };
+}
 
 function defaultNextGrade(grades: string[], fromGrade: string, alumniGrade: string): {
   toGrade: string;
@@ -91,14 +156,20 @@ function getMemoryPromoState(
           id: `rule-${i}-${g}`,
           schoolId,
           academicYear,
+          ruleName: defaultRuleName(g, i),
           fromGrade: g,
           toGrade: next.toGrade,
           markAsAlumni: next.markAsAlumni,
           defaultSectionMode: "KEEP_SAME",
           targetSection: null,
-          minResultPct: 35,
+          minResultPct: 40,
           minAttendancePct: 75,
           maxFailedSubjects: 0,
+          criteriaSummary: defaultCriteriaSummary(40),
+          requireAssessmentsCompleted: true,
+          requireResultPublished: true,
+          requireFeeClearance: false,
+          gradeCriteria: DEFAULT_PROMOTION_GRADE_BANDS.map((b) => ({ ...b })),
           isActive: true,
         };
       }),
@@ -113,26 +184,53 @@ function getMemoryPromoState(
         notifyParentsOnPromotion: true,
         requirePendingFeeClearance: false,
       },
+      settingsSuite: cloneDefaultSettingsSuite(),
+      auditLogs: [],
     };
   }
   return globalForPromos.__scholonixPromotionMemory[schoolId]!;
 }
 
-async function hasPromotionTables(tx: Prisma.TransactionClient): Promise<boolean> {
-  if (process.env.NODE_ENV === "test") return false;
-  if (!(await authRepository.canUsePrismaForPlatform())) return false;
+async function getPromotionSchemaCaps(
+  tx: Prisma.TransactionClient,
+): Promise<{ hasTables: boolean; hasRuleMetadataCols: boolean }> {
+  if (process.env.NODE_ENV === "test") {
+    return { hasTables: false, hasRuleMetadataCols: false };
+  }
+  if (!(await authRepository.canUsePrismaForPlatform())) {
+    return { hasTables: false, hasRuleMetadataCols: false };
+  }
   const cached = globalForPromos.__scholonixPromotionCaps;
-  if (cached && Date.now() - cached.checkedAt < 60_000) return cached.hasTables;
+  if (cached && Date.now() - cached.checkedAt < 60_000) {
+    return { hasTables: cached.hasTables, hasRuleMetadataCols: cached.hasRuleMetadataCols };
+  }
   try {
     const rows = (await tx.$queryRaw`
-      SELECT to_regclass('public.student_promotion_batches') IS NOT NULL AS ok
-    `) as Array<{ ok?: boolean }>;
-    const ok = Boolean(rows[0]?.ok);
-    globalForPromos.__scholonixPromotionCaps = { hasTables: ok, checkedAt: Date.now() };
-    return ok;
+      SELECT
+        to_regclass('public.student_promotion_batches') IS NOT NULL AS ok,
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'student_promotion_rules'
+            AND column_name = 'grade_criteria'
+        ) AS has_meta
+    `) as Array<{ ok?: boolean; has_meta?: boolean }>;
+    const hasTables = Boolean(rows[0]?.ok);
+    const hasRuleMetadataCols = Boolean(rows[0]?.has_meta);
+    globalForPromos.__scholonixPromotionCaps = {
+      hasTables,
+      hasRuleMetadataCols,
+      checkedAt: Date.now(),
+    };
+    return { hasTables, hasRuleMetadataCols };
   } catch {
-    return false;
+    return { hasTables: false, hasRuleMetadataCols: false };
   }
+}
+
+async function hasPromotionTables(tx: Prisma.TransactionClient): Promise<boolean> {
+  const caps = await getPromotionSchemaCaps(tx);
+  return caps.hasTables;
 }
 
 export class StudentPromotionRepository extends BaseTenantRepository {
@@ -216,13 +314,16 @@ export class StudentPromotionRepository extends BaseTenantRepository {
       const mem = getMemoryPromoState(schoolId, grades, activeAy);
       let rules = mem.rules;
       let batches = mem.batches;
+      let schoolStaff: Array<{ id: string; name: string; role: string }> = [
+        { id: "principal-default", name: "School Principal", role: "PRINCIPAL" },
+      ];
       let dbDecisionMap = new Map<string, { status: PromotionDecisionStatus; toGrade: string; toSection: string; resultPct: number; resultGrade: string; attendancePct: number; remarks: string | null }>();
       let hasPublishedMarks = false;
       let hasAttendance = false;
 
       if (await hasPromotionTables(db as unknown as Prisma.TransactionClient)) {
         const dbData = await this.runTx(schoolId, asPlatformAdmin, async (tx) => {
-          const [ruleRows, batchRows, decRows, examCount, attCount] = await Promise.all([
+          const [ruleRows, batchRows, decRows, examCount, attCount, staffRows] = await Promise.all([
             (tx as any).studentPromotionRule.findMany({ where: { schoolId } }),
             (tx as any).studentPromotionBatch.findMany({
               where: { schoolId },
@@ -234,15 +335,29 @@ export class StudentPromotionRepository extends BaseTenantRepository {
             }),
             (tx as any).studentExamResult.count({ where: { schoolId } }),
             (tx as any).studentAttendanceRecord.count({ where: { schoolId } }),
+            (tx as any).user.findMany({
+              where: { schoolId, status: "ACTIVE" },
+              select: { id: true, name: true, role: true },
+              take: 40,
+            }),
           ]);
-          return { ruleRows, batchRows, decRows, examCount, attCount };
+          return { ruleRows, batchRows, decRows, examCount, attCount, staffRows };
         });
 
+        if (Array.isArray(dbData.staffRows) && dbData.staffRows.length > 0) {
+          schoolStaff = dbData.staffRows.map((u: any) => ({
+            id: String(u.id),
+            name: String(u.name || "Staff Member"),
+            role: String(u.role || "TEACHER"),
+          }));
+        }
+
         if (dbData.ruleRows.length > 0) {
-          rules = dbData.ruleRows.map((r: any) => ({
+          rules = dbData.ruleRows.map((r: any, idx: number) => ({
             id: String(r.id),
             schoolId: String(r.schoolId),
             academicYear: String(r.academicYear),
+            ruleName: r.ruleName ? String(r.ruleName) : defaultRuleName(String(r.fromGrade), idx),
             fromGrade: String(r.fromGrade),
             toGrade: String(r.toGrade),
             markAsAlumni: Boolean(r.markAsAlumni),
@@ -251,6 +366,16 @@ export class StudentPromotionRepository extends BaseTenantRepository {
             minResultPct: Number(r.minResultPct),
             minAttendancePct: Number(r.minAttendancePct),
             maxFailedSubjects: Number(r.maxFailedSubjects),
+            criteriaSummary: r.criteriaSummary
+              ? String(r.criteriaSummary)
+              : defaultCriteriaSummary(Number(r.minResultPct)),
+            requireAssessmentsCompleted:
+              typeof r.requireAssessmentsCompleted === "boolean" ? r.requireAssessmentsCompleted : true,
+            requireResultPublished:
+              typeof r.requireResultPublished === "boolean" ? r.requireResultPublished : true,
+            requireFeeClearance:
+              typeof r.requireFeeClearance === "boolean" ? r.requireFeeClearance : false,
+            gradeCriteria: parseGradeCriteria(r.gradeCriteria),
             isActive: Boolean(r.isActive),
           }));
         }
@@ -451,6 +576,11 @@ export class StudentPromotionRepository extends BaseTenantRepository {
           finalGradeForAlumni: snapshot.settings.promotionConfig.finalGradeForAlumni,
           autoAssignRollNumbers: snapshot.settings.promotionConfig.autoAssignRollNumbers,
         },
+        settingsSuite: mergeSettingsSuite(
+          mem.settingsSuite,
+          ((snapshot.settings.promotionConfig as any)?.settingsSuite ?? null) as Partial<PromotionSettingsSuiteConfig> | null,
+        ),
+        schoolStaff,
       };
 
       if (process.env.NODE_ENV !== "test") {
@@ -632,28 +762,40 @@ export class StudentPromotionRepository extends BaseTenantRepository {
     const snapshot = await studentRepository.getSnapshot(schoolId, { asPlatformAdmin });
     const mem = getMemoryPromoState(schoolId, snapshot.grades, input.academicYear);
 
-    if (input.settings) {
-      mem.settings = { ...mem.settings, ...input.settings };
+    if (input.settings || input.settingsSuite) {
+      if (input.settings) {
+        mem.settings = { ...mem.settings, ...input.settings };
+      }
+      if (input.settingsSuite) {
+        mem.settingsSuite = mergeSettingsSuite(
+          mem.settingsSuite,
+          input.settingsSuite as Partial<PromotionSettingsSuiteConfig>,
+        );
+      }
+      const existingPromoCfg = (snapshot.settings.promotionConfig ?? {}) as Record<string, unknown>;
       await studentRepository.updateSettings(
         schoolId,
         {
           promotionConfig: {
+            ...existingPromoCfg,
             finalGradeForAlumni: mem.settings.finalGradeForAlumni,
             autoAssignRollNumbers: mem.settings.autoAssignRollNumbers,
-          },
+            settingsSuite: mem.settingsSuite,
+          } as any,
         },
         { asPlatformAdmin },
       );
     }
 
     if (input.rules && input.rules.length > 0) {
-      if (await hasPromotionTables(db as unknown as Prisma.TransactionClient)) {
+      const caps = await getPromotionSchemaCaps(db as unknown as Prisma.TransactionClient);
+      if (caps.hasTables) {
         await this.runTx(schoolId, asPlatformAdmin, async (tx) => {
           await (tx as any).studentPromotionRule.deleteMany({
             where: { schoolId, academicYear: input.academicYear },
           });
           await (tx as any).studentPromotionRule.createMany({
-            data: input.rules!.map((r) => ({
+            data: input.rules!.map((r, idx) => ({
               schoolId,
               academicYear: input.academicYear,
               fromGrade: r.fromGrade,
@@ -665,6 +807,17 @@ export class StudentPromotionRepository extends BaseTenantRepository {
               minAttendancePct: r.minAttendancePct,
               maxFailedSubjects: r.maxFailedSubjects,
               isActive: r.isActive,
+              ...(caps.hasRuleMetadataCols
+                ? {
+                    ruleName: r.ruleName || defaultRuleName(r.fromGrade, idx),
+                    criteriaSummary: r.criteriaSummary || defaultCriteriaSummary(r.minResultPct),
+                    requireAssessmentsCompleted: r.requireAssessmentsCompleted,
+                    requireResultPublished: r.requireResultPublished,
+                    requireFeeClearance: r.requireFeeClearance,
+                    gradeCriteria:
+                      r.gradeCriteria ?? DEFAULT_PROMOTION_GRADE_BANDS.map((b) => ({ ...b })),
+                  }
+                : {}),
             })),
           });
         });
@@ -673,6 +826,7 @@ export class StudentPromotionRepository extends BaseTenantRepository {
           id: `rule-${idx}-${r.fromGrade}`,
           schoolId,
           academicYear: input.academicYear,
+          ruleName: r.ruleName || defaultRuleName(r.fromGrade, idx),
           fromGrade: r.fromGrade,
           toGrade: r.toGrade,
           markAsAlumni: r.markAsAlumni,
@@ -681,6 +835,11 @@ export class StudentPromotionRepository extends BaseTenantRepository {
           minResultPct: r.minResultPct,
           minAttendancePct: r.minAttendancePct,
           maxFailedSubjects: r.maxFailedSubjects,
+          criteriaSummary: r.criteriaSummary || defaultCriteriaSummary(r.minResultPct),
+          requireAssessmentsCompleted: r.requireAssessmentsCompleted ?? true,
+          requireResultPublished: r.requireResultPublished ?? true,
+          requireFeeClearance: r.requireFeeClearance ?? false,
+          gradeCriteria: r.gradeCriteria ?? DEFAULT_PROMOTION_GRADE_BANDS.map((b) => ({ ...b })),
           isActive: r.isActive,
         }));
       }
@@ -688,6 +847,317 @@ export class StudentPromotionRepository extends BaseTenantRepository {
 
     await this.invalidatePromotionCaches(schoolId);
     return { saved: true };
+  }
+
+  async runAutomation(
+    explicitSchoolId: string,
+    actor: { userId: string; userName: string },
+    input: RunPromotionAutomationInput,
+    options?: { asPlatformAdmin?: boolean },
+  ): Promise<{
+    dryRun: boolean;
+    evaluatedCount: number;
+    promotedCount: number;
+    retainedCount: number;
+    alumniCount: number;
+    flaggedCount: number;
+    stepsExecuted: number;
+    classBreakdown: Array<{ fromGrade: string; toGrade: string; count: number; alumniCount: number; retainCount: number }>;
+  }> {
+    const schoolId = this.getSchoolId(explicitSchoolId);
+    const overview = await this.getOverview(schoolId, { academicYear: input.academicYear }, options);
+    const autoCfg = overview.settingsSuite.automation;
+
+    const ruleByFrom = new Map(
+      overview.rules
+        .filter((r) => r.isActive)
+        .map((r) => [r.fromGrade.toLowerCase(), r]),
+    );
+
+    const pendingRows = overview.decisions.filter((d) => d.status === "PENDING");
+    const promoteGroups = new Map<string, { toGrade: string; toSection: string; fromGrade: string; ids: string[] }>();
+    const alumniIds: string[] = [];
+    const retainGroups = new Map<string, { fromGrade: string; ids: string[] }>();
+    const breakdownMap = new Map<string, { fromGrade: string; toGrade: string; count: number; alumniCount: number; retainCount: number }>();
+    let flaggedCount = 0;
+
+    for (const row of pendingRows) {
+      const rule = ruleByFrom.get(row.currentGrade.toLowerCase());
+      const minPct = rule?.minResultPct ?? overview.settingsSuite.general.overallPassPct ?? overview.settings.minResultPct;
+      const minAtt = rule?.minAttendancePct ?? overview.settingsSuite.general.minAttendancePct ?? overview.settings.minAttendancePct;
+      const enforceAtt = overview.settingsSuite.general.enforceAttendance;
+      const gradeBand = rule?.gradeCriteria.find(
+        (b) => row.promotionPct >= b.minPct && row.promotionPct <= b.maxPct,
+      );
+
+      const passesMarks = row.promotionPct >= minPct && (gradeBand ? gradeBand.promote : true);
+      const passesAtt = !enforceAtt || row.attendancePct >= minAtt;
+      const targetGrade = rule?.toGrade || row.nextGrade;
+      const targetSection =
+        rule?.defaultSectionMode === "TARGET_SECTION" && rule.targetSection
+          ? rule.targetSection
+          : row.currentSection;
+
+      const bk = breakdownMap.get(row.currentGrade) ?? {
+        fromGrade: row.currentGrade,
+        toGrade: targetGrade,
+        count: 0,
+        alumniCount: 0,
+        retainCount: 0,
+      };
+
+      if (passesMarks && passesAtt) {
+        if (rule?.markAsAlumni || targetGrade.toLowerCase() === "alumni") {
+          alumniIds.push(row.studentId);
+          bk.alumniCount += 1;
+        } else {
+          const gKey = `${row.currentGrade}::${targetGrade}::${targetSection}`;
+          const grp = promoteGroups.get(gKey) ?? {
+            fromGrade: row.currentGrade,
+            toGrade: targetGrade,
+            toSection: targetSection,
+            ids: [],
+          };
+          grp.ids.push(row.studentId);
+          promoteGroups.set(gKey, grp);
+          bk.count += 1;
+        }
+      } else {
+        flaggedCount += 1;
+        if (autoCfg.flagUnqualifiedStudents && autoCfg.keepRetainedInSameClass) {
+          const rGrp = retainGroups.get(row.currentGrade) ?? {
+            fromGrade: row.currentGrade,
+            ids: [],
+          };
+          rGrp.ids.push(row.studentId);
+          retainGroups.set(row.currentGrade, rGrp);
+          bk.retainCount += 1;
+        }
+      }
+
+      breakdownMap.set(row.currentGrade, bk);
+    }
+
+    const totalPromoted = Array.from(promoteGroups.values()).reduce((acc, g) => acc + g.ids.length, 0);
+    const totalRetained = Array.from(retainGroups.values()).reduce((acc, g) => acc + g.ids.length, 0);
+    const classBreakdown = Array.from(breakdownMap.values());
+
+    if (input.dryRun) {
+      return {
+        dryRun: true,
+        evaluatedCount: pendingRows.length,
+        promotedCount: totalPromoted,
+        retainedCount: totalRetained,
+        alumniCount: alumniIds.length,
+        flaggedCount,
+        stepsExecuted: 5,
+        classBreakdown,
+      };
+    }
+
+    for (const grp of promoteGroups.values()) {
+      await this.executeBatch(
+        schoolId,
+        actor,
+        {
+          studentIds: grp.ids,
+          academicYear: input.academicYear,
+          toAcademicYear: input.toAcademicYear,
+          toGrade: grp.toGrade,
+          toSection: grp.toSection,
+          decision: "PROMOTE",
+          dryRun: false,
+          remarks: "Automated Promotion Workflow",
+        },
+        options,
+      );
+    }
+
+    if (alumniIds.length > 0) {
+      await this.executeBatch(
+        schoolId,
+        actor,
+        {
+          studentIds: alumniIds,
+          academicYear: input.academicYear,
+          toAcademicYear: input.toAcademicYear,
+          toGrade: "Alumni",
+          toSection: "A",
+          decision: "ALUMNI",
+          dryRun: false,
+          remarks: "Automated Alumni Graduation",
+        },
+        options,
+      );
+    }
+
+    for (const rGrp of retainGroups.values()) {
+      await this.executeBatch(
+        schoolId,
+        actor,
+        {
+          studentIds: rGrp.ids,
+          academicYear: input.academicYear,
+          toAcademicYear: input.toAcademicYear,
+          toGrade: rGrp.fromGrade,
+          toSection: "A",
+          decision: "RETAIN",
+          dryRun: false,
+          remarks: "Automated Criteria Exception (Retained)",
+        },
+        options,
+      );
+    }
+
+    return {
+      dryRun: false,
+      evaluatedCount: pendingRows.length,
+      promotedCount: totalPromoted,
+      retainedCount: totalRetained,
+      alumniCount: alumniIds.length,
+      flaggedCount,
+      stepsExecuted: 5,
+      classBreakdown,
+    };
+  }
+
+  appendMemoryAuditLog(
+    schoolId: string,
+    entry: Omit<PromotionAuditLogEntry, "id" | "createdAt">,
+  ): void {
+    const mem = getMemoryPromoState(schoolId, [...DEFAULT_ADMISSION_GRADES], "2025-2026");
+    mem.auditLogs.unshift({
+      ...entry,
+      id: `log-${randomUUID().slice(0, 8)}`,
+      createdAt: new Date().toISOString(),
+    });
+    if (mem.auditLogs.length > 250) {
+      mem.auditLogs.length = 250;
+    }
+  }
+
+  async getAuditLogs(
+    explicitSchoolId: string,
+    filters?: {
+      module?: string;
+      action?: string;
+      user?: string;
+      status?: string;
+      page?: number;
+      pageSize?: number;
+    },
+    options?: { asPlatformAdmin?: boolean },
+  ): Promise<PromotionAuditLogsResponse> {
+    const schoolId = this.getSchoolId(explicitSchoolId);
+    const asPlatformAdmin = Boolean(options?.asPlatformAdmin);
+    const mem = getMemoryPromoState(schoolId, [...DEFAULT_ADMISSION_GRADES], "2025-2026");
+
+    let allLogs: PromotionAuditLogEntry[] = mem.auditLogs;
+
+    if (process.env.NODE_ENV !== "test" && (await authRepository.canUsePrismaForPlatform())) {
+      const rows = await this.runTx(schoolId, asPlatformAdmin, async (tx) =>
+        (tx as any).auditLog.findMany({
+          where: {
+            schoolId,
+            OR: [
+              { entityType: { startsWith: "StudentPromotion" } },
+              { action: { startsWith: "PROMOTION_" } },
+            ],
+          },
+          include: { user: { select: { name: true } } },
+          orderBy: { createdAt: "desc" },
+          take: 250,
+        }),
+      );
+
+      allLogs = (rows as any[]).map((r) => {
+        const actionStr = String(r.action || "UPDATE");
+        const moduleLabel = actionStr.includes("AUTOMATION")
+          ? "Automation"
+          : actionStr.includes("RULES")
+            ? "Promotion Rules"
+            : actionStr.includes("SETTINGS")
+              ? "Settings"
+              : actionStr.includes("NOTIFICATION")
+                ? "Notifications"
+                : "Promotion";
+        const details = (r.metadata ?? {}) as Record<string, unknown>;
+        return {
+          id: String(r.id),
+          createdAt: new Date(r.createdAt).toISOString(),
+          actorId: r.actorId ? String(r.actorId) : null,
+          actorName: String(r.user?.name || details.actorName || "System Admin"),
+          module: moduleLabel,
+          action: actionStr.replace(/^PROMOTION_/, "").replace(/_/g, " "),
+          description:
+            typeof details.summary === "string"
+              ? details.summary
+              : `${actionStr} (${String(r.entityType)}: ${String(r.entityId)})`,
+          ipAddress: String(r.ipAddress || "127.0.0.1"),
+          status: details.status === "Failed" ? "Failed" : "Success",
+          entityType: String(r.entityType),
+          entityId: String(r.entityId),
+        };
+      });
+    }
+
+    const filtered = allLogs.filter((item) => {
+      if (filters?.module && filters.module !== "ALL" && item.module !== filters.module) {
+        return false;
+      }
+      if (
+        filters?.action &&
+        filters.action !== "ALL" &&
+        !item.action.toLowerCase().includes(filters.action.toLowerCase())
+      ) {
+        return false;
+      }
+      if (
+        filters?.user &&
+        filters.user !== "ALL" &&
+        item.actorName.toLowerCase() !== filters.user.toLowerCase()
+      ) {
+        return false;
+      }
+      if (filters?.status && filters.status !== "ALL" && item.status !== filters.status) {
+        return false;
+      }
+      return true;
+    });
+
+    const moduleCountMap = new Map<string, number>();
+    const userCountMap = new Map<string, number>();
+    let settingsChanges = 0;
+    let promotionActions = 0;
+
+    for (const row of allLogs) {
+      moduleCountMap.set(row.module, (moduleCountMap.get(row.module) ?? 0) + 1);
+      userCountMap.set(row.actorName, (userCountMap.get(row.actorName) ?? 0) + 1);
+      if (row.module === "Settings" || row.module === "Promotion Rules") {
+        settingsChanges += 1;
+      } else {
+        promotionActions += 1;
+      }
+    }
+
+    const page = Math.max(1, filters?.page ?? 1);
+    const pageSize = Math.max(1, Math.min(100, filters?.pageSize ?? 10));
+    const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+    return {
+      totalLogs: filtered.length,
+      uniqueUsers: userCountMap.size,
+      settingsChanges,
+      promotionActions,
+      logs: paged,
+      moduleSummary: Array.from(moduleCountMap.entries())
+        .map(([module, count]) => ({ module, count }))
+        .sort((a, b) => b.count - a.count),
+      topUsers: Array.from(userCountMap.entries())
+        .map(([userName, count]) => ({ userName, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5),
+    };
   }
 
   async getPlatformGlobalOverview(): Promise<PlatformGlobalPromotionsData> {
