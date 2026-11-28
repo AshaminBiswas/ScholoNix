@@ -546,7 +546,6 @@ export function SchoolWorkspaceShell({
                         { label: "Student Dashboard", section: "dashboard", subPath: "students" },
                         { label: "Student List", section: "list", subPath: "students/list" },
                         { label: "Student Promotion", section: "promotion", subPath: "students/promotion" },
-                        { label: "Student Transfer", section: "transfer", subPath: "students/transfer" },
                         { label: "Student Inactive", section: "inactive", subPath: "students/inactive" },
                         { label: "Alumni", section: "alumni", subPath: "students/alumni" },
                         { label: "Student Settings", section: "settings", subPath: "students/settings" },
