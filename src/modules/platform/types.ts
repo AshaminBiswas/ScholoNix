@@ -10,6 +10,7 @@ export type PlatformTab =
   | "tasks"
   | "schools"
   | "users"
+  | "students"
   | "sales"
   | "documents"
   | "reports"

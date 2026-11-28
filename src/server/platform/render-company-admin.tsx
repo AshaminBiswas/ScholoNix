@@ -113,10 +113,13 @@ export async function renderCompanyAdminPage(
         legacySession.user.role === "PLATFORM_SUPER_ADMIN" &&
         legacySession.user.status === "ACTIVE"
       ) {
-        const [initialOverview, initialSchools] = await Promise.all([
-          platformService.getOverview(),
-          platformService.listSchools(),
-        ]);
+        const { overview: initialOverview, schools: initialSchools } =
+          typeof platformService.getOverviewWithSchools === "function"
+            ? await platformService.getOverviewWithSchools()
+            : {
+                overview: await platformService.getOverview(),
+                schools: await platformService.listSchools(),
+              };
         return (
           <CompanyAdminPanel
             adminUser={{

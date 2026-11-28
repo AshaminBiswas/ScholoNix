@@ -128,6 +128,12 @@ model School {
   platformInvoices              PlatformSubscriptionInvoice[]
   supportTickets                PlatformSupportTicket[]
   announcements                 PlatformAnnouncement[]
+  students                      Student[]
+  studentEnrollments            StudentEnrollment[]
+  studentTransfers              StudentTransfer[]
+  studentGroups                 StudentGroup[]
+  studentActivities             StudentActivity[]
+  studentSetting                StudentSetting?
 
   @@index([status])
   @@index([plan])
@@ -568,6 +574,7 @@ model AdmissionApplication {
   school      School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   feeLedger   AdmissionFeeLedger?
   feePayments AdmissionFeePayment[]
+  studentRecord Student?
 
   @@unique([schoolId, applicationCode])
   @@unique([schoolId, admissionNumber])
@@ -658,6 +665,205 @@ model AdmissionActivity {
 
   @@index([schoolId, createdAt])
   @@map("admission_activities")
+}
+
+// =============================================================================
+// STUDENT MANAGEMENT & ACADEMIC LIFECYCLE MODELS (STRICTLY TENANT-SCOPED)
+// =============================================================================
+
+enum StudentLifecycleStatus {
+  ACTIVE
+  INACTIVE
+  TRANSFERRED
+  ALUMNI
+  WITHDRAWN
+}
+
+enum StudentEnrollmentStatus {
+  ENROLLED
+  PROMOTED
+  RETAINED
+  TRANSFERRED_OUT
+  GRADUATED
+}
+
+enum StudentTransferType {
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+model Student {
+  id                  String                 @id @default(uuid()) @db.Uuid
+  schoolId            String                 @map("school_id") @db.Uuid
+  applicationId       String?                @unique @map("application_id") @db.Uuid
+  userId              String?                @map("user_id") @db.Uuid
+  admissionNumber     String                 @map("admission_number") @db.VarChar(40)
+  studentIdNumber     String?                @map("student_id_number") @db.VarChar(60)
+  studentName         String                 @map("student_name") @db.VarChar(255)
+  gender              String?                @db.VarChar(30)
+  dateOfBirth         DateTime?              @map("date_of_birth") @db.Date
+  bloodGroup          String?                @map("blood_group") @db.VarChar(20)
+  nationality         String?                @db.VarChar(80)
+  photoKey            String?                @map("photo_key") @db.VarChar(500)
+  email               String?                @db.VarChar(255)
+  phone               String?                @db.VarChar(30)
+  addressJson         Json?                  @map("address_json") @db.JsonB
+  guardianName        String                 @map("guardian_name") @db.VarChar(255)
+  guardianRelation    String                 @default("Parent") @map("guardian_relation") @db.VarChar(60)
+  guardianPhone       String                 @map("guardian_phone") @db.VarChar(30)
+  guardianEmail       String?                @map("guardian_email") @db.VarChar(255)
+  guardianDetails     Json?                  @map("guardian_details") @db.JsonB
+  previousSchool      String?                @map("previous_school") @db.VarChar(255)
+  academicDetails     Json?                  @map("academic_details") @db.JsonB
+  medicalNotes        String?                @map("medical_notes") @db.Text
+  admissionType       AdmissionType          @default(FRESH) @map("admission_type")
+  admissionDate       DateTime               @default(now()) @map("admission_date") @db.Timestamptz(6)
+  status              StudentLifecycleStatus @default(ACTIVE)
+  currentAcademicYear String                 @map("current_academic_year") @db.VarChar(30)
+  currentGrade        String                 @map("current_grade") @db.VarChar(60)
+  currentSection      String                 @default("A") @map("current_section") @db.VarChar(20)
+  currentRollNumber   String?                @map("current_roll_number") @db.VarChar(30)
+  graduationYear      String?                @map("graduation_year") @db.VarChar(30)
+  inactiveReason      String?                @map("inactive_reason") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  application  AdmissionApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  enrollments  StudentEnrollment[]
+  transfers    StudentTransfer[]
+  groupMembers StudentGroupMember[]
+  activities   StudentActivity[]
+
+  @@unique([schoolId, admissionNumber])
+  @@index([schoolId, status, currentGrade, currentSection])
+  @@index([schoolId, currentAcademicYear, currentGrade])
+  @@index([schoolId, admissionDate])
+  @@map("students")
+}
+
+model StudentEnrollment {
+  id                       String                  @id @default(uuid()) @db.Uuid
+  schoolId                 String                  @map("school_id") @db.Uuid
+  studentId                String                  @map("student_id") @db.Uuid
+  academicYear             String                  @map("academic_year") @db.VarChar(30)
+  grade                    String                  @db.VarChar(60)
+  section                  String                  @default("A") @db.VarChar(20)
+  rollNumber               String?                 @map("roll_number") @db.VarChar(30)
+  status                   StudentEnrollmentStatus @default(ENROLLED)
+  isCurrent                Boolean                 @default(true) @map("is_current")
+  promotedFromEnrollmentId String?                 @map("promoted_from_enrollment_id") @db.Uuid
+  remarks                  String?                 @db.VarChar(255)
+  effectiveFrom            DateTime                @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo              DateTime?               @map("effective_to") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, studentId, academicYear])
+  @@index([schoolId, academicYear, grade, section])
+  @@index([studentId, isCurrent])
+  @@map("student_enrollments")
+}
+
+model StudentTransfer {
+  id                        String              @id @default(uuid()) @db.Uuid
+  schoolId                  String              @map("school_id") @db.Uuid
+  studentId                 String              @map("student_id") @db.Uuid
+  transferType              StudentTransferType @map("transfer_type")
+  transferDate              DateTime            @default(now()) @map("transfer_date") @db.Timestamptz(6)
+  tcNumber                  String?             @map("tc_number") @db.VarChar(60)
+  counterpartySchool        String?             @map("counterparty_school") @db.VarChar(255)
+  reason                    String?             @db.Text
+  clearanceStatus           String              @default("CLEARED") @map("clearance_status") @db.VarChar(30)
+  fromGrade                 String?             @map("from_grade") @db.VarChar(60)
+  toGrade                   String?             @map("to_grade") @db.VarChar(60)
+  processedByUserId         String?             @map("processed_by_user_id") @db.Uuid
+  processedByName           String?             @map("processed_by_name") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, transferDate])
+  @@index([studentId])
+  @@map("student_transfers")
+}
+
+model StudentGroup {
+  id          String   @id @default(uuid()) @db.Uuid
+  schoolId    String   @map("school_id") @db.Uuid
+  name        String   @db.VarChar(100)
+  category    String   @default("General") @db.VarChar(60)
+  colorToken  String   @default("violet") @map("color_token") @db.VarChar(30)
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  members StudentGroupMember[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId, category])
+  @@map("student_groups")
+}
+
+model StudentGroupMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  schoolId  String   @map("school_id") @db.Uuid
+  groupId   String   @map("group_id") @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  group   StudentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, studentId])
+  @@index([schoolId, groupId])
+  @@index([schoolId, studentId])
+  @@map("student_group_members")
+}
+
+model StudentActivity {
+  id         String   @id @default(uuid()) @db.Uuid
+  schoolId   String   @map("school_id") @db.Uuid
+  studentId  String?  @map("student_id") @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  actorName  String   @map("actor_name") @db.VarChar(255)
+  actionType String   @map("action_type") @db.VarChar(60)
+  summary    String   @db.VarChar(500)
+  metadata   Json?    @db.JsonB
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  school  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, createdAt])
+  @@index([schoolId, studentId, createdAt])
+  @@map("student_activities")
+}
+
+model StudentSetting {
+  id                  String   @id @default(uuid()) @db.Uuid
+  schoolId            String   @unique @map("school_id") @db.Uuid
+  defaultSections     String[] @default(["A", "B", "C"]) @map("default_sections")
+  sectionsByGrade     Json?    @map("sections_by_grade") @db.JsonB
+  rollNumberMode      String   @default("AUTO_ALPHA") @map("roll_number_mode") @db.VarChar(30)
+  requireTcOnTransfer Boolean  @default(true) @map("require_tc_on_transfer")
+  idCardConfig        Json?    @map("id_card_config") @db.JsonB
+  promotionConfig     Json?    @map("promotion_config") @db.JsonB
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@map("student_settings")
 }
 
 // =============================================================================

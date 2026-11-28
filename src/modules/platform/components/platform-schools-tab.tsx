@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import {
@@ -58,6 +58,11 @@ import {
 } from "./platform-shared";
 import { PlatformProvisionSchoolModal } from "./platform-provision-modal";
 import type { SchoolSubTab } from "@/modules/platform/routing";
+import { StudentManagementWorkspace } from "@/modules/students/components/student-management-workspace";
+import type {
+  StudentDashboardAnalytics,
+  StudentWorkspaceSnapshot,
+} from "@/modules/students/types";
 
 const CARD_SURFACE =
   "rounded-[18px] border border-white/80 bg-white/85 backdrop-blur-md shadow-[0_8px_24px_rgba(79,39,232,0.06)] dark:border-[#272B4D] dark:bg-[#141731]/95 dark:shadow-[0_10px_28px_rgba(3,5,18,0.45)]";
@@ -173,6 +178,10 @@ export function PlatformSchoolsTab({
   // Students & Parents sub-tab state
   const [studentSearch, setStudentSearch] = useState("");
   const [studentFilter, setStudentFilter] = useState<"ALL" | "ADMITTED" | "IN_PROGRESS">("ALL");
+  const [studentSuiteData, setStudentSuiteData] = useState<{
+    snapshot: StudentWorkspaceSnapshot;
+    analytics: StudentDashboardAnalytics;
+  } | null>(null);
 
   // Deep data & audit sub-tabs state
   const [schoolData, setSchoolData] = useState<PlatformSchoolDataInspectResult | null>(null);
@@ -210,6 +219,7 @@ export function PlatformSchoolsTab({
 
     setSchoolUsers(selectedEntry.users);
     setSchoolData(null);
+    setStudentSuiteData(null);
     setDataError(null);
     setSchoolAuditLogs([]);
     setUserSearch("");
@@ -218,15 +228,72 @@ export function PlatformSchoolsTab({
     setStudentFilter("ALL");
   }, [selectedEntry]);
 
-  // Load complete tenant inspect data, full users list, and audit trail immediately on school select
+  // Client-side session cache for visited/hovered schools (eliminates repeat round trips)
+  const schoolClientCacheRef = useRef<
+    Map<
+      string,
+      {
+        data?: PlatformSchoolDataInspectResult;
+        studentSuite?: {
+          snapshot: StudentWorkspaceSnapshot;
+          analytics: StudentDashboardAnalytics;
+        };
+        users?: PlatformSchoolUserItem[];
+        logs?: PlatformAuditLogRecord[];
+        cachedAt: number;
+      }
+    >
+  >(new Map());
+
+  const prefetchSchoolInspect = (schoolId: string) => {
+    const existing = schoolClientCacheRef.current.get(schoolId);
+    if (existing && Date.now() - existing.cachedAt < 30_000) return;
+    fetch(`/api/platform/schools/${schoolId}/data`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j?.success && j.data) {
+          const prev = schoolClientCacheRef.current.get(schoolId);
+          schoolClientCacheRef.current.set(schoolId, {
+            ...prev,
+            data: j.data,
+            cachedAt: Date.now(),
+          });
+        }
+      })
+      .catch(() => {});
+  };
+
+  // Load complete tenant inspect data, full users list, and audit trail (client cache + Upstash Redis backend)
   useEffect(() => {
     if (!selectedSchoolKey) return;
     let active = true;
 
-    setLoadingData(true);
+    const cached = schoolClientCacheRef.current.get(selectedSchoolKey);
+    const isFresh = Boolean(cached && Date.now() - cached.cachedAt < 30_000 && cached.data);
+
+    if (cached?.data) {
+      setSchoolData(cached.data);
+    }
+    if (cached?.studentSuite) {
+      setStudentSuiteData(cached.studentSuite);
+    }
+    if (cached?.users) {
+      setSchoolUsers(cached.users);
+    }
+    if (cached?.logs) {
+      setSchoolAuditLogs(cached.logs);
+    }
+    if (isFresh) {
+      setLoadingData(false);
+      setLoadingUsers(false);
+      setLoadingAudit(false);
+      return;
+    }
+
+    setLoadingData(!cached?.data);
     setDataError(null);
-    setLoadingUsers(true);
-    setLoadingAudit(true);
+    setLoadingUsers(!cached?.users);
+    setLoadingAudit(!cached?.logs);
 
     Promise.allSettled([
       fetch(`/api/platform/schools/${selectedSchoolKey}/data`, { cache: "no-store" }).then(async (r) => {
@@ -242,11 +309,16 @@ export function PlatformSchoolsTab({
       fetch(`/api/platform/audit-logs?schoolId=${encodeURIComponent(selectedSchoolKey)}`, {
         cache: "no-store",
       }).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/platform/schools/${selectedSchoolKey}/students`, { cache: "no-store" }).then((r) =>
+        r.ok ? r.json().catch(() => null) : null,
+      ),
     ])
-      .then(([dataRes, usersRes, auditRes]) => {
+      .then(([dataRes, usersRes, auditRes, studentsSuiteRes]) => {
         if (!active) return;
+        const entry = { ...(schoolClientCacheRef.current.get(selectedSchoolKey) ?? {}), cachedAt: Date.now() };
         if (dataRes.status === "fulfilled" && dataRes.value?.data) {
           setSchoolData(dataRes.value.data);
+          entry.data = dataRes.value.data;
         } else if (dataRes.status === "rejected") {
           setDataError(
             dataRes.reason instanceof Error
@@ -260,6 +332,7 @@ export function PlatformSchoolsTab({
           Array.isArray(usersRes.value.users)
         ) {
           setSchoolUsers(usersRes.value.users);
+          entry.users = usersRes.value.users;
         }
         if (
           auditRes.status === "fulfilled" &&
@@ -267,7 +340,22 @@ export function PlatformSchoolsTab({
           Array.isArray(auditRes.value.logs)
         ) {
           setSchoolAuditLogs(auditRes.value.logs);
+          entry.logs = auditRes.value.logs;
         }
+        if (
+          studentsSuiteRes.status === "fulfilled" &&
+          studentsSuiteRes.value?.success &&
+          studentsSuiteRes.value?.snapshot &&
+          studentsSuiteRes.value?.analytics
+        ) {
+          const suitePayload = {
+            snapshot: studentsSuiteRes.value.snapshot as StudentWorkspaceSnapshot,
+            analytics: studentsSuiteRes.value.analytics as StudentDashboardAnalytics,
+          };
+          setStudentSuiteData(suitePayload);
+          entry.studentSuite = suitePayload;
+        }
+        schoolClientCacheRef.current.set(selectedSchoolKey, entry);
       })
       .finally(() => {
         if (!active) return;
@@ -313,6 +401,7 @@ export function PlatformSchoolsTab({
         throw new Error(json?.error?.message || "Failed to update school.");
       }
       onToast("success", successMsg);
+      schoolClientCacheRef.current.delete(selectedEntry.school.id);
       await onRefreshSchools({ q: query, status: statusFilter, plan: planFilter });
     } catch (err) {
       onToast("error", err instanceof Error ? err.message : "Failed to update school.");
@@ -337,6 +426,7 @@ export function PlatformSchoolsTab({
         throw new Error(json?.error?.message || "Unable to delete school.");
       }
       onToast("success", `${selectedEntry.school.name} permanently removed.`);
+      schoolClientCacheRef.current.delete(selectedEntry.school.id);
       onSelectSchoolId(null);
       await onRefreshSchools({ q: query, status: statusFilter, plan: planFilter });
     } catch (err) {
@@ -370,6 +460,7 @@ export function PlatformSchoolsTab({
         throw new Error(json?.error?.message || "Failed to create school user.");
       }
       setSchoolUsers((prev) => [...prev, json.user]);
+      schoolClientCacheRef.current.delete(selectedEntry.school.id);
       setNewUserName("");
       setNewUserEmail("");
       setNewUserPhone("");
@@ -404,6 +495,7 @@ export function PlatformSchoolsTab({
       setSchoolUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, ...json.user } : u)),
       );
+      schoolClientCacheRef.current.delete(selectedEntry.school.id);
       onToast("success", successMsg);
     } catch (err) {
       onToast("error", err instanceof Error ? err.message : "User update failed.");
@@ -427,7 +519,15 @@ export function PlatformSchoolsTab({
         cache: "no-store",
       });
       const rJson = await refresh.json();
-      if (rJson.success && rJson.data) setSchoolData(rJson.data);
+      if (rJson.success && rJson.data) {
+        setSchoolData(rJson.data);
+        const prev = schoolClientCacheRef.current.get(selectedEntry.school.id);
+        schoolClientCacheRef.current.set(selectedEntry.school.id, {
+          ...prev,
+          data: rJson.data,
+          cachedAt: Date.now(),
+        });
+      }
     } catch (err) {
       onToast("error", err instanceof Error ? err.message : "Tenant update failed.");
     }
@@ -745,6 +845,7 @@ export function PlatformSchoolsTab({
                       return (
                         <tr
                           key={entry.school.id}
+                          onMouseEnter={() => prefetchSchoolInspect(entry.school.id)}
                           className="hover:bg-[#FAF8FE] transition dark:hover:bg-[#1B1F3F]/60"
                         >
                           <td className="px-4 py-3.5">
@@ -2839,8 +2940,29 @@ export function PlatformSchoolsTab({
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="space-y-6">
+                    {studentSuiteData && (
+                      <div className="rounded-[18px] border border-[#DDD6FE] bg-[#FAF8FE]/70 p-4 sm:p-5 dark:border-[#2E2A5C] dark:bg-[#10142C]/80">
+                        <StudentManagementWorkspace
+                          mode="platform"
+                          schoolId={selectedEntry.school.id}
+                          initialSnapshot={studentSuiteData.snapshot}
+                          initialAnalytics={studentSuiteData.analytics}
+                          initialSection="dashboard"
+                          permissions={{
+                            canCreate: true,
+                            canEdit: true,
+                            canPromote: true,
+                            canTransfer: true,
+                            canExport: true,
+                            canManageSettings: true,
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-1.5">
                         {(
                           [
@@ -3036,6 +3158,7 @@ export function PlatformSchoolsTab({
                         </table>
                       </div>
                     )}
+                    </div>
                   </div>
                 )
               )}

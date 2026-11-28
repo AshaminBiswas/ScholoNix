@@ -18,6 +18,10 @@ export type Permission =
   | "users:write"
   | "students:read"
   | "students:write"
+  | "students:promote"
+  | "students:transfer"
+  | "students:export"
+  | "students:settings"
   | "admissions:read"
   | "admissions:write"
   | "admissions:verify"
@@ -37,6 +41,10 @@ const ADMIN_PERMISSIONS: readonly Permission[] = [
   "users:write",
   "students:read",
   "students:write",
+  "students:promote",
+  "students:transfer",
+  "students:export",
+  "students:settings",
   "admissions:read",
   "admissions:write",
   "admissions:verify",

@@ -18,7 +18,7 @@ import {
 } from "@/lib/errors";
 import {
   buildOtpAuthUri,
-  decryptTotpSecret,
+  decryptTotpSecretWithRotation,
   encryptTotpSecret,
   generateBase32Secret,
   generateRecoveryCodes,
@@ -28,6 +28,7 @@ import {
   verifyTotpCode,
   verifyWebAuthnChallengeToken,
 } from "./platform-mfa-crypto";
+import { platformCache } from "./platform-cache";
 import type {
   PlatformAdminPasskeyRecord,
   PlatformAdminRecord,
@@ -237,6 +238,55 @@ export function isPlatformAdminFullyVerified(
   return !admin.mustChangePassword && contactsVerified && mfaVerified && hasAnyMfaEnrolled;
 }
 
+function verifyTotpOrRecoveryInput(
+  totpSecretEnc: string,
+  recoveryHashes: string[],
+  codeInput: string,
+): {
+  usedRecoveryCode: boolean;
+  remainingHashes: string[];
+  reencryptedTotpSecretEnc?: string;
+} {
+  let decryptFailedDueToKeyMismatch = false;
+  let totpOk = false;
+  let reencryptedTotpSecretEnc: string | undefined;
+
+  try {
+    const decrypted = decryptTotpSecretWithRotation(totpSecretEnc);
+    totpOk = verifyTotpCode(decrypted.secret, codeInput);
+    if (totpOk && decrypted.rotatedFromPreviousKey) {
+      reencryptedTotpSecretEnc = encryptTotpSecret(decrypted.secret);
+    }
+  } catch {
+    decryptFailedDueToKeyMismatch = true;
+  }
+
+  if (totpOk) {
+    return {
+      usedRecoveryCode: false,
+      remainingHashes: recoveryHashes,
+      reencryptedTotpSecretEnc,
+    };
+  }
+
+  const candidateHash = hashRecoveryCode(codeInput);
+  const idx = recoveryHashes.indexOf(candidateHash);
+  if (idx !== -1) {
+    return {
+      usedRecoveryCode: true,
+      remainingHashes: recoveryHashes.filter((_, i) => i !== idx),
+    };
+  }
+
+  if (decryptFailedDueToKeyMismatch) {
+    throw new ValidationError(
+      "Unable to verify authenticator code because AUTH_SECRET differs from the key used during 2FA setup. Sign in with a saved backup recovery code, restore AUTH_SECRET (or add the prior secret to AUTH_SECRET_PREVIOUS), or reset 2FA for this admin.",
+    );
+  }
+
+  throw new ValidationError("Invalid 6-digit authenticator code or recovery code.");
+}
+
 export const platformAdminAuthService = {
   setSessionCookie(response: NextResponse, token: string, expiresAt: Date): void {
     response.cookies.set(getPlatformAdminCookieName(), token, {
@@ -354,11 +404,16 @@ export const platformAdminAuthService = {
   ): Promise<{ admin: PlatformAdminRecord; mfaVerified: boolean } | null> {
     if (!token) return null;
     const tokenHash = hashSessionToken(token);
+    const cached = await platformCache.getCachedAdminSession(tokenHash);
+    if (cached) {
+      return cached;
+    }
+
     const now = new Date();
 
     if (await authRepository.canUsePrismaForPlatform()) {
       try {
-        return await runAdminTx(async (tx) => {
+        const result = await runAdminTx(async (tx) => {
           const status = await getPlatformSchemaStatus(tx);
           if (!status.hasMfaSchema) return null;
           const sess = await (tx as any).platformAdminSession.findFirst({
@@ -382,6 +437,10 @@ export const platformAdminAuthService = {
             mfaVerified: Boolean(sess.mfaVerified),
           };
         });
+        if (result) {
+          await platformCache.setCachedAdminSession(tokenHash, result.admin, result.mfaVerified);
+        }
+        return result;
       } catch {
         return null;
       }
@@ -393,10 +452,12 @@ export const platformAdminAuthService = {
     if (!sess) return null;
     const admin = memoryAdmins[sess.adminId];
     if (!admin || admin.status !== "ACTIVE") return null;
-    return {
+    const result = {
       admin: toSafeMemoryAdmin(admin),
       mfaVerified: sess.mfaVerified,
     };
+    await platformCache.setCachedAdminSession(tokenHash, result.admin, result.mfaVerified);
+    return result;
   },
 
   async verifyToken(token: string): Promise<PlatformAdminRecord | null> {
@@ -428,6 +489,7 @@ export const platformAdminAuthService = {
   async revokeToken(token?: string | null): Promise<void> {
     if (!token) return;
     const tokenHash = hashSessionToken(token);
+    await platformCache.deleteCachedAdminSession(tokenHash);
     const now = new Date();
     if (await authRepository.canUsePrismaForPlatform()) {
       try {
@@ -489,6 +551,9 @@ export const platformAdminAuthService = {
           },
         });
         return mapAdminRow(updated);
+      }).then(async (admin) => {
+        await platformCache.bumpAdminVersion(adminId);
+        return admin;
       });
     }
 
@@ -505,6 +570,7 @@ export const platformAdminAuthService = {
     admin.passwordHash = newHash;
     admin.mustChangePassword = false;
     admin.passwordChangedAt = now.toISOString();
+    await platformCache.bumpAdminVersion(adminId);
     return toSafeMemoryAdmin(admin);
   },
 
@@ -540,6 +606,9 @@ export const platformAdminAuthService = {
           },
         });
         return mapAdminRow(updated);
+      }).then(async (admin) => {
+        await platformCache.bumpAdminVersion(adminId);
+        return admin;
       });
     }
 
@@ -549,6 +618,7 @@ export const platformAdminAuthService = {
       throw new ValidationError("Phone number is already verified.");
     }
     admin.phone = normalizedPhone;
+    await platformCache.bumpAdminVersion(adminId);
     return toSafeMemoryAdmin(admin);
   },
 
@@ -581,6 +651,9 @@ export const platformAdminAuthService = {
           },
         });
         return mapAdminRow(updated);
+      }).then(async (admin) => {
+        await platformCache.bumpAdminVersion(adminId);
+        return admin;
       });
     }
 
@@ -592,6 +665,7 @@ export const platformAdminAuthService = {
       admin.phoneVerifiedAt = now.toISOString();
       if (verifiedPhone) admin.phone = verifiedPhone;
     }
+    await platformCache.bumpAdminVersion(adminId);
     return toSafeMemoryAdmin(admin);
   },
 
@@ -696,6 +770,10 @@ export const platformAdminAuthService = {
         });
         return mapAdminRow(updated);
       });
+      await Promise.all([
+        platformCache.bumpAdminVersion(adminId),
+        platformCache.deleteCachedAdminSession(tokenHash),
+      ]);
       return { admin, recoveryCodes: plaintextCodes };
     }
 
@@ -715,6 +793,10 @@ export const platformAdminAuthService = {
         s.mfaVerified = true;
       }
     }
+    await Promise.all([
+      platformCache.bumpAdminVersion(adminId),
+      platformCache.deleteCachedAdminSession(tokenHash),
+    ]);
     return { admin: toSafeMemoryAdmin(admin), recoveryCodes: plaintextCodes };
   },
 
@@ -744,25 +826,22 @@ export const platformAdminAuthService = {
           throw new ValidationError("Authenticator 2FA is not enrolled for this admin.");
         }
 
-        const secret = decryptTotpSecret(row.totpSecretEnc);
-        let usedRecoveryCode = false;
         const hashes: string[] = Array.isArray(row.recoveryCodeHashes)
           ? row.recoveryCodeHashes.filter((v: unknown): v is string => typeof v === "string")
           : [];
-        let remainingHashes = hashes;
+        const verification = verifyTotpOrRecoveryInput(row.totpSecretEnc, hashes, codeInput);
+        const remainingHashes = verification.remainingHashes;
+        const usedRecoveryCode = verification.usedRecoveryCode;
 
-        const totpOk = verifyTotpCode(secret, codeInput);
-        if (!totpOk) {
-          const candidateHash = hashRecoveryCode(codeInput);
-          const idx = hashes.indexOf(candidateHash);
-          if (idx === -1) {
-            throw new ValidationError("Invalid 6-digit authenticator code or recovery code.");
-          }
-          usedRecoveryCode = true;
-          remainingHashes = hashes.filter((_, i) => i !== idx);
+        if (usedRecoveryCode || verification.reencryptedTotpSecretEnc) {
           await (tx as any).platformAdmin.update({
             where: { id: adminId },
-            data: { recoveryCodeHashes: remainingHashes },
+            data: {
+              ...(usedRecoveryCode ? { recoveryCodeHashes: remainingHashes } : {}),
+              ...(verification.reencryptedTotpSecretEnc
+                ? { totpSecretEnc: verification.reencryptedTotpSecretEnc }
+                : {}),
+            },
           });
         }
 
@@ -776,6 +855,12 @@ export const platformAdminAuthService = {
           usedRecoveryCode,
           remainingRecoveryCodes: remainingHashes.length,
         };
+      }).then(async (res) => {
+        await Promise.all([
+          platformCache.bumpAdminVersion(adminId),
+          platformCache.deleteCachedAdminSession(tokenHash),
+        ]);
+        return res;
       });
     }
 
@@ -785,17 +870,17 @@ export const platformAdminAuthService = {
       throw new ValidationError("Authenticator 2FA is not enrolled for this admin.");
     }
 
-    const secret = decryptTotpSecret(admin.totpSecretEnc);
-    let usedRecoveryCode = false;
-    const totpOk = verifyTotpCode(secret, codeInput);
-    if (!totpOk) {
-      const candidateHash = hashRecoveryCode(codeInput);
-      const idx = admin.recoveryCodeHashes.indexOf(candidateHash);
-      if (idx === -1) {
-        throw new ValidationError("Invalid 6-digit authenticator code or recovery code.");
-      }
-      usedRecoveryCode = true;
-      admin.recoveryCodeHashes = admin.recoveryCodeHashes.filter((_, i) => i !== idx);
+    const verification = verifyTotpOrRecoveryInput(
+      admin.totpSecretEnc,
+      admin.recoveryCodeHashes,
+      codeInput,
+    );
+    const usedRecoveryCode = verification.usedRecoveryCode;
+    if (usedRecoveryCode) {
+      admin.recoveryCodeHashes = verification.remainingHashes;
+    }
+    if (verification.reencryptedTotpSecretEnc) {
+      admin.totpSecretEnc = verification.reencryptedTotpSecretEnc;
     }
 
     for (const s of Object.values(memoryAdminSessions)) {
@@ -803,6 +888,11 @@ export const platformAdminAuthService = {
         s.mfaVerified = true;
       }
     }
+
+    await Promise.all([
+      platformCache.bumpAdminVersion(adminId),
+      platformCache.deleteCachedAdminSession(tokenHash),
+    ]);
 
     return {
       admin: toSafeMemoryAdmin(admin),
@@ -969,6 +1059,12 @@ export const platformAdminAuthService = {
           passkey: mapPasskeyRow(created),
           admin: mapAdminRow(updatedAdmin),
         };
+      }).then(async (res) => {
+        await Promise.all([
+          platformCache.bumpAdminVersion(adminId),
+          platformCache.deleteCachedAdminSession(tokenHash),
+        ]);
+        return res;
       });
     }
 
@@ -1005,6 +1101,11 @@ export const platformAdminAuthService = {
         s.mfaVerified = true;
       }
     }
+
+    await Promise.all([
+      platformCache.bumpAdminVersion(adminId),
+      platformCache.deleteCachedAdminSession(tokenHash),
+    ]);
 
     return {
       passkey: mapPasskeyRow(rec),
@@ -1121,6 +1222,12 @@ export const platformAdminAuthService = {
           token: sessionToken,
           expiresAt,
         };
+      }).then(async (res) => {
+        await Promise.all([
+          platformCache.bumpAdminVersion(res.admin.id),
+          platformCache.deleteCachedAdminSession(hashSessionToken(res.token)),
+        ]);
+        return res;
       });
     }
 
@@ -1191,6 +1298,11 @@ export const platformAdminAuthService = {
       };
     }
 
+    await Promise.all([
+      platformCache.bumpAdminVersion(admin.id),
+      platformCache.deleteCachedAdminSession(hashSessionToken(sessionToken)),
+    ]);
+
     return {
       admin: toSafeMemoryAdmin(admin),
       token: sessionToken,
@@ -1218,6 +1330,7 @@ export const platformAdminAuthService = {
         }
         await (tx as any).platformAdminPasskey.delete({ where: { id: passkeyId } });
       });
+      await platformCache.bumpAdminVersion(adminId);
       return;
     }
 
@@ -1232,37 +1345,40 @@ export const platformAdminAuthService = {
       );
     }
     delete memoryPasskeys[passkeyId];
+    await platformCache.bumpAdminVersion(adminId);
   },
 
   async listAdmins(): Promise<PlatformAdminRecord[]> {
-    if (await authRepository.canUsePrismaForPlatform()) {
-      return runAdminTx(async (tx) => {
-        const status = await getPlatformSchemaStatus(tx);
-        if (!status.hasAdmins) return [];
-        const rows = await (tx as any).platformAdmin.findMany({
-          orderBy: { createdAt: "asc" },
-          include: {
-            _count: {
-              select: {
-                sessions: { where: { revokedAt: null, expiresAt: { gt: new Date() } } },
-                ...(status.hasMfaSchema ? { passkeys: true } : {}),
+    return platformCache.getOrLoadAdminsList(async () => {
+      if (await authRepository.canUsePrismaForPlatform()) {
+        return runAdminTx(async (tx) => {
+          const status = await getPlatformSchemaStatus(tx);
+          if (!status.hasAdmins) return [];
+          const rows = await (tx as any).platformAdmin.findMany({
+            orderBy: { createdAt: "asc" },
+            include: {
+              _count: {
+                select: {
+                  sessions: { where: { revokedAt: null, expiresAt: { gt: new Date() } } },
+                  ...(status.hasMfaSchema ? { passkeys: true } : {}),
+                },
               },
             },
-          },
+          });
+          return (rows as any[]).map(mapAdminRow);
         });
-        return (rows as any[]).map(mapAdminRow);
-      });
-    }
+      }
 
-    const now = Date.now();
-    return Object.values(memoryAdmins)
-      .map((a) => ({
-        ...toSafeMemoryAdmin(a),
-        activeSessionCount: Object.values(memoryAdminSessions).filter(
-          (s) => s.adminId === a.id && !s.revokedAt && s.expiresAt.getTime() > now,
-        ).length,
-      }))
-      .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+      const now = Date.now();
+      return Object.values(memoryAdmins)
+        .map((a) => ({
+          ...toSafeMemoryAdmin(a),
+          activeSessionCount: Object.values(memoryAdminSessions).filter(
+            (s) => s.adminId === a.id && !s.revokedAt && s.expiresAt.getTime() > now,
+          ).length,
+        }))
+        .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+    });
   },
 
   async createAdmin(
@@ -1300,6 +1416,9 @@ export const platformAdminAuthService = {
           },
         });
         return mapAdminRow(created);
+      }).then(async (rec) => {
+        await platformCache.bumpAdminsListVersion();
+        return rec;
       });
     }
 
@@ -1331,6 +1450,7 @@ export const platformAdminAuthService = {
       createdAt: now.toISOString(),
     };
     memoryAdmins[id] = rec;
+    await platformCache.bumpAdminsListVersion();
     return toSafeMemoryAdmin(rec);
   },
 
@@ -1408,6 +1528,9 @@ export const platformAdminAuthService = {
           });
         }
         return mapAdminRow(updated);
+      }).then(async (admin) => {
+        await platformCache.bumpAdminVersion(input.adminId);
+        return admin;
       });
     }
 
@@ -1455,6 +1578,7 @@ export const platformAdminAuthService = {
         if (s.adminId === input.adminId && !s.revokedAt) s.revokedAt = now;
       }
     }
+    await platformCache.bumpAdminVersion(input.adminId);
     return toSafeMemoryAdmin(admin);
   },
 
@@ -1473,6 +1597,7 @@ export const platformAdminAuthService = {
         if (!existing) throw new NotFoundError("Company Admin");
         await (tx as any).platformAdmin.delete({ where: { id: targetAdminId } });
       });
+      await platformCache.bumpAdminVersion(targetAdminId);
       return;
     }
     if (!memoryAdmins[targetAdminId]) throw new NotFoundError("Company Admin");
@@ -1483,5 +1608,6 @@ export const platformAdminAuthService = {
     for (const [pkId, pk] of Object.entries(memoryPasskeys)) {
       if (pk.adminId === targetAdminId) delete memoryPasskeys[pkId];
     }
+    await platformCache.bumpAdminVersion(targetAdminId);
   },
 };

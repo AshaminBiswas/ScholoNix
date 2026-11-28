@@ -1,6 +1,7 @@
 {
   "name": "ScholoNix",
   "version": "1.0.0",
+  "license": "MIT",
   "private": true,
   "engines": {
     "node": ">=20.18.0"

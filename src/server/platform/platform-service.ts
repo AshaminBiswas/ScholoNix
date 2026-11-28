@@ -1,6 +1,7 @@
 import "server-only";
 import { admissionsRepository } from "@/server/school/admissions-repository";
 import { logAuditEvent } from "@/server/security/audit-logger";
+import { platformCache } from "./platform-cache";
 import { platformRepository } from "./platform-repository";
 import type { PlatformOverviewPeriodDays } from "@/modules/platform/types";
 import type {
@@ -199,6 +200,7 @@ export const platformService = {
         ipAddress: actor.ipAddress,
         userAgent: actor.userAgent,
       });
+      await platformCache.invalidateSchool(schoolId);
       return { settings: updatedSettings };
     }
     if (input.action === "update_application_status") {
@@ -218,6 +220,7 @@ export const platformService = {
         ipAddress: actor.ipAddress,
         userAgent: actor.userAgent,
       });
+      await platformCache.invalidateSchool(schoolId);
       return { application: result.after };
     }
 
@@ -237,6 +240,7 @@ export const platformService = {
       ipAddress: actor.ipAddress,
       userAgent: actor.userAgent,
     });
+    await platformCache.invalidateSchool(schoolId);
     return { enquiry: result.enquiry };
   },
 

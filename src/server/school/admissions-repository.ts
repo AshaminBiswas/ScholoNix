@@ -7,6 +7,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/server/database/client";
 import { BaseTenantRepository } from "@/server/repositories/base-tenant-repository";
 import { tenantCache } from "@/server/integrations/redis";
+import { platformCache } from "@/server/platform/platform-cache";
 import { ConflictError, NotFoundError, ServiceUnavailableError, TenantNotFoundError, ValidationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import {
@@ -928,7 +929,10 @@ class AdmissionsTenantRepository extends BaseTenantRepository {
 
   async invalidateTenantSnapshotCache(explicitSchoolId?: string): Promise<void> {
     const schoolId = this.requireSchoolId(explicitSchoolId);
-    await tenantCache.del(schoolId, ADMISSIONS_SNAPSHOT_CACHE_KEY);
+    await Promise.all([
+      tenantCache.del(schoolId, ADMISSIONS_SNAPSHOT_CACHE_KEY),
+      platformCache.invalidateSchool(schoolId),
+    ]);
   }
 
   private getOrCreateFallbackSetting(store: AdmissionsStoreState, schoolId: string): StoredSetting {

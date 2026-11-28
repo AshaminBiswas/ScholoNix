@@ -116,6 +116,8 @@ describe("Upstash Redis integration", () => {
       {
         url: "https://mock-primary.upstash.io",
         token: "mock_upstash_token_value",
+        enableAutoPipelining: true,
+        readYourWrites: true,
       },
     ]);
 

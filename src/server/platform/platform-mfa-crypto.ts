@@ -5,8 +5,14 @@ import { SignJWT, jwtVerify } from "jose";
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 let ephemeralMfaSecret: string | null = null;
 
+function normalizeSecret(raw?: string): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim().replace(/^(['"])(.*)\1$/, "$2").trim();
+  return trimmed || null;
+}
+
 function getMasterKeyBytes(): Buffer {
-  let raw = process.env.AUTH_SECRET?.trim();
+  let raw = normalizeSecret(process.env.AUTH_SECRET);
   if (!raw) {
     if (process.env.NODE_ENV === "test") {
       if (!ephemeralMfaSecret) {
@@ -20,6 +26,36 @@ function getMasterKeyBytes(): Buffer {
   return crypto.createHash("sha256").update(raw).digest();
 }
 
+function getDecryptionKeyCandidates(): Array<{ key: Buffer; isPrimary: boolean }> {
+  const candidates: Array<{ key: Buffer; isPrimary: boolean }> = [
+    { key: getMasterKeyBytes(), isPrimary: true },
+  ];
+
+  // Also check quote-unstripped AUTH_SECRET only if quotes were present in env.
+  const rawAuthSecret = process.env.AUTH_SECRET?.trim();
+  const normalizedPrimary = normalizeSecret(process.env.AUTH_SECRET);
+  if (rawAuthSecret && normalizedPrimary && rawAuthSecret !== normalizedPrimary) {
+    candidates.push({
+      key: crypto.createHash("sha256").update(rawAuthSecret).digest(),
+      isPrimary: false,
+    });
+  }
+
+  // Optional comma-separated list of rotated previous AUTH_SECRET values.
+  const previousList = (process.env.AUTH_SECRET_PREVIOUS || "")
+    .split(",")
+    .map((entry) => normalizeSecret(entry))
+    .filter((entry): entry is string => Boolean(entry));
+  for (const prevSecret of previousList) {
+    candidates.push({
+      key: crypto.createHash("sha256").update(prevSecret).digest(),
+      isPrimary: false,
+    });
+  }
+
+  return candidates;
+}
+
 export function encryptTotpSecret(base32Secret: string): string {
   const key = getMasterKeyBytes();
   const iv = crypto.randomBytes(12);
@@ -29,23 +65,41 @@ export function encryptTotpSecret(base32Secret: string): string {
   return `${iv.toString("base64url")}.${tag.toString("base64url")}.${encrypted.toString("base64url")}`;
 }
 
-export function decryptTotpSecret(payload: string): string {
+export function decryptTotpSecretWithRotation(payload: string): {
+  secret: string;
+  rotatedFromPreviousKey: boolean;
+} {
   const [ivB64, tagB64, encB64] = payload.split(".");
   if (!ivB64 || !tagB64 || !encB64) {
     throw new Error("Malformed encrypted TOTP secret.");
   }
-  const key = getMasterKeyBytes();
-  const decipher = crypto.createDecipheriv(
-    "aes-256-gcm",
-    key,
-    Buffer.from(ivB64, "base64url"),
-  );
-  decipher.setAuthTag(Buffer.from(tagB64, "base64url"));
-  const decrypted = Buffer.concat([
-    decipher.update(Buffer.from(encB64, "base64url")),
-    decipher.final(),
-  ]);
-  return decrypted.toString("utf8");
+
+  const iv = Buffer.from(ivB64, "base64url");
+  const tag = Buffer.from(tagB64, "base64url");
+  const ciphertext = Buffer.from(encB64, "base64url");
+
+  let lastError: unknown = null;
+  for (const candidate of getDecryptionKeyCandidates()) {
+    try {
+      const decipher = crypto.createDecipheriv("aes-256-gcm", candidate.key, iv);
+      decipher.setAuthTag(tag);
+      const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+      return {
+        secret: decrypted.toString("utf8"),
+        rotatedFromPreviousKey: !candidate.isPrimary,
+      };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Unable to authenticate encrypted TOTP secret.");
+}
+
+export function decryptTotpSecret(payload: string): string {
+  return decryptTotpSecretWithRotation(payload).secret;
 }
 
 export function generateBase32Secret(byteLength = 20): string {

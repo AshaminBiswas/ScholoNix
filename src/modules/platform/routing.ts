@@ -72,6 +72,9 @@ export function parsePlatformSubSegments(segments?: string[]): PlatformRouteStat
     if (second === "users" || second === "user") {
       return { tab: "users", schoolId: null, schoolSubTab: "all", studentId: null };
     }
+    if (second === "students" || second === "student") {
+      return { tab: "students", schoolId: null, schoolSubTab: "all", studentId: null };
+    }
     if (second === "schools" || second === "school" || !second) {
       const schoolId = clean[2] || null;
       if (!schoolId) {
@@ -123,6 +126,7 @@ export function buildPlatformRouteUrl(basePath: string, state: PlatformRouteStat
   const base = normalizePlatformBasePath(basePath);
   if (state.tab === "overview") return base;
   if (state.tab === "users") return `${base}/clients/users`;
+  if (state.tab === "students") return `${base}/clients/students`;
   if (state.tab === "schools") {
     if (!state.schoolId) return `${base}/clients/schools`;
     const encodedSchoolId = encodeURIComponent(state.schoolId);

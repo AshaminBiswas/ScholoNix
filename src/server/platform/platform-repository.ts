@@ -12,6 +12,7 @@ import {
   hashPassword,
 } from "@/server/security/crypto";
 import { ConflictError, NotFoundError, ServiceUnavailableError, ValidationError } from "@/lib/errors";
+import { platformCache } from "./platform-cache";
 import {
   DEFAULT_ADMISSION_GRADES,
   createDefaultExtendedSettings,
@@ -589,82 +590,87 @@ export const platformRepository = {
     const statusFilter = (params?.status || "").trim().toUpperCase();
     const planFilter = (params?.plan || "").trim().toUpperCase();
 
-    if (await authRepository.canUsePrismaForPlatform()) {
-      return runPlatformTx(async (tx) => {
-        const caps = await getPlatformSchemaCaps(tx);
-        return querySchoolsWithTx(tx, caps, params);
-      });
-    }
+    const allSchools = await platformCache.getOrLoadAllSchools(async () => {
+      if (await authRepository.canUsePrismaForPlatform()) {
+        return runPlatformTx(async (tx) => {
+          const caps = await getPlatformSchemaCaps(tx);
+          return querySchoolsWithTx(tx, caps);
+        });
+      }
 
-    const store = authRepository.getPlatformAuthStore();
-    const entries = Object.values(store.schools)
-      .filter((s) => {
-        if (q) {
-          const hit = [
-            s.uniqueId,
-            s.code,
-            s.slug,
-            s.name,
-            s.contactEmail,
-            s.contactPhone,
-            s.city,
-            s.state,
-          ].some((f) => (f ? f.toLowerCase().includes(qLower) : false));
-          if (!hit) return false;
-        }
-        if (statusFilter && statusFilter !== "ALL" && s.status !== statusFilter) return false;
-        if (planFilter && planFilter !== "ALL" && normalizePlan(s.plan) !== planFilter) return false;
-        return true;
-      })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    const results: PlatformSchoolEntry[] = [];
-    for (const s of entries) {
-      const users = Object.values(store.users)
-        .filter((u) => u.schoolId === s.id)
-        .map((u) => ({
-          id: u.id,
-          schoolId: u.schoolId,
-          name: u.name,
-          email: u.email,
-          phone: u.phone,
-          role: u.role,
-          status: u.status,
-          emailVerified: u.emailVerified,
-          phoneVerified: u.phoneVerified,
-          createdAt: new Date(u.createdAt).toISOString(),
-        }));
-      const snapshot = await admissionsRepository.getTenantSnapshot(s.id);
-      const feeCollectedPaise = (snapshot.admittedFeePayments ?? []).reduce(
-        (sum, p) => sum + p.amountPaise,
-        0,
+      const store = authRepository.getPlatformAuthStore();
+      const entries = Object.values(store.schools).sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
-      const saasBilledPaise = Object.values(platformMemoryStore.invoices)
-        .filter((inv) => inv.schoolId === s.id && inv.status === "PAID")
-        .reduce((sum, inv) => sum + inv.amountPaise, 0);
 
-      const admittedCount = snapshot.applications.filter((a) => a.status === "ADMITTED").length;
-      const staffCount = users.filter(
-        (u) => u.role !== "STUDENT" && u.role !== "PARENT",
-      ).length;
-      const studentUsersCount = users.filter((u) => u.role === "STUDENT").length;
+      const results: PlatformSchoolEntry[] = [];
+      for (const s of entries) {
+        const users = Object.values(store.users)
+          .filter((u) => u.schoolId === s.id)
+          .map((u) => ({
+            id: u.id,
+            schoolId: u.schoolId,
+            name: u.name,
+            email: u.email,
+            phone: u.phone,
+            role: u.role,
+            status: u.status,
+            emailVerified: u.emailVerified,
+            phoneVerified: u.phoneVerified,
+            createdAt: new Date(u.createdAt).toISOString(),
+          }));
+        const snapshot = await admissionsRepository.getTenantSnapshot(s.id);
+        const feeCollectedPaise = (snapshot.admittedFeePayments ?? []).reduce(
+          (sum, p) => sum + p.amountPaise,
+          0,
+        );
+        const saasBilledPaise = Object.values(platformMemoryStore.invoices)
+          .filter((inv) => inv.schoolId === s.id && inv.status === "PAID")
+          .reduce((sum, inv) => sum + inv.amountPaise, 0);
 
-      results.push({
-        school: mapSchoolItem(s),
-        users,
-        counts: {
-          users: users.length,
-          staffCount,
-          studentCount: Math.max(admittedCount, studentUsersCount),
-          applications: snapshot.applications.length,
-          enquiries: snapshot.enquiries.length,
-          admitted: admittedCount,
-          feeCollectedPaise,
-          saasBilledPaise,
-        },
-      });
-    }
-    return results;
+        const admittedCount = snapshot.applications.filter((a) => a.status === "ADMITTED").length;
+        const staffCount = users.filter(
+          (u) => u.role !== "STUDENT" && u.role !== "PARENT",
+        ).length;
+        const studentUsersCount = users.filter((u) => u.role === "STUDENT").length;
+
+        results.push({
+          school: mapSchoolItem(s),
+          users,
+          counts: {
+            users: users.length,
+            staffCount,
+            studentCount: Math.max(admittedCount, studentUsersCount),
+            applications: snapshot.applications.length,
+            enquiries: snapshot.enquiries.length,
+            admitted: admittedCount,
+            feeCollectedPaise,
+            saasBilledPaise,
+          },
+        });
+      }
+      return results;
+    });
+
+    return allSchools.filter((entry) => {
+      const s = entry.school;
+      if (q) {
+        const hit = [
+          s.uniqueId,
+          s.code,
+          s.slug,
+          s.name,
+          s.contactEmail,
+          s.contactPhone,
+          s.city,
+          s.state,
+        ].some((f) => (f ? f.toLowerCase().includes(qLower) : false));
+        if (!hit) return false;
+      }
+      if (statusFilter && statusFilter !== "ALL" && s.status !== statusFilter) return false;
+      if (planFilter && planFilter !== "ALL" && normalizePlan(s.plan) !== planFilter) return false;
+      return true;
+    });
   },
 
   async provisionSchool(
@@ -773,7 +779,7 @@ export const platformRepository = {
           },
         });
 
-        return {
+        const createdEntry = {
           school: mapSchoolItem(createdSchool),
           users: [
             {
@@ -790,6 +796,8 @@ export const platformRepository = {
             saasBilledPaise: 0,
           },
         };
+        await platformCache.invalidateSchool(createdEntry.school.id);
+        return createdEntry;
       });
     }
 
@@ -843,6 +851,8 @@ export const platformRepository = {
       authRepository.commitPlatformAuthStore();
     }
 
+    authRepository.commitPlatformAuthStore();
+    await platformCache.invalidateSchool(created.school.id);
     return {
       school: mapSchoolItem(storedSchool || created.school),
       users: [
@@ -927,6 +937,9 @@ export const platformRepository = {
         }
 
         return mapSchoolItem(updated);
+      }).then(async (item) => {
+        await platformCache.invalidateSchool(schoolId);
+        return item;
       });
     }
 
@@ -972,6 +985,7 @@ export const platformRepository = {
     }
 
     authRepository.commitPlatformAuthStore();
+    await platformCache.invalidateSchool(schoolId);
     return mapSchoolItem(s);
   },
 
@@ -982,6 +996,7 @@ export const platformRepository = {
         if (!existing) throw new NotFoundError("School");
         await tx.school.delete({ where: { id: schoolId } });
       });
+      await platformCache.invalidateSchool(schoolId);
       return;
     }
     const store = authRepository.getPlatformAuthStore();
@@ -991,23 +1006,44 @@ export const platformRepository = {
       if (u.schoolId === schoolId) delete store.users[uid];
     }
     authRepository.commitPlatformAuthStore();
+    await platformCache.invalidateSchool(schoolId);
   },
 
   async listSchoolUsers(schoolId: string): Promise<PlatformSchoolUserItem[]> {
-    if (await authRepository.canUsePrismaForPlatform()) {
-      return runPlatformTx(async (tx) => {
-        const rows = await tx.user.findMany({
-          where: { schoolId },
-          orderBy: { createdAt: "asc" },
-          include: {
-            _count: {
-              select: {
-                sessions: { where: { revokedAt: null, expiresAt: { gt: new Date() } } },
+    return platformCache.getOrLoadSchoolUsers(schoolId, async () => {
+      if (await authRepository.canUsePrismaForPlatform()) {
+        return runPlatformTx(async (tx) => {
+          const rows = await tx.user.findMany({
+            where: { schoolId },
+            orderBy: { createdAt: "asc" },
+            include: {
+              _count: {
+                select: {
+                  sessions: { where: { revokedAt: null, expiresAt: { gt: new Date() } } },
+                },
               },
             },
-          },
+          });
+          return rows.map((u) => ({
+            id: u.id,
+            schoolId: u.schoolId,
+            name: u.name,
+            email: u.email,
+            phone: u.phone,
+            role: u.role,
+            status: u.status,
+            emailVerified: u.emailVerified,
+            phoneVerified: u.phoneVerified,
+            activeSessionCount: u._count.sessions,
+            createdAt: u.createdAt.toISOString(),
+          }));
         });
-        return rows.map((u) => ({
+      }
+      const store = authRepository.getPlatformAuthStore();
+      const now = Date.now();
+      return Object.values(store.users)
+        .filter((u) => u.schoolId === schoolId)
+        .map((u) => ({
           id: u.id,
           schoolId: u.schoolId,
           name: u.name,
@@ -1017,30 +1053,12 @@ export const platformRepository = {
           status: u.status,
           emailVerified: u.emailVerified,
           phoneVerified: u.phoneVerified,
-          activeSessionCount: u._count.sessions,
-          createdAt: u.createdAt.toISOString(),
+          activeSessionCount: Object.values(store.sessions).filter(
+            (s) => s.userId === u.id && !s.revokedAt && new Date(s.expiresAt).getTime() > now,
+          ).length,
+          createdAt: new Date(u.createdAt).toISOString(),
         }));
-      });
-    }
-    const store = authRepository.getPlatformAuthStore();
-    const now = Date.now();
-    return Object.values(store.users)
-      .filter((u) => u.schoolId === schoolId)
-      .map((u) => ({
-        id: u.id,
-        schoolId: u.schoolId,
-        name: u.name,
-        email: u.email,
-        phone: u.phone,
-        role: u.role,
-        status: u.status,
-        emailVerified: u.emailVerified,
-        phoneVerified: u.phoneVerified,
-        activeSessionCount: Object.values(store.sessions).filter(
-          (s) => s.userId === u.id && !s.revokedAt && new Date(s.expiresAt).getTime() > now,
-        ).length,
-        createdAt: new Date(u.createdAt).toISOString(),
-      }));
+    });
   },
 
   async createSchoolUser(
@@ -1092,6 +1110,9 @@ export const platformRepository = {
           activeSessionCount: 0,
           createdAt: created.createdAt.toISOString(),
         };
+      }).then(async (user) => {
+        await platformCache.invalidateSchool(schoolId);
+        return user;
       });
     }
 
@@ -1121,6 +1142,7 @@ export const platformRepository = {
       createdAt: now,
     };
     authRepository.commitPlatformAuthStore();
+    await platformCache.invalidateSchool(schoolId);
     return {
       id,
       schoolId,
@@ -1192,6 +1214,9 @@ export const platformRepository = {
           phoneVerified: updated.phoneVerified,
           createdAt: updated.createdAt.toISOString(),
         };
+      }).then(async (user) => {
+        await platformCache.invalidateSchool(schoolId);
+        return user;
       });
     }
 
@@ -1216,6 +1241,7 @@ export const platformRepository = {
       }
     }
     authRepository.commitPlatformAuthStore();
+    await platformCache.invalidateSchool(schoolId);
     return {
       id: u.id,
       schoolId: u.schoolId,
@@ -1235,92 +1261,94 @@ export const platformRepository = {
     role?: string;
     status?: string;
   }): Promise<PlatformSchoolUserItem[]> {
-    const q = (params?.q || "").trim().toLowerCase();
-    const roleFilter = (params?.role || "").trim().toUpperCase();
-    const statusFilter = (params?.status || "").trim().toUpperCase();
+    return platformCache.getOrLoadGlobalUsers(params, async () => {
+      const q = (params?.q || "").trim().toLowerCase();
+      const roleFilter = (params?.role || "").trim().toUpperCase();
+      const statusFilter = (params?.status || "").trim().toUpperCase();
 
-    if (await authRepository.canUsePrismaForPlatform()) {
-      return runPlatformTx(async (tx) => {
-        const where: any = {};
-        if (q) {
-          where.OR = [
-            { name: { contains: q, mode: "insensitive" } },
-            { email: { contains: q, mode: "insensitive" } },
-            { phone: { contains: q } },
-          ];
-        }
-        if (roleFilter && roleFilter !== "ALL") where.role = roleFilter;
-        if (statusFilter && statusFilter !== "ALL") where.status = statusFilter;
+      if (await authRepository.canUsePrismaForPlatform()) {
+        return runPlatformTx(async (tx) => {
+          const where: any = {};
+          if (q) {
+            where.OR = [
+              { name: { contains: q, mode: "insensitive" } },
+              { email: { contains: q, mode: "insensitive" } },
+              { phone: { contains: q } },
+            ];
+          }
+          if (roleFilter && roleFilter !== "ALL") where.role = roleFilter;
+          if (statusFilter && statusFilter !== "ALL") where.status = statusFilter;
 
-        const rows = await tx.user.findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          take: 150,
-          include: {
-            school: { select: { name: true, slug: true, uniqueId: true } },
-            _count: {
-              select: {
-                sessions: { where: { revokedAt: null, expiresAt: { gt: new Date() } } },
+          const rows = await tx.user.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            take: 150,
+            include: {
+              school: { select: { name: true, slug: true, uniqueId: true } },
+              _count: {
+                select: {
+                  sessions: { where: { revokedAt: null, expiresAt: { gt: new Date() } } },
+                },
               },
             },
-          },
+          });
+          return rows.map((u) => ({
+            id: u.id,
+            schoolId: u.schoolId,
+            schoolName: u.school?.name ?? "Platform",
+            schoolSlug: u.school?.slug ?? null,
+            schoolUniqueId: u.school?.uniqueId ?? null,
+            name: u.name,
+            email: u.email,
+            phone: u.phone,
+            role: u.role,
+            status: u.status,
+            emailVerified: u.emailVerified,
+            phoneVerified: u.phoneVerified,
+            activeSessionCount: u._count.sessions,
+            createdAt: u.createdAt.toISOString(),
+          }));
         });
-        return rows.map((u) => ({
-          id: u.id,
-          schoolId: u.schoolId,
-          schoolName: u.school?.name ?? "Platform",
-          schoolSlug: u.school?.slug ?? null,
-          schoolUniqueId: u.school?.uniqueId ?? null,
-          name: u.name,
-          email: u.email,
-          phone: u.phone,
-          role: u.role,
-          status: u.status,
-          emailVerified: u.emailVerified,
-          phoneVerified: u.phoneVerified,
-          activeSessionCount: u._count.sessions,
-          createdAt: u.createdAt.toISOString(),
-        }));
-      });
-    }
+      }
 
-    const store = authRepository.getPlatformAuthStore();
-    const now = Date.now();
-    return Object.values(store.users)
-      .filter((u) => {
-        if (q) {
-          const hit = [u.name, u.email, u.phone].some((f) =>
-            f ? f.toLowerCase().includes(q) : false,
-          );
-          if (!hit) return false;
-        }
-        if (roleFilter && roleFilter !== "ALL" && u.role !== roleFilter) return false;
-        if (statusFilter && statusFilter !== "ALL" && u.status !== statusFilter) return false;
-        return true;
-      })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 150)
-      .map((u) => {
-        const sch = u.schoolId ? store.schools[u.schoolId] : undefined;
-        return {
-          id: u.id,
-          schoolId: u.schoolId,
-          schoolName: sch?.name ?? "Platform",
-          schoolSlug: sch?.slug ?? null,
-          schoolUniqueId: sch?.uniqueId ?? null,
-          name: u.name,
-          email: u.email,
-          phone: u.phone,
-          role: u.role,
-          status: u.status,
-          emailVerified: u.emailVerified,
-          phoneVerified: u.phoneVerified,
-          activeSessionCount: Object.values(store.sessions).filter(
-            (s) => s.userId === u.id && !s.revokedAt && new Date(s.expiresAt).getTime() > now,
-          ).length,
-          createdAt: new Date(u.createdAt).toISOString(),
-        };
-      });
+      const store = authRepository.getPlatformAuthStore();
+      const now = Date.now();
+      return Object.values(store.users)
+        .filter((u) => {
+          if (q) {
+            const hit = [u.name, u.email, u.phone].some((f) =>
+              f ? f.toLowerCase().includes(q) : false,
+            );
+            if (!hit) return false;
+          }
+          if (roleFilter && roleFilter !== "ALL" && u.role !== roleFilter) return false;
+          if (statusFilter && statusFilter !== "ALL" && u.status !== statusFilter) return false;
+          return true;
+        })
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 150)
+        .map((u) => {
+          const sch = u.schoolId ? store.schools[u.schoolId] : undefined;
+          return {
+            id: u.id,
+            schoolId: u.schoolId,
+            schoolName: sch?.name ?? "Platform",
+            schoolSlug: sch?.slug ?? null,
+            schoolUniqueId: sch?.uniqueId ?? null,
+            name: u.name,
+            email: u.email,
+            phone: u.phone,
+            role: u.role,
+            status: u.status,
+            emailVerified: u.emailVerified,
+            phoneVerified: u.phoneVerified,
+            activeSessionCount: Object.values(store.sessions).filter(
+              (s) => s.userId === u.id && !s.revokedAt && new Date(s.expiresAt).getTime() > now,
+            ).length,
+            createdAt: new Date(u.createdAt).toISOString(),
+          };
+        });
+    });
   },
 
   async revokeUserSessions(userId: string): Promise<void> {
@@ -1331,6 +1359,7 @@ export const platformRepository = {
           data: { revokedAt: new Date() },
         });
       });
+      await platformCache.bumpGlobalVersion();
       return;
     }
     const store = authRepository.getPlatformAuthStore();
@@ -1339,10 +1368,12 @@ export const platformRepository = {
       if (s.userId === userId && !s.revokedAt) s.revokedAt = now;
     }
     authRepository.commitPlatformAuthStore();
+    await platformCache.bumpGlobalVersion();
   },
 
   async inspectSchoolData(schoolId: string): Promise<PlatformSchoolDataInspectResult> {
-    if (await authRepository.canUsePrismaForPlatform()) {
+    return platformCache.getOrLoadSchoolInspect(schoolId, async () => {
+      if (await authRepository.canUsePrismaForPlatform()) {
       return runScopedTenantTx(schoolId, async (tx) => {
         const caps = await getPlatformSchemaCaps(tx);
         const [setting, apps, enqs, ledgers, payments, saasInvoices, supportTickets] =
@@ -1608,26 +1639,29 @@ export const platformRepository = {
         .filter((t) => t.schoolId === schoolId)
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
     };
+    });
   },
 
   async listInvoices(filters?: {
     schoolId?: string;
     status?: string;
   }): Promise<PlatformInvoiceRecord[]> {
-    if (await authRepository.canUsePrismaForPlatform()) {
-      return runPlatformTx(async (tx) => {
-        const caps = await getPlatformSchemaCaps(tx);
-        return queryInvoicesWithTx(tx, caps, filters);
-      });
-    }
+    return platformCache.getOrLoadInvoices(filters, async () => {
+      if (await authRepository.canUsePrismaForPlatform()) {
+        return runPlatformTx(async (tx) => {
+          const caps = await getPlatformSchemaCaps(tx);
+          return queryInvoicesWithTx(tx, caps, filters);
+        });
+      }
 
-    return Object.values(platformMemoryStore.invoices)
-      .filter((inv) => {
-        if (filters?.schoolId && inv.schoolId !== filters.schoolId) return false;
-        if (filters?.status && filters.status !== "ALL" && inv.status !== filters.status) return false;
-        return true;
-      })
-      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      return Object.values(platformMemoryStore.invoices)
+        .filter((inv) => {
+          if (filters?.schoolId && inv.schoolId !== filters.schoolId) return false;
+          if (filters?.status && filters.status !== "ALL" && inv.status !== filters.status) return false;
+          return true;
+        })
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    });
   },
 
   async createInvoice(
@@ -1681,6 +1715,9 @@ export const platformRepository = {
           include: { school: { select: { name: true, uniqueId: true } } },
         });
         return mapInvoiceRow(created);
+      }).then(async (inv) => {
+        await platformCache.invalidateSchool(inv.schoolId);
+        return inv;
       });
     }
 
@@ -1715,6 +1752,7 @@ export const platformRepository = {
       createdAt: now.toISOString(),
     };
     platformMemoryStore.invoices[rec.id] = rec;
+    await platformCache.invalidateSchool(rec.schoolId);
     return rec;
   },
 
@@ -1744,6 +1782,9 @@ export const platformRepository = {
           include: { school: { select: { name: true, uniqueId: true } } },
         });
         return mapInvoiceRow(updated);
+      }).then(async (inv) => {
+        await platformCache.invalidateSchool(inv.schoolId);
+        return inv;
       });
     }
 
@@ -1757,6 +1798,7 @@ export const platformRepository = {
     if (input.paymentReference !== undefined) inv.paymentReference = input.paymentReference || null;
     if (input.notes !== undefined) inv.notes = input.notes;
     if (input.status === "PAID" && !inv.paidAt) inv.paidAt = new Date().toISOString();
+    await platformCache.invalidateSchool(inv.schoolId);
     return inv;
   },
 
@@ -1808,6 +1850,10 @@ export const platformRepository = {
             },
           });
           return mapTicketRow(created);
+        }).then(async (t) => {
+          if (t.schoolId) await platformCache.invalidateSchool(t.schoolId);
+          else await platformCache.bumpGlobalVersion();
+          return t;
         });
       } catch {
         // Fallback to memory so public contact/feedback forms never fail if migration isn't applied yet
@@ -1839,19 +1885,22 @@ export const platformRepository = {
       updatedAt: now,
     };
     platformMemoryStore.tickets[rec.id] = rec;
+    await platformCache.bumpGlobalVersion();
     return rec;
   },
 
   async listSupportTickets(status?: string): Promise<PlatformSupportTicketRecord[]> {
-    if (await authRepository.canUsePrismaForPlatform()) {
-      return runPlatformTx(async (tx) => {
-        const caps = await getPlatformSchemaCaps(tx);
-        return querySupportTicketsWithTx(tx, caps, status);
-      });
-    }
-    return Object.values(platformMemoryStore.tickets)
-      .filter((t) => (!status || status === "ALL" ? true : t.status === status))
-      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    return platformCache.getOrLoadSupportTickets(status, async () => {
+      if (await authRepository.canUsePrismaForPlatform()) {
+        return runPlatformTx(async (tx) => {
+          const caps = await getPlatformSchemaCaps(tx);
+          return querySupportTicketsWithTx(tx, caps, status);
+        });
+      }
+      return Object.values(platformMemoryStore.tickets)
+        .filter((t) => (!status || status === "ALL" ? true : t.status === status))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    });
   },
 
   async updateSupportTicket(
@@ -1887,6 +1936,10 @@ export const platformRepository = {
           },
         });
         return mapTicketRow(updated);
+      }).then(async (t) => {
+        if (t.schoolId) await platformCache.invalidateSchool(t.schoolId);
+        else await platformCache.bumpGlobalVersion();
+        return t;
       });
     }
 
@@ -1899,6 +1952,7 @@ export const platformRepository = {
       t.resolvedAt = new Date().toISOString();
     }
     t.updatedAt = new Date().toISOString();
+    await platformCache.bumpGlobalVersion();
     return t;
   },
 
@@ -1906,47 +1960,51 @@ export const platformRepository = {
     schoolId?: string;
     q?: string;
   }): Promise<PlatformAuditLogRecord[]> {
-    const q = (params?.q || "").trim().toLowerCase();
-    if (await authRepository.canUsePrismaForPlatform()) {
-      return runPlatformTx((tx) => queryAuditLogsWithTx(tx, params));
-    }
+    return platformCache.getOrLoadAuditLogs(params, async () => {
+      const q = (params?.q || "").trim().toLowerCase();
+      if (await authRepository.canUsePrismaForPlatform()) {
+        return runPlatformTx((tx) => queryAuditLogsWithTx(tx, params));
+      }
 
-    const store = authRepository.getPlatformAuthStore();
-    return getRecentInMemoryAuditEntries()
-      .filter((entry) => {
-        if (params?.schoolId && entry.schoolId !== params.schoolId) return false;
-        if (q) {
-          const hit = [entry.action, entry.entityType, entry.entityId].some((f) =>
-            f.toLowerCase().includes(q),
-          );
-          if (!hit) return false;
-        }
-        return true;
-      })
-      .slice(0, 150)
-      .map((entry) => ({
-        ...entry,
-        schoolName: entry.schoolId ? store.schools[entry.schoolId]?.name ?? "School" : "Platform",
-        actorName: entry.actorId ? store.users[entry.actorId]?.name ?? null : null,
-      }));
+      const store = authRepository.getPlatformAuthStore();
+      return getRecentInMemoryAuditEntries()
+        .filter((entry) => {
+          if (params?.schoolId && entry.schoolId !== params.schoolId) return false;
+          if (q) {
+            const hit = [entry.action, entry.entityType, entry.entityId].some((f) =>
+              f.toLowerCase().includes(q),
+            );
+            if (!hit) return false;
+          }
+          return true;
+        })
+        .slice(0, 150)
+        .map((entry) => ({
+          ...entry,
+          schoolName: entry.schoolId ? store.schools[entry.schoolId]?.name ?? "School" : "Platform",
+          actorName: entry.actorId ? store.users[entry.actorId]?.name ?? null : null,
+        }));
+    });
   },
 
   async listAnnouncements(): Promise<PlatformAnnouncementRecord[]> {
-    if (await authRepository.canUsePrismaForPlatform()) {
-      return runPlatformTx(async (tx) => {
-        const caps = await getPlatformSchemaCaps(tx);
-        if (!caps.hasAnnouncementsTable || !(tx as any).platformAnnouncement) return [];
-        const rows = await (tx as any).platformAnnouncement.findMany({
-          orderBy: { createdAt: "desc" },
-          take: 50,
-          include: { targetSchool: { select: { name: true } } },
+    return platformCache.getOrLoadAnnouncements(async () => {
+      if (await authRepository.canUsePrismaForPlatform()) {
+        return runPlatformTx(async (tx) => {
+          const caps = await getPlatformSchemaCaps(tx);
+          if (!caps.hasAnnouncementsTable || !(tx as any).platformAnnouncement) return [];
+          const rows = await (tx as any).platformAnnouncement.findMany({
+            orderBy: { createdAt: "desc" },
+            take: 50,
+            include: { targetSchool: { select: { name: true } } },
+          });
+          return (rows as any[]).map(mapAnnouncementRow);
         });
-        return (rows as any[]).map(mapAnnouncementRow);
-      });
-    }
-    return Object.values(platformMemoryStore.announcements).sort(
-      (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
-    );
+      }
+      return Object.values(platformMemoryStore.announcements).sort(
+        (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+      );
+    });
   },
 
   async createAnnouncement(
@@ -1973,6 +2031,9 @@ export const platformRepository = {
           include: { targetSchool: { select: { name: true } } },
         });
         return mapAnnouncementRow(created);
+      }).then(async (a) => {
+        await platformCache.bumpGlobalVersion();
+        return a;
       });
     }
 
@@ -1994,6 +2055,7 @@ export const platformRepository = {
       createdAt: new Date().toISOString(),
     };
     platformMemoryStore.announcements[rec.id] = rec;
+    await platformCache.bumpGlobalVersion();
     return rec;
   },
 
@@ -2017,6 +2079,9 @@ export const platformRepository = {
           include: { targetSchool: { select: { name: true } } },
         });
         return mapAnnouncementRow(updated);
+      }).then(async (a) => {
+        await platformCache.bumpGlobalVersion();
+        return a;
       });
     }
     const existing = platformMemoryStore.announcements[input.announcementId];
@@ -2025,6 +2090,7 @@ export const platformRepository = {
     if (input.title !== undefined) existing.title = input.title;
     if (input.message !== undefined) existing.message = input.message;
     if (input.severity !== undefined) existing.severity = input.severity;
+    await platformCache.bumpGlobalVersion();
     return existing;
   },
 
@@ -2035,60 +2101,64 @@ export const platformRepository = {
         if (!caps.hasAnnouncementsTable || !(tx as any).platformAnnouncement) return;
         await (tx as any).platformAnnouncement.delete({ where: { id } });
       });
+      await platformCache.bumpGlobalVersion();
       return;
     }
     delete platformMemoryStore.announcements[id];
+    await platformCache.bumpGlobalVersion();
   },
 
   async getHealthSnapshot(): Promise<PlatformHealthSnapshot> {
-    const start = Date.now();
-    let databaseConnected = false;
-    let dbLatencyMs: number | null = null;
-    let platformSchemaProvisioned = false;
-    let admissionsSchemaProvisioned = false;
+    return platformCache.getOrLoadHealthSnapshot(async () => {
+      const start = Date.now();
+      let databaseConnected = false;
+      let dbLatencyMs: number | null = null;
+      let platformSchemaProvisioned = false;
+      let admissionsSchemaProvisioned = false;
 
-    const redisConfigured = Boolean(
-      process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
-    );
+      const redisConfigured = Boolean(
+        process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
+      );
 
-    const [dbCheckResult, redisHealth] = await Promise.all([
-      (async () => {
-        if (!(await authRepository.canUsePrismaForPlatform())) return;
-        try {
-          await runPlatformTx(async (tx) => {
-            const caps = await getPlatformSchemaCaps(tx);
-            platformSchemaProvisioned =
-              caps.hasSchoolSaasCols &&
-              caps.hasInvoicesTable &&
-              caps.hasTicketsTable &&
-              caps.hasAnnouncementsTable;
-            admissionsSchemaProvisioned = caps.hasFeeLedgers && caps.hasFeePayments;
-          });
-          databaseConnected = true;
-          dbLatencyMs = Date.now() - start;
-        } catch {
-          databaseConnected = false;
-        }
-      })(),
-      checkRedisHealth().catch(() => null),
-    ]);
-    void dbCheckResult;
+      const [dbCheckResult, redisHealth] = await Promise.all([
+        (async () => {
+          if (!(await authRepository.canUsePrismaForPlatform())) return;
+          try {
+            await runPlatformTx(async (tx) => {
+              const caps = await getPlatformSchemaCaps(tx);
+              platformSchemaProvisioned =
+                caps.hasSchoolSaasCols &&
+                caps.hasInvoicesTable &&
+                caps.hasTicketsTable &&
+                caps.hasAnnouncementsTable;
+              admissionsSchemaProvisioned = caps.hasFeeLedgers && caps.hasFeePayments;
+            });
+            databaseConnected = true;
+            dbLatencyMs = Date.now() - start;
+          } catch {
+            databaseConnected = false;
+          }
+        })(),
+        checkRedisHealth().catch(() => null),
+      ]);
+      void dbCheckResult;
 
-    const nowIso = new Date().toISOString();
-    return {
-      databaseConnected,
-      dbLatencyMs,
-      redisConfigured,
-      redisLatencyMs:
-        redisHealth && redisHealth.provider !== "unconfigured" ? redisHealth.latencyMs : null,
-      avgApiResponseMs: Date.now() - start,
-      blockedRequests24h: 0,
-      lastCheckedIso: nowIso,
-      platformSchemaProvisioned,
-      admissionsSchemaProvisioned,
-      serverTimeIso: nowIso,
-      environment: process.env.NODE_ENV || "development",
-    };
+      const nowIso = new Date().toISOString();
+      return {
+        databaseConnected,
+        dbLatencyMs,
+        redisConfigured,
+        redisLatencyMs:
+          redisHealth && redisHealth.provider !== "unconfigured" ? redisHealth.latencyMs : null,
+        avgApiResponseMs: Date.now() - start,
+        blockedRequests24h: 0,
+        lastCheckedIso: nowIso,
+        platformSchemaProvisioned,
+        admissionsSchemaProvisioned,
+        serverTimeIso: nowIso,
+        environment: process.env.NODE_ENV || "development",
+      };
+    });
   },
 
   async getOverview(periodDays: PlatformOverviewPeriodDays = 30): Promise<PlatformOverviewData> {
@@ -2100,10 +2170,11 @@ export const platformRepository = {
     overview: PlatformOverviewData;
     schools: PlatformSchoolEntry[];
   }> {
-    const reqStart = Date.now();
-    const redisConfigured = Boolean(
-      process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
-    );
+    return platformCache.getOrLoadOverviewWithSchools(periodDays, async () => {
+      const reqStart = Date.now();
+      const redisConfigured = Boolean(
+        process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
+      );
 
     let schools: PlatformSchoolEntry[];
     let invoices: PlatformInvoiceRecord[];
@@ -2420,5 +2491,6 @@ export const platformRepository = {
       },
     };
     return { overview, schools };
+    });
   },
 };

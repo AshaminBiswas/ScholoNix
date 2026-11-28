@@ -230,4 +230,34 @@ export const systemCache = {
   async del(key: string): Promise<void> {
     await delCachedByFullKey(buildSystemCacheKey(key));
   },
+
+  /**
+   * Atomically increments a numeric counter in Redis (or L1 store fallback) and ensures TTL.
+   * Used for O(1) cache-namespace version bumping without SCAN/KEYS.
+   */
+  async incrVersion(key: string, ttlSeconds: number = 86_400): Promise<number> {
+    const fullKey = buildSystemCacheKey(key);
+    delL1Cached(fullKey);
+    try {
+      if (upstashRedis) {
+        const nextVal = await withFastRedisTimeout(upstashRedis.incr(fullKey));
+        await withFastRedisTimeout(upstashRedis.expire(fullKey, ttlSeconds));
+        setL1Cached(fullKey, nextVal, Math.min(ttlSeconds, L1_CACHE_MAX_TTL_SECONDS));
+        return Number(nextVal) || 1;
+      }
+
+      if (process.env.NODE_ENV !== "test" && !isLocalRedisCircuitOpen()) {
+        const nextVal = await withFastRedisTimeout(redis.incr(fullKey));
+        await withFastRedisTimeout(redis.expire(fullKey, ttlSeconds));
+        setL1Cached(fullKey, nextVal, Math.min(ttlSeconds, L1_CACHE_MAX_TTL_SECONDS));
+        return Number(nextVal) || 1;
+      }
+    } catch {
+      tripLocalRedisCircuit();
+    }
+
+    const fallbackNext = Math.max(2, Math.floor(Date.now() % 1_000_000));
+    setL1Cached(fullKey, fallbackNext, Math.min(ttlSeconds, L1_CACHE_MAX_TTL_SECONDS));
+    return fallbackNext;
+  },
 };

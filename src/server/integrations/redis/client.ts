@@ -70,6 +70,8 @@ export function createUpstashRedisClient(
   return new UpstashRedis({
     url: config.url,
     token: config.token,
+    enableAutoPipelining: true,
+    readYourWrites: true,
   });
 }
 

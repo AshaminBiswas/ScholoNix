@@ -26,8 +26,14 @@ A production-oriented **Multi-Tenant School Management SaaS** foundation built o
 - [Tenant Isolation](docs/security/tenant-isolation.md)
 - [RBAC Architecture](docs/security/rbac-architecture.md)
 - [API Architecture](docs/api/api-architecture.md)
+- [Swagger & OpenAPI Guide](docs/api/swagger-api-guide.md) (`/api-docs` & [openapi.json](docs/api/openapi.json))
+- [School User & Operations Guide](docs/school-user-guide.md)
 - [Testing Strategy](docs/testing/testing-strategy.md)
 - [Deployment Architecture](docs/deployment/deployment-architecture.md)
+
+## License
+
+This project is licensed under the **MIT License** — see [LICENSE](LICENSE).
 
 ## Local Setup Prerequisites
 
