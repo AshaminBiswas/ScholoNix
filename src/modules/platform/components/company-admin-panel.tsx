@@ -58,6 +58,7 @@ import {
 import { PlatformOverviewTab } from "./platform-overview-tab";
 import { PlatformSchoolsTab } from "./platform-schools-tab";
 import { PlatformStudentsGlobalTab } from "./platform-students-global-tab";
+import { PlatformPromotionsGlobalTab } from "./platform-promotions-global-tab";
 import { PlatformAdminsTab } from "./platform-admins-tab";
 import { PlatformSettingsTab } from "./platform-settings-tab";
 import { PlatformProvisionSchoolModal } from "./platform-provision-modal";
@@ -463,7 +464,7 @@ export function CompanyAdminPanel({
                   setClientsMenuOpen((v) => !v);
                 }
               }}
-              className={navBtnCls(activeTab === "schools" || activeTab === "users" || activeTab === "students")}
+              className={navBtnCls(activeTab === "schools" || activeTab === "users" || activeTab === "students" || activeTab === "promotions")}
             >
               <span className="flex items-center gap-2.5 min-w-0">
                 <Briefcase className="h-4 w-4 shrink-0" />
@@ -474,7 +475,7 @@ export function CompanyAdminPanel({
                   {schools.length > 0 && (
                     <span
                       className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
-                        activeTab === "schools" || activeTab === "users" || activeTab === "students"
+                        activeTab === "schools" || activeTab === "users" || activeTab === "students" || activeTab === "promotions"
                           ? "bg-white/20 text-white"
                           : "bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]"
                       }`}
@@ -542,6 +543,21 @@ export function CompanyAdminPanel({
                 >
                   <GraduationCap className="h-3 w-3 shrink-0" />
                   <span className="truncate">Students</span>
+                </button>
+
+                <button
+                  type="button"
+                  title="Promotions"
+                  aria-current={activeTab === "promotions" ? "page" : undefined}
+                  onClick={() => navigateTab("promotions")}
+                  className={`w-full flex items-center gap-1.5 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
+                    activeTab === "promotions"
+                      ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
+                      : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
+                  }`}
+                >
+                  <TrendingUp className="h-3 w-3 shrink-0" />
+                  <span className="truncate">Promotions</span>
                 </button>
               </div>
             )}
@@ -1074,6 +1090,24 @@ export function CompanyAdminPanel({
                   schoolId: targetSchoolId,
                   schoolSubTab: "students",
                   studentId: targetStudentId ?? null,
+                });
+              }}
+            />
+          )}
+
+          {activeTab === "promotions" && (
+            <PlatformPromotionsGlobalTab
+              onOpenSchoolPromotions={(targetSchoolId) => {
+                setActiveTab("schools");
+                setSelectedSchoolId(targetSchoolId);
+                setSchoolSubTab("promotions");
+                setSelectedStudentId(null);
+                setClientsMenuOpen(true);
+                syncBrowserRoute({
+                  tab: "schools",
+                  schoolId: targetSchoolId,
+                  schoolSubTab: "promotions",
+                  studentId: null,
                 });
               }}
             />

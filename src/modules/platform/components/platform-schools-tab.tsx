@@ -33,6 +33,7 @@ import {
   Settings2,
   ShieldCheck,
   Trash2,
+  TrendingUp,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -59,6 +60,7 @@ import {
 import { PlatformProvisionSchoolModal } from "./platform-provision-modal";
 import type { SchoolSubTab } from "@/modules/platform/routing";
 import { StudentManagementWorkspace } from "@/modules/students/components/student-management-workspace";
+import { StudentPromotionSuite } from "@/modules/students/components/promotions/student-promotion-suite";
 import type {
   StudentDashboardAnalytics,
   StudentWorkspaceSnapshot,
@@ -1153,6 +1155,7 @@ export function PlatformSchoolsTab({
                   { id: "plan", label: "Plan & Modules", icon: Settings2 },
                   { id: "users", label: "Users & Sessions", icon: Users },
                   { id: "students", label: "Students & Parents", icon: GraduationCap },
+                  { id: "promotions", label: "Promotions", icon: TrendingUp },
                   { id: "admissions", label: "Admissions Data", icon: Database },
                   { id: "fees", label: "Fee Ledgers", icon: IndianRupee },
                   { id: "audit", label: "Audit Trail", icon: FileText },
@@ -3204,6 +3207,25 @@ export function PlatformSchoolsTab({
                     </div>
                   </div>
                 )
+              )}
+
+              {/* SUB-TAB 4B: TENANT PROMOTION SUITE */}
+              {subTab === "promotions" && (
+                <div className="rounded-[18px] border border-[#DDD6FE] bg-[#FAF8FE]/70 p-4 sm:p-5 dark:border-[#2E2A5C] dark:bg-[#10142C]/80">
+                  <StudentPromotionSuite
+                    mode="platform"
+                    schoolId={selectedEntry.school.id}
+                    grades={studentSuiteData?.snapshot.grades ?? []}
+                    academicYears={studentSuiteData?.snapshot.academicYears ?? ["2025-2026"]}
+                    sections={studentSuiteData?.snapshot.sections ?? ["A", "B", "C"]}
+                    canPromote
+                    canManageSettings
+                    onOpenStudentProfile={(stuId) => {
+                      setActiveStudentId(stuId);
+                      setSubTab("students");
+                    }}
+                  />
+                </div>
               )}
 
               {/* SUB-TAB 5: ADMISSIONS & SETTINGS DATA EXPLORER */}

@@ -54,10 +54,10 @@ import {
 import { StudentProfileDossier } from "@/modules/students/components/student-profile-dossier";
 import {
   StudentGroupsPanel,
-  StudentPromotionPanel,
   StudentSettingsPanel,
   StudentTransferPanel,
 } from "@/modules/students/components/student-lifecycle-tabs";
+import { StudentPromotionSuite } from "@/modules/students/components/promotions/student-promotion-suite";
 
 const SECTION_META: Record<
   StudentNavSection,
@@ -332,42 +332,6 @@ export function StudentManagementWorkspace({
     setFeedback({
       kind: "ok",
       text: `Imported ${data.importedCount ?? rows.length} student record(s).`,
-    });
-  };
-
-  const handlePromote = async (payload: {
-    studentIds: string[];
-    targetAcademicYear: string;
-    targetGrade: string;
-    targetSection: string;
-    mode: "PROMOTE" | "RETAIN" | "GRADUATE_ALUMNI";
-    remarks?: string;
-  }) => {
-    const url = mode === "platform" ? apiBase : `${apiBase}/promote`;
-    const bodyPayload = {
-      studentIds: payload.studentIds,
-      toAcademicYear: payload.targetAcademicYear,
-      toGrade: payload.targetGrade,
-      toSection: payload.targetSection,
-      markAsAlumni: payload.mode === "GRADUATE_ALUMNI",
-      remarks: payload.remarks,
-    };
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        mode === "platform" ? { action: "PROMOTE", ...bodyPayload } : bodyPayload,
-      ),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setFeedback({ kind: "err", text: data.error || "Promotion failed." });
-      return;
-    }
-    await reloadWorkspace();
-    setFeedback({
-      kind: "ok",
-      text: `Updated ${data.promotedCount ?? payload.studentIds.length} student record(s).`,
     });
   };
 
@@ -1318,13 +1282,18 @@ export function StudentManagementWorkspace({
 
       {/* PROMOTION */}
       {activeSection === "promotion" && (
-        <StudentPromotionPanel
-          students={snapshot.students}
-          academicYears={snapshot.academicYears}
+        <StudentPromotionSuite
+          mode={mode}
+          schoolId={schoolId}
           grades={snapshot.grades}
+          academicYears={snapshot.academicYears}
           sections={snapshot.sections}
           canPromote={permissions.canPromote}
-          onPromote={handlePromote}
+          canManageSettings={permissions.canManageSettings}
+          onOpenStudentProfile={(id) => navigateSection("profile", id)}
+          onPromoted={() => {
+            void reloadWorkspace();
+          }}
         />
       )}
 

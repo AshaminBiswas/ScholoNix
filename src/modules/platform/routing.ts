@@ -6,6 +6,7 @@ export type SchoolSubTab =
   | "plan"
   | "users"
   | "students"
+  | "promotions"
   | "admissions"
   | "fees"
   | "audit";
@@ -44,6 +45,7 @@ function normalizeSchoolSubTab(raw?: string): SchoolSubTab {
   if (s === "plan" || s === "subscription" || s === "modules") return "plan";
   if (s === "users" || s === "user") return "users";
   if (s === "students" || s === "student") return "students";
+  if (s === "promotions" || s === "promotion") return "promotions";
   if (s === "admissions" || s === "admission") return "admissions";
   if (s === "fees" || s === "fee") return "fees";
   if (s === "audit") return "audit";
@@ -74,6 +76,9 @@ export function parsePlatformSubSegments(segments?: string[]): PlatformRouteStat
     }
     if (second === "students" || second === "student") {
       return { tab: "students", schoolId: null, schoolSubTab: "all", studentId: null };
+    }
+    if (second === "promotions" || second === "promotion") {
+      return { tab: "promotions", schoolId: null, schoolSubTab: "all", studentId: null };
     }
     if (second === "schools" || second === "school" || !second) {
       const schoolId = clean[2] || null;
@@ -127,6 +132,7 @@ export function buildPlatformRouteUrl(basePath: string, state: PlatformRouteStat
   if (state.tab === "overview") return base;
   if (state.tab === "users") return `${base}/clients/users`;
   if (state.tab === "students") return `${base}/clients/students`;
+  if (state.tab === "promotions") return `${base}/clients/promotions`;
   if (state.tab === "schools") {
     if (!state.schoolId) return `${base}/clients/schools`;
     const encodedSchoolId = encodeURIComponent(state.schoolId);

@@ -11,6 +11,7 @@ export type PlatformTab =
   | "schools"
   | "users"
   | "students"
+  | "promotions"
   | "sales"
   | "documents"
   | "reports"

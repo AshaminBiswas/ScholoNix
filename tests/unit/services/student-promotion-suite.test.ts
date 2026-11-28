@@ -1,0 +1,225 @@
+import { describe, expect, it, vi } from "vitest";
+import { studentService } from "@/server/school/student-service";
+import { studentPromotionService } from "@/server/school/student-promotion-service";
+import { studentPromotionRepository } from "@/server/school/student-promotion-repository";
+import {
+  buildPlatformRouteUrl,
+  parsePlatformSubSegments,
+} from "@/modules/platform/routing";
+
+describe("Student Promotion Suite service, performance, caching, RBAC & routing", () => {
+  const schoolA = "11111111-1111-4111-8111-aaaaaaaaaaa1";
+  const schoolB = "22222222-2222-4222-8222-bbbbbbbbbbb2";
+
+  const principalA = {
+    userId: "user-principal-a",
+    userName: "Principal A",
+    role: "PRINCIPAL",
+    schoolId: schoolA,
+    schoolSlug: "school-a",
+    schoolName: "School A",
+  };
+
+  const teacherA = {
+    userId: "user-teacher-a",
+    userName: "Teacher A",
+    role: "TEACHER",
+    schoolId: schoolA,
+    schoolSlug: "school-a",
+    schoolName: "School A",
+  };
+
+  const principalB = {
+    userId: "user-principal-b",
+    userName: "Principal B",
+    role: "PRINCIPAL",
+    schoolId: schoolB,
+    schoolSlug: "school-b",
+    schoolName: "School B",
+  };
+
+  const platformAdminA = {
+    userId: "platform-admin-1",
+    userName: "Platform Super Admin",
+    role: "PLATFORM_SUPER_ADMIN",
+    schoolId: schoolA,
+  };
+
+  it("enforces RBAC so teachers cannot promote or modify promotion rules", async () => {
+    const stu = await studentService.createStudent(principalA, {
+      studentName: "Kabir Rao",
+      academicYear: "2025-2026",
+      grade: "Class V",
+      section: "A",
+      status: "ACTIVE",
+      admissionType: "FRESH",
+      gender: "Male",
+      guardianName: "Vikram Rao",
+      guardianRelation: "Father",
+      guardianPhone: "9810001001",
+    });
+
+    await expect(
+      studentPromotionService.executeBatch(teacherA, {
+        studentIds: [stu.id],
+        academicYear: "2025-2026",
+        toAcademicYear: "2026-2027",
+        toGrade: "Class VI",
+        toSection: "A",
+        decision: "PROMOTE",
+        dryRun: false,
+      }),
+    ).rejects.toThrow();
+
+    await expect(
+      studentPromotionService.saveRulesAndSettings(teacherA, {
+        academicYear: "2025-2026",
+        settings: { minResultPct: 40 },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("executes 500-student promotion batch via O(1) path, preserves tenant isolation, and handles dryRun + alumni", async () => {
+    const createdIds: string[] = [];
+    for (let i = 0; i < 500; i += 1) {
+      const stu = await studentService.createStudent(principalA, {
+        studentName: `Student Batch ${i + 1}`,
+        academicYear: "2025-2026",
+        grade: "Class V",
+        section: i % 2 === 0 ? "A" : "B",
+        status: "ACTIVE",
+        admissionType: "FRESH",
+        gender: i % 2 === 0 ? "Male" : "Female",
+        guardianName: `Parent ${i + 1}`,
+        guardianRelation: "Father",
+        guardianPhone: `980000${String(i).padStart(4, "0")}`,
+      });
+      createdIds.push(stu.id);
+    }
+
+    // Dry-run first: zero state mutation
+    const dryRunRes = await studentPromotionService.executeBatch(principalA, {
+      studentIds: createdIds.slice(0, 100),
+      academicYear: "2025-2026",
+      toAcademicYear: "2026-2027",
+      toGrade: "Class VI",
+      toSection: "A",
+      decision: "PROMOTE",
+      dryRun: true,
+    });
+    expect(dryRunRes.dryRun).toBe(true);
+    expect(dryRunRes.promotedCount).toBe(100);
+
+    const stillBefore = await studentService.getStudentDetail(principalA, createdIds[0]!);
+    expect(stillBefore.currentGrade).toBe("Class V");
+
+    // Actual 490 promoted + 5 retained + 5 alumni batch
+    const t0 = performance.now();
+    const promoteRes = await studentPromotionService.executeBatch(principalA, {
+      studentIds: createdIds.slice(0, 490),
+      academicYear: "2025-2026",
+      toAcademicYear: "2026-2027",
+      toGrade: "Class VI",
+      toSection: "A",
+      decision: "PROMOTE",
+      dryRun: false,
+      remarks: "Annual progression batch",
+    });
+    const retainRes = await studentPromotionService.executeBatch(principalA, {
+      studentIds: createdIds.slice(490, 495),
+      academicYear: "2025-2026",
+      toAcademicYear: "2026-2027",
+      toGrade: "Class V",
+      toSection: "A",
+      decision: "RETAIN",
+      dryRun: false,
+    });
+    const alumniRes = await studentPromotionService.executeBatch(principalA, {
+      studentIds: createdIds.slice(495, 500),
+      academicYear: "2025-2026",
+      toAcademicYear: "2026-2027",
+      toGrade: "Alumni",
+      toSection: "A",
+      decision: "ALUMNI",
+      dryRun: false,
+    });
+    const elapsedMs = performance.now() - t0;
+
+    expect(promoteRes.promotedCount).toBe(490);
+    expect(retainRes.retainedCount).toBe(5);
+    expect(alumniRes.alumniCount).toBe(5);
+    expect(elapsedMs).toBeLessThan(2000);
+
+    // Tenant isolation check: schoolB cannot see schoolA students or batches
+    const overviewB = await studentPromotionService.getOverview(principalB);
+    expect(overviewB.decisions.some((d) => createdIds.includes(d.studentId))).toBe(false);
+
+    // Platform Admin can inspect schoolA batches and rules cleanly
+    const overviewA = await studentPromotionService.getOverview(platformAdminA);
+    expect(overviewA.batches.length).toBeGreaterThanOrEqual(3);
+    expect(overviewA.kpis.promotedCount).toBeGreaterThanOrEqual(490);
+  });
+
+  it("caches overview reads and invalidates version cleanly after rules update", async () => {
+    const spy = vi.spyOn(studentPromotionRepository, "getOverview");
+    await studentPromotionService.getOverview(principalA, { academicYear: "2025-2026" });
+    await studentPromotionService.saveRulesAndSettings(principalA, {
+      academicYear: "2025-2026",
+      rules: [
+        {
+          fromGrade: "Class V",
+          toGrade: "Class VI",
+          markAsAlumni: false,
+          defaultSectionMode: "KEEP_SAME",
+          targetSection: null,
+          minResultPct: 40,
+          minAttendancePct: 75,
+          maxFailedSubjects: 1,
+          isActive: true,
+        },
+      ],
+      settings: {
+        finalGradeForAlumni: "Class XII",
+        autoAssignRollNumbers: true,
+        minResultPct: 40,
+        minAttendancePct: 75,
+        lockPromotionAfterPublish: false,
+        notifyParentsOnPromotion: true,
+        requirePendingFeeClearance: false,
+      },
+    });
+    const updated = await studentPromotionService.getOverview(principalA, {
+      academicYear: "2025-2026",
+    });
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(updated.rules.some((r) => r.fromGrade === "Class V" && r.minResultPct === 40)).toBe(true);
+    expect(updated.settings.minResultPct).toBe(40);
+    spy.mockRestore();
+  });
+
+  it("parses and builds /clients/promotions and /clients/schools/:id/promotions URLs", () => {
+    const globalRoute = parsePlatformSubSegments(["clients", "promotions"]);
+    expect(globalRoute.tab).toBe("promotions");
+    expect(
+      buildPlatformRouteUrl("/admin", {
+        tab: "promotions",
+        schoolId: null,
+        schoolSubTab: "all",
+        studentId: null,
+      }),
+    ).toBe("/admin/clients/promotions");
+
+    const schoolPromoRoute = parsePlatformSubSegments([
+      "clients",
+      "schools",
+      schoolA,
+      "promotions",
+    ]);
+    expect(schoolPromoRoute.tab).toBe("schools");
+    expect(schoolPromoRoute.schoolId).toBe(schoolA);
+    expect(schoolPromoRoute.schoolSubTab).toBe("promotions");
+    expect(buildPlatformRouteUrl("/admin", schoolPromoRoute)).toBe(
+      `/admin/clients/schools/${schoolA}/promotions`,
+    );
+  });
+});

@@ -141,6 +141,9 @@ model School {
   studentHomeworkItems          StudentHomeworkItem[]
   studentCoCurricularActivities StudentCoCurricularActivity[]
   studentNoteRemarks            StudentNoteRemark[]
+  studentPromotionRules         StudentPromotionRule[]
+  studentPromotionBatches       StudentPromotionBatch[]
+  studentPromotionDecisions     StudentPromotionDecision[]
 
   @@index([status])
   @@index([plan])
@@ -750,6 +753,7 @@ model Student {
   homeworkItems          StudentHomeworkItem[]
   coCurricularActivities StudentCoCurricularActivity[]
   notesRemarks           StudentNoteRemark[]
+  promotionDecisions     StudentPromotionDecision[]
 
   @@unique([schoolId, admissionNumber])
   @@index([schoolId, status, currentGrade, currentSection])
@@ -1032,6 +1036,82 @@ model StudentNoteRemark {
 
   @@index([schoolId, studentId, tabScope, createdAt])
   @@map("student_notes_remarks")
+}
+
+model StudentPromotionRule {
+  id                 String   @id @default(uuid()) @db.Uuid
+  schoolId           String   @map("school_id") @db.Uuid
+  academicYear       String   @map("academic_year") @db.VarChar(30)
+  fromGrade          String   @map("from_grade") @db.VarChar(60)
+  toGrade            String   @map("to_grade") @db.VarChar(60)
+  markAsAlumni       Boolean  @default(false) @map("mark_as_alumni")
+  defaultSectionMode String   @default("KEEP_SAME") @map("default_section_mode") @db.VarChar(30)
+  targetSection      String?  @map("target_section") @db.VarChar(20)
+  minResultPct       Float    @default(35) @map("min_result_pct")
+  minAttendancePct   Float    @default(75) @map("min_attendance_pct")
+  maxFailedSubjects  Int      @default(0) @map("max_failed_subjects")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, academicYear, fromGrade])
+  @@index([schoolId, academicYear, isActive])
+  @@map("student_promotion_rules")
+}
+
+model StudentPromotionBatch {
+  id              String    @id @default(uuid()) @db.Uuid
+  schoolId        String    @map("school_id") @db.Uuid
+  academicYear    String    @map("academic_year") @db.VarChar(30)
+  toAcademicYear  String    @map("to_academic_year") @db.VarChar(30)
+  fromGrade       String?   @map("from_grade") @db.VarChar(60)
+  toGrade         String?   @map("to_grade") @db.VarChar(60)
+  totalEligible   Int       @default(0) @map("total_eligible")
+  promotedCount   Int       @default(0) @map("promoted_count")
+  retainedCount   Int       @default(0) @map("retained_count")
+  pendingCount    Int       @default(0) @map("pending_count")
+  alumniCount     Int       @default(0) @map("alumni_count")
+  status          String    @default("COMPLETED") @db.VarChar(30) // COMPLETED | IN_PROGRESS | DRY_RUN
+  triggeredByName String    @map("triggered_by_name") @db.VarChar(150)
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz(6)
+  remarks         String?   @db.VarChar(255)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  school    School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  decisions StudentPromotionDecision[]
+
+  @@index([schoolId, academicYear, completedAt])
+  @@index([schoolId, fromGrade, toGrade])
+  @@map("student_promotion_batches")
+}
+
+model StudentPromotionDecision {
+  id            String   @id @default(uuid()) @db.Uuid
+  schoolId      String   @map("school_id") @db.Uuid
+  batchId       String?  @map("batch_id") @db.Uuid
+  studentId     String   @map("student_id") @db.Uuid
+  academicYear  String   @map("academic_year") @db.VarChar(30)
+  fromGrade     String   @map("from_grade") @db.VarChar(60)
+  fromSection   String   @map("from_section") @db.VarChar(20)
+  toGrade       String   @map("to_grade") @db.VarChar(60)
+  toSection     String   @map("to_section") @db.VarChar(20)
+  resultGrade   String?  @map("result_grade") @db.VarChar(10)
+  resultPct     Float?   @map("result_pct")
+  attendancePct Float?   @map("attendance_pct")
+  status        String   @default("PENDING") @db.VarChar(30) // PROMOTED | PENDING | NOT_PROMOTED | ALUMNI
+  remarks       String?  @db.VarChar(255)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  batch   StudentPromotionBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  student Student                @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, studentId, academicYear])
+  @@index([schoolId, academicYear, fromGrade, status])
+  @@map("student_promotion_decisions")
 }
 
 // =============================================================================

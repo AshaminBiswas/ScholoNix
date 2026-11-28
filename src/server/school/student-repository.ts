@@ -980,93 +980,104 @@ class StudentRepository extends BaseTenantRepository {
         schoolId,
         async (tx) => {
           if (!(await hasStudentTables(tx))) return null;
-          let count = 0;
 
-          for (const studentId of input.studentIds) {
-            const stu = await (tx as any).student.findFirst({
-              where: { id: studentId, schoolId },
-              include: { enrollments: { where: { isCurrent: true }, take: 1 } },
-            });
-            if (!stu) continue;
+          // O(1) batch load instead of N+1 sequential loop
+          const targetStudents = (await (tx as any).student.findMany({
+            where: { id: { in: input.studentIds }, schoolId },
+            select: {
+              id: true,
+              studentName: true,
+              currentGrade: true,
+              enrollments: {
+                where: { isCurrent: true },
+                select: { id: true },
+                take: 1,
+              },
+            },
+          })) as Array<{
+            id: string;
+            studentName: string;
+            currentGrade: string;
+            enrollments: Array<{ id: string }>;
+          }>;
 
-            const prevEnrollment = stu.enrollments[0];
-            if (prevEnrollment) {
-              await (tx as any).studentEnrollment.update({
-                where: { id: prevEnrollment.id },
-                data: {
-                  isCurrent: false,
-                  status: input.markAsAlumni ? "GRADUATED" : "PROMOTED",
-                  effectiveTo: now,
-                  remarks: input.remarks ?? `Promoted to ${input.toGrade}`,
-                },
-              });
-            }
+          if (targetStudents.length === 0) {
+            return { promotedCount: 0 };
+          }
 
-            if (input.markAsAlumni) {
-              await (tx as any).student.update({
-                where: { id: studentId },
-                data: {
-                  status: "ALUMNI",
-                  graduationYear: input.toAcademicYear,
-                },
-              });
-            } else {
-              await (tx as any).student.update({
-                where: { id: studentId },
-                data: {
-                  status: "ACTIVE",
-                  currentAcademicYear: input.toAcademicYear,
-                  currentGrade: input.toGrade,
-                  currentSection: input.toSection,
-                },
-              });
+          const validIds = targetStudents.map((s) => s.id);
+          const actorUuid =
+            actor.userId && UUID_REGEX.test(actor.userId) ? actor.userId : null;
 
-              await (tx as any).studentEnrollment.upsert({
-                where: {
-                  schoolId_studentId_academicYear: {
-                    schoolId,
-                    studentId,
-                    academicYear: input.toAcademicYear,
-                  },
-                },
-                update: {
-                  grade: input.toGrade,
-                  section: input.toSection,
-                  status: "ENROLLED",
-                  isCurrent: true,
-                  promotedFromEnrollmentId: prevEnrollment?.id ?? null,
-                  effectiveFrom: now,
-                  effectiveTo: null,
-                },
-                create: {
-                  schoolId,
-                  studentId,
-                  academicYear: input.toAcademicYear,
-                  grade: input.toGrade,
-                  section: input.toSection,
-                  status: "ENROLLED",
-                  isCurrent: true,
-                  promotedFromEnrollmentId: prevEnrollment?.id ?? null,
-                  effectiveFrom: now,
-                },
-              });
-            }
+          // 1. Bulk close previous current enrollments
+          await (tx as any).studentEnrollment.updateMany({
+            where: { schoolId, studentId: { in: validIds }, isCurrent: true },
+            data: {
+              isCurrent: false,
+              status: input.markAsAlumni ? "GRADUATED" : "PROMOTED",
+              effectiveTo: now,
+              remarks: input.remarks ?? `Promoted to ${input.toGrade}`,
+            },
+          });
 
-            await (tx as any).studentActivity.create({
+          // 2. Bulk update student records
+          if (input.markAsAlumni) {
+            await (tx as any).student.updateMany({
+              where: { schoolId, id: { in: validIds } },
               data: {
-                schoolId,
-                studentId,
-                actorId: actor.userId && UUID_REGEX.test(actor.userId) ? actor.userId : null,
-                actorName: actor.userName,
-                actionType: input.markAsAlumni ? "STUDENT_GRADUATED" : "STUDENT_PROMOTED",
-                summary: input.markAsAlumni
-                  ? `${stu.studentName} graduated to Alumni (${input.toAcademicYear}).`
-                  : `${stu.studentName} promoted from ${stu.currentGrade} to ${input.toGrade} - ${input.toSection}.`,
+                status: "ALUMNI",
+                graduationYear: input.toAcademicYear,
               },
             });
-            count += 1;
+          } else {
+            await (tx as any).student.updateMany({
+              where: { schoolId, id: { in: validIds } },
+              data: {
+                status: "ACTIVE",
+                currentAcademicYear: input.toAcademicYear,
+                currentGrade: input.toGrade,
+                currentSection: input.toSection,
+              },
+            });
+
+            // 3. Bulk idempotent replace for target academicYear enrollments
+            await (tx as any).studentEnrollment.deleteMany({
+              where: {
+                schoolId,
+                academicYear: input.toAcademicYear,
+                studentId: { in: validIds },
+              },
+            });
+            await (tx as any).studentEnrollment.createMany({
+              data: targetStudents.map((stu) => ({
+                schoolId,
+                studentId: stu.id,
+                academicYear: input.toAcademicYear,
+                grade: input.toGrade,
+                section: input.toSection,
+                status: "ENROLLED",
+                isCurrent: true,
+                promotedFromEnrollmentId: stu.enrollments[0]?.id ?? null,
+                effectiveFrom: now,
+              })),
+            });
           }
-          return { promotedCount: count };
+
+          // 4. Bulk activity audit trail
+          await (tx as any).studentActivity.createMany({
+            data: targetStudents.map((stu) => ({
+              schoolId,
+              studentId: stu.id,
+              actorId: actorUuid,
+              actorName: actor.userName,
+              actionType: input.markAsAlumni ? "STUDENT_GRADUATED" : "STUDENT_PROMOTED",
+              summary: input.markAsAlumni
+                ? `${stu.studentName} graduated to Alumni (${input.toAcademicYear}).`
+                : `${stu.studentName} promoted from ${stu.currentGrade} to ${input.toGrade} - ${input.toSection}.`,
+            })),
+          });
+
+          return { promotedCount: targetStudents.length };
         },
         options,
       );
