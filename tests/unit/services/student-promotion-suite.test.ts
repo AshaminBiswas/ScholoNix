@@ -150,9 +150,10 @@ describe("Student Promotion Suite service, performance, caching, RBAC & routing"
     expect(alumniRes.alumniCount).toBe(5);
     expect(elapsedMs).toBeLessThan(2000);
 
-    // Tenant isolation check: schoolB cannot see schoolA students or batches
+    // Tenant isolation check: schoolB cannot see schoolA students or batches, and starts with 0 default rules
     const overviewB = await studentPromotionService.getOverview(principalB);
     expect(overviewB.decisions.some((d) => createdIds.includes(d.studentId))).toBe(false);
+    expect(overviewB.rules).toHaveLength(0);
 
     // Platform Admin can inspect schoolA batches and rules cleanly
     const overviewA = await studentPromotionService.getOverview(platformAdminA);

@@ -144,6 +144,9 @@ model School {
   studentPromotionRules         StudentPromotionRule[]
   studentPromotionBatches       StudentPromotionBatch[]
   studentPromotionDecisions     StudentPromotionDecision[]
+  guardians                     Guardian[]
+  studentGuardianLinks          StudentGuardianLink[]
+  guardianCommunications        GuardianCommunication[]
 
   @@index([status])
   @@index([plan])
@@ -754,6 +757,8 @@ model Student {
   coCurricularActivities StudentCoCurricularActivity[]
   notesRemarks           StudentNoteRemark[]
   promotionDecisions     StudentPromotionDecision[]
+  guardianLinks          StudentGuardianLink[]
+  guardianCommunications GuardianCommunication[]
 
   @@unique([schoolId, admissionNumber])
   @@index([schoolId, status, currentGrade, currentSection])
@@ -1118,6 +1123,100 @@ model StudentPromotionDecision {
   @@unique([schoolId, studentId, academicYear])
   @@index([schoolId, academicYear, fromGrade, status])
   @@map("student_promotion_decisions")
+}
+
+// =============================================================================
+// PARENTS & GUARDIANS MANAGEMENT MODELS
+// =============================================================================
+
+model Guardian {
+  id                 String   @id @default(uuid()) @db.Uuid
+  schoolId           String   @map("school_id") @db.Uuid
+  userId             String?  @map("user_id") @db.Uuid
+  fullName           String   @map("full_name") @db.VarChar(255)
+  phone              String   @db.VarChar(30)
+  normalizedPhone    String?  @map("normalized_phone") @db.VarChar(30)
+  alternatePhone     String?  @map("alternate_phone") @db.VarChar(30)
+  email              String?  @db.VarChar(255)
+  occupation         String?  @db.VarChar(150)
+  employer           String?  @db.VarChar(180)
+  education          String?  @db.VarChar(150)
+  preferredLanguage  String?  @default("English") @map("preferred_language") @db.VarChar(60)
+  addressJson        Json?    @map("address_json") @db.JsonB
+  idProofType        String?  @map("id_proof_type") @db.VarChar(60)
+  idProofMasked      String?  @map("id_proof_masked") @db.VarChar(60)
+  photoKey           String?  @map("photo_key") @db.VarChar(500)
+  phoneVerified      Boolean  @default(false) @map("phone_verified")
+  emailVerified      Boolean  @default(false) @map("email_verified")
+  portalStatus       String   @default("NOT_INVITED") @map("portal_status") @db.VarChar(30) // NOT_INVITED | INVITED | ACTIVE | SUSPENDED
+  portalInvitedAt    DateTime? @map("portal_invited_at") @db.Timestamptz(6)
+  status             String   @default("ACTIVE") @db.VarChar(30) // ACTIVE | INACTIVE | ARCHIVED
+  communicationPrefs Json?    @map("communication_prefs") @db.JsonB
+  notes              String?  @db.Text
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school         School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentLinks   StudentGuardianLink[]
+  communications GuardianCommunication[]
+
+  @@unique([schoolId, normalizedPhone])
+  @@index([schoolId, status, portalStatus])
+  @@index([schoolId, email])
+  @@index([schoolId, userId])
+  @@map("guardians")
+}
+
+model StudentGuardianLink {
+  id                    String    @id @default(uuid()) @db.Uuid
+  schoolId              String    @map("school_id") @db.Uuid
+  studentId             String    @map("student_id") @db.Uuid
+  guardianId            String    @map("guardian_id") @db.Uuid
+  relation              String    @default("Parent") @db.VarChar(60)
+  isPrimary             Boolean   @default(false) @map("is_primary")
+  isEmergencyContact    Boolean   @default(true) @map("is_emergency_contact")
+  canPickup             Boolean   @default(true) @map("can_pickup")
+  isFeePayer            Boolean   @default(false) @map("is_fee_payer")
+  receivesAcademicAlerts Boolean  @default(true) @map("receives_academic_alerts")
+  receivesFeeAlerts     Boolean   @default(true) @map("receives_fee_alerts")
+  custodyNote           String?   @map("custody_note") @db.VarChar(500)
+  restrictedContact     Boolean   @default(false) @map("restricted_contact")
+  isActive              Boolean   @default(true) @map("is_active")
+  linkedAt              DateTime  @default(now()) @map("linked_at") @db.Timestamptz(6)
+  unlinkedAt            DateTime? @map("unlinked_at") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school   School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  guardian Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, studentId, guardianId])
+  @@index([schoolId, guardianId, isActive])
+  @@index([schoolId, studentId, isPrimary])
+  @@map("student_guardian_links")
+}
+
+model GuardianCommunication {
+  id            String   @id @default(uuid()) @db.Uuid
+  schoolId      String   @map("school_id") @db.Uuid
+  guardianId    String   @map("guardian_id") @db.Uuid
+  studentId     String?  @map("student_id") @db.Uuid
+  channel       String   @db.VarChar(20) // SMS | EMAIL | WHATSAPP | APP | CALL
+  direction     String   @default("OUTBOUND") @db.VarChar(20)
+  senderName    String   @map("sender_name") @db.VarChar(150)
+  recipientName String   @map("recipient_name") @db.VarChar(150)
+  subject       String?  @db.VarChar(255)
+  body          String   @db.Text
+  status        String   @default("SENT") @db.VarChar(20)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  school   School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  guardian Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  student  Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, guardianId, createdAt])
+  @@map("guardian_communications")
 }
 
 // =============================================================================

@@ -390,7 +390,17 @@ export function SettingsGeneralTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EEF1FB] dark:divide-[#232746]">
-                {data.rules.map((r) => (
+                {data.rules.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="py-6 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]"
+                    >
+                      No result criteria configured yet.
+                    </td>
+                  </tr>
+                ) : (
+                  data.rules.map((r) => (
                   <tr key={r.id}>
                     <td className="py-1.5 pr-2 font-bold text-[#08093B] dark:text-[#F3F5FF]">
                       {r.fromGrade}
@@ -411,7 +421,8 @@ export function SettingsGeneralTab({
                       </span>
                     </td>
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>
@@ -442,7 +453,17 @@ export function SettingsGeneralTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EEF1FB] dark:divide-[#232746]">
-                {data.rules.map((r) => (
+                {data.rules.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="py-6 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]"
+                    >
+                      No class progression rules configured yet.
+                    </td>
+                  </tr>
+                ) : (
+                  data.rules.map((r) => (
                   <tr key={r.id}>
                     <td className="py-1.5 pr-2 font-bold text-[#08093B] dark:text-[#F3F5FF]">
                       {r.fromGrade}
@@ -462,7 +483,8 @@ export function SettingsGeneralTab({
                       </span>
                     </td>
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>

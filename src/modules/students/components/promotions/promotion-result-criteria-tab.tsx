@@ -53,41 +53,16 @@ interface CriteriaItem {
   subjects: Array<{ subject: string; maxMarks: number; passMarks: number }>;
 }
 
-function buildCriteriaList(
-  data: StudentPromotionOverviewData,
-  academicYear: string,
-): CriteriaItem[] {
+function buildCriteriaList(data: StudentPromotionOverviewData): CriteriaItem[] {
+  if (data.rules.length === 0) return [];
   const defaultSubjects = (data.settingsSuite?.academicDefaults.subjects ?? []).map((s) => ({
     subject: s.name,
     maxMarks: s.maxMarks,
     passMarks: s.passMarks,
   }));
   const overrides = data.settingsSuite?.resultCriteriaByGrade ?? {};
-  const rulesSource =
-    data.rules.length > 0
-      ? data.rules
-      : data.grades.map((g, idx) => ({
-          id: `rc-${idx}-${g}`,
-          schoolId: data.schoolId,
-          academicYear,
-          ruleName: `${g} Promotion Rule`,
-          fromGrade: g,
-          toGrade: data.grades[idx + 1] ?? "Alumni",
-          markAsAlumni: idx === data.grades.length - 1,
-          defaultSectionMode: "KEEP_SAME" as const,
-          targetSection: null,
-          minResultPct: data.settings.minResultPct || 40,
-          minAttendancePct: data.settings.minAttendancePct || 75,
-          maxFailedSubjects: 0,
-          criteriaSummary: `Min ${Math.round(data.settings.minResultPct || 40)}% in all subjects`,
-          requireAssessmentsCompleted: true,
-          requireResultPublished: true,
-          requireFeeClearance: data.settings.requirePendingFeeClearance,
-          gradeCriteria: DEFAULT_PROMOTION_GRADE_BANDS.map((b) => ({ ...b })),
-          isActive: true,
-        }));
 
-  return rulesSource.map((r) => {
+  return data.rules.map((r) => {
     const ov = overrides[r.fromGrade];
     return {
       id: r.id,
@@ -316,7 +291,7 @@ export function PromotionResultCriteriaTab({
     settingsSuite?: PromotionSettingsSuiteConfig;
   }) => Promise<void>;
 }) {
-  const [items, setItems] = useState<CriteriaItem[]>(() => buildCriteriaList(data, academicYear));
+  const [items, setItems] = useState<CriteriaItem[]>(() => buildCriteriaList(data));
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [classFilter, setClassFilter] = useState("ALL");
@@ -338,8 +313,8 @@ export function PromotionResultCriteriaTab({
   const [newSubPass, setNewSubPass] = useState(33);
 
   useEffect(() => {
-    setItems(buildCriteriaList(data, academicYear));
-  }, [data, academicYear]);
+    setItems(buildCriteriaList(data));
+  }, [data]);
 
   const filtered = useMemo(
     () =>
@@ -630,7 +605,19 @@ export function PromotionResultCriteriaTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EEF1FB] dark:divide-[#232746]">
-              {pagedRows.map(({ item, idx }) => (
+              {pagedRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="py-8 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]"
+                  >
+                    {items.length === 0
+                      ? 'No result criteria configured yet. Click "+ Add Criteria" to create one.'
+                      : "No result criteria match your filters."}
+                  </td>
+                </tr>
+              ) : (
+                pagedRows.map(({ item, idx }) => (
                 <tr
                   key={`${item.rule.fromGrade}-${idx}`}
                   onClick={() => setSelectedIdx(idx)}
@@ -697,14 +684,13 @@ export function PromotionResultCriteriaTab({
                           </button>
                           <button
                             type="button"
-                            disabled={items.length <= 1}
                             onClick={() => {
                               const next = items.filter((_, i) => i !== idx);
                               setSelectedIdx(0);
                               void persistAllItems(next);
                             }}
                             title={`Delete ${item.criteriaName}`}
-                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30 cursor-pointer dark:text-rose-300"
+                            className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer dark:text-rose-300"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -713,7 +699,8 @@ export function PromotionResultCriteriaTab({
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>

@@ -65,6 +65,12 @@ import type {
   StudentDashboardAnalytics,
   StudentWorkspaceSnapshot,
 } from "@/modules/students/types";
+import { ParentsManagementWorkspace } from "@/modules/parents/components/parents-management-workspace";
+import type {
+  HouseholdCluster,
+  ParentDashboardAnalytics,
+  ParentWorkspaceSnapshot,
+} from "@/modules/parents/types";
 
 const CARD_SURFACE =
   "rounded-[18px] border border-white/80 bg-white/85 backdrop-blur-md shadow-[0_8px_24px_rgba(79,39,232,0.06)] dark:border-[#272B4D] dark:bg-[#141731]/95 dark:shadow-[0_10px_28px_rgba(3,5,18,0.45)]";
@@ -184,6 +190,11 @@ export function PlatformSchoolsTab({
     snapshot: StudentWorkspaceSnapshot;
     analytics: StudentDashboardAnalytics;
   } | null>(null);
+  const [parentSuiteData, setParentSuiteData] = useState<{
+    snapshot: ParentWorkspaceSnapshot;
+    analytics: ParentDashboardAnalytics;
+    households: HouseholdCluster[];
+  } | null>(null);
 
   // Deep data & audit sub-tabs state
   const [schoolData, setSchoolData] = useState<PlatformSchoolDataInspectResult | null>(null);
@@ -222,6 +233,7 @@ export function PlatformSchoolsTab({
     setSchoolUsers(selectedEntry.users);
     setSchoolData(null);
     setStudentSuiteData(null);
+    setParentSuiteData(null);
     setDataError(null);
     setSchoolAuditLogs([]);
     setUserSearch("");
@@ -239,6 +251,11 @@ export function PlatformSchoolsTab({
         studentSuite?: {
           snapshot: StudentWorkspaceSnapshot;
           analytics: StudentDashboardAnalytics;
+        };
+        parentSuite?: {
+          snapshot: ParentWorkspaceSnapshot;
+          analytics: ParentDashboardAnalytics;
+          households: HouseholdCluster[];
         };
         users?: PlatformSchoolUserItem[];
         logs?: PlatformAuditLogRecord[];
@@ -279,6 +296,9 @@ export function PlatformSchoolsTab({
     if (cached?.studentSuite) {
       setStudentSuiteData(cached.studentSuite);
     }
+    if (cached?.parentSuite) {
+      setParentSuiteData(cached.parentSuite);
+    }
     if (cached?.users) {
       setSchoolUsers(cached.users);
     }
@@ -314,8 +334,11 @@ export function PlatformSchoolsTab({
       fetch(`/api/platform/schools/${selectedSchoolKey}/students`, { cache: "no-store" }).then((r) =>
         r.ok ? r.json().catch(() => null) : null,
       ),
+      fetch(`/api/platform/schools/${selectedSchoolKey}/parents`, { cache: "no-store" }).then((r) =>
+        r.ok ? r.json().catch(() => null) : null,
+      ),
     ])
-      .then(([dataRes, usersRes, auditRes, studentsSuiteRes]) => {
+      .then(([dataRes, usersRes, auditRes, studentsSuiteRes, parentsSuiteRes]) => {
         if (!active) return;
         const entry = { ...(schoolClientCacheRef.current.get(selectedSchoolKey) ?? {}), cachedAt: Date.now() };
         if (dataRes.status === "fulfilled" && dataRes.value?.data) {
@@ -356,6 +379,20 @@ export function PlatformSchoolsTab({
           };
           setStudentSuiteData(suitePayload);
           entry.studentSuite = suitePayload;
+        }
+        if (
+          parentsSuiteRes.status === "fulfilled" &&
+          parentsSuiteRes.value?.success &&
+          parentsSuiteRes.value?.snapshot &&
+          parentsSuiteRes.value?.analytics
+        ) {
+          const pPayload = {
+            snapshot: parentsSuiteRes.value.snapshot as ParentWorkspaceSnapshot,
+            analytics: parentsSuiteRes.value.analytics as ParentDashboardAnalytics,
+            households: (parentsSuiteRes.value.households ?? []) as HouseholdCluster[],
+          };
+          setParentSuiteData(pPayload);
+          entry.parentSuite = pPayload;
         }
         schoolClientCacheRef.current.set(selectedSchoolKey, entry);
       })
@@ -3002,6 +3039,26 @@ export function PlatformSchoolsTab({
                             canTransfer: true,
                             canExport: true,
                             canManageSettings: true,
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {parentSuiteData && (
+                      <div className="rounded-[18px] border border-[#DDD6FE] bg-[#FAF8FE]/70 p-4 sm:p-5 dark:border-[#2E2A5C] dark:bg-[#10142C]/80">
+                        <ParentsManagementWorkspace
+                          mode="platform"
+                          schoolId={selectedEntry.school.id}
+                          initialSnapshot={parentSuiteData.snapshot}
+                          initialAnalytics={parentSuiteData.analytics}
+                          initialHouseholds={parentSuiteData.households}
+                          initialSection="directory"
+                          permissions={{
+                            canWrite: true,
+                            canLink: true,
+                            canPortal: true,
+                            canCommunicate: true,
+                            canExport: true,
                           }}
                         />
                       </div>

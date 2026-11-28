@@ -365,4 +365,40 @@ describe("StudentPromotionSuite & PlatformPromotionsGlobalTab UI", () => {
     fireEvent.click(screen.getByRole("button", { name: /Manage Promotions/i }));
     expect(onOpenSchoolPromotions).toHaveBeenCalledWith("school-1");
   });
+
+  it("renders empty Promotion Rules and Result Criteria states without seeded defaults when rules is empty", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          overview: { ...mockOverviewData, rules: [] },
+        }),
+      }),
+    );
+
+    render(
+      <StudentPromotionSuite
+        mode="school"
+        schoolId="school-1"
+        grades={["Class V", "Class VI"]}
+        academicYears={["2025-2026"]}
+        sections={["A", "B"]}
+        canPromote
+        canManageSettings
+        onOpenStudentProfile={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Promotion Readiness/i)).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Promotion Rules$/i }));
+    expect(screen.getByText(/No promotion rules configured yet/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Result Criteria$/i }));
+    expect(screen.getByText(/No result criteria configured yet/i)).toBeTruthy();
+  });
 });

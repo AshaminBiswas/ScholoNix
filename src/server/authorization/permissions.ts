@@ -22,6 +22,12 @@ export type Permission =
   | "students:transfer"
   | "students:export"
   | "students:settings"
+  | "parents:read"
+  | "parents:write"
+  | "parents:link"
+  | "parents:portal"
+  | "parents:communicate"
+  | "parents:export"
   | "admissions:read"
   | "admissions:write"
   | "admissions:verify"
@@ -45,6 +51,12 @@ const ADMIN_PERMISSIONS: readonly Permission[] = [
   "students:transfer",
   "students:export",
   "students:settings",
+  "parents:read",
+  "parents:write",
+  "parents:link",
+  "parents:portal",
+  "parents:communicate",
+  "parents:export",
   "admissions:read",
   "admissions:write",
   "admissions:verify",
@@ -66,15 +78,21 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   PRINCIPAL: ADMIN_PERMISSIONS,
   TEACHER: [
     "students:read",
+    "parents:read",
+    "parents:communicate",
     "attendance:read",
     "attendance:write",
     "exams:read",
     "exams:write",
     "reports:view",
   ],
-  ACCOUNTANT: ["students:read", "fees:read", "fees:write", "reports:view"],
+  ACCOUNTANT: ["students:read", "parents:read", "parents:export", "fees:read", "fees:write", "reports:view"],
   STAFF: [
     "students:read",
+    "parents:read",
+    "parents:write",
+    "parents:link",
+    "parents:communicate",
     "admissions:read",
     "admissions:write",
     "admissions:verify",
@@ -84,8 +102,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "reports:view",
   ],
   STUDENT: ["attendance:read", "exams:read", "fees:read"],
-  GUARDIAN: ["attendance:read", "exams:read", "fees:read"],
-  PARENT: ["attendance:read", "exams:read", "fees:read"],
+  GUARDIAN: ["parents:read", "attendance:read", "exams:read", "fees:read"],
+  PARENT: ["parents:read", "attendance:read", "exams:read", "fees:read"],
 };
 
 export interface AuthUser {

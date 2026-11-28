@@ -45,57 +45,31 @@ import {
 
 function normalizeEditableRules(
   data: StudentPromotionOverviewData,
-  academicYear: string,
 ): EditablePromotionRule[] {
-  if (data.rules.length > 0) {
-    return data.rules.map((r, idx) => ({
-      id: r.id,
-      academicYear: r.academicYear,
-      ruleName:
-        r.ruleName || (idx === 0 ? "Primary Promotion Rule" : `${r.fromGrade} Promotion Rule`),
-      fromGrade: r.fromGrade,
-      toGrade: r.toGrade,
-      markAsAlumni: r.markAsAlumni,
-      defaultSectionMode: r.defaultSectionMode,
-      targetSection: r.targetSection,
-      minResultPct: r.minResultPct,
-      minAttendancePct: r.minAttendancePct,
-      maxFailedSubjects: r.maxFailedSubjects,
-      criteriaSummary: r.criteriaSummary || `Min ${Math.round(r.minResultPct)}% in all subjects`,
-      requireAssessmentsCompleted: r.requireAssessmentsCompleted ?? true,
-      requireResultPublished: r.requireResultPublished ?? true,
-      requireFeeClearance: r.requireFeeClearance ?? false,
-      gradeCriteria:
-        r.gradeCriteria && r.gradeCriteria.length > 0
-          ? r.gradeCriteria
-          : DEFAULT_PROMOTION_GRADE_BANDS.map((b) => ({ ...b })),
-      isActive: r.isActive,
-    }));
-  }
-
-  return data.grades.map((grade, idx) => {
-    const next = data.grades[idx + 1] ?? data.settings.finalGradeForAlumni;
-    const isFinal = idx === data.grades.length - 1;
-    const minResultPct = data.settings.minResultPct || 40;
-    return {
-      academicYear,
-      ruleName: idx === 0 ? "Primary Promotion Rule" : `${grade} Promotion Rule`,
-      fromGrade: grade,
-      toGrade: next,
-      markAsAlumni: isFinal,
-      defaultSectionMode: "KEEP_SAME",
-      targetSection: null,
-      minResultPct,
-      minAttendancePct: data.settings.minAttendancePct || 75,
-      maxFailedSubjects: 0,
-      criteriaSummary: `Min ${Math.round(minResultPct)}% in all subjects`,
-      requireAssessmentsCompleted: true,
-      requireResultPublished: true,
-      requireFeeClearance: data.settings.requirePendingFeeClearance,
-      gradeCriteria: DEFAULT_PROMOTION_GRADE_BANDS.map((b) => ({ ...b })),
-      isActive: true,
-    };
-  });
+  if (data.rules.length === 0) return [];
+  return data.rules.map((r, idx) => ({
+    id: r.id,
+    academicYear: r.academicYear,
+    ruleName:
+      r.ruleName || (idx === 0 ? "Primary Promotion Rule" : `${r.fromGrade} Promotion Rule`),
+    fromGrade: r.fromGrade,
+    toGrade: r.toGrade,
+    markAsAlumni: r.markAsAlumni,
+    defaultSectionMode: r.defaultSectionMode,
+    targetSection: r.targetSection,
+    minResultPct: r.minResultPct,
+    minAttendancePct: r.minAttendancePct,
+    maxFailedSubjects: r.maxFailedSubjects,
+    criteriaSummary: r.criteriaSummary || `Min ${Math.round(r.minResultPct)}% in all subjects`,
+    requireAssessmentsCompleted: r.requireAssessmentsCompleted ?? true,
+    requireResultPublished: r.requireResultPublished ?? true,
+    requireFeeClearance: r.requireFeeClearance ?? false,
+    gradeCriteria:
+      r.gradeCriteria && r.gradeCriteria.length > 0
+        ? r.gradeCriteria
+        : DEFAULT_PROMOTION_GRADE_BANDS.map((b) => ({ ...b })),
+    isActive: r.isActive,
+  }));
 }
 
 function sectionDisplay(rule: EditablePromotionRule): string {
@@ -125,7 +99,7 @@ export function PromotionRulesTab({
   }) => Promise<void>;
 }) {
   const [rules, setRules] = useState<EditablePromotionRule[]>(() =>
-    normalizeEditableRules(data, academicYear),
+    normalizeEditableRules(data),
   );
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
@@ -145,8 +119,8 @@ export function PromotionRulesTab({
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   useEffect(() => {
-    setRules(normalizeEditableRules(data, academicYear));
-  }, [data, academicYear]);
+    setRules(normalizeEditableRules(data));
+  }, [data]);
 
   const indexedRules = useMemo(
     () =>
@@ -367,7 +341,9 @@ export function PromotionRulesTab({
                     colSpan={9}
                     className="py-8 text-center text-xs text-[#76799C] dark:text-[#9DA6CC]"
                   >
-                    No promotion rules match your search/filter.
+                    {rules.length === 0
+                      ? 'No promotion rules configured yet. Click "+ Add Rule" to create your first rule.'
+                      : "No promotion rules match your search/filter."}
                   </td>
                 </tr>
               ) : (
@@ -447,14 +423,13 @@ export function PromotionRulesTab({
                               </button>
                               <button
                                 type="button"
-                                disabled={rules.length <= 1}
                                 onClick={() => {
                                   const next = rules.filter((_, i) => i !== idx);
                                   setSelectedIdx(0);
                                   void persistRules(next);
                                 }}
                                 title={`Delete ${rule.ruleName}`}
-                                className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 disabled:opacity-30 cursor-pointer dark:text-rose-300 dark:hover:bg-rose-950/60"
+                                className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer dark:text-rose-300 dark:hover:bg-rose-950/60"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>

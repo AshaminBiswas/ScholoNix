@@ -142,7 +142,6 @@ function defaultNextGrade(grades: string[], fromGrade: string, alumniGrade: stri
 function getMemoryPromoState(
   schoolId: string,
   grades: string[],
-  academicYear: string,
 ): MemoryPromotionState {
   if (!globalForPromos.__scholonixPromotionMemory) {
     globalForPromos.__scholonixPromotionMemory = {};
@@ -150,29 +149,7 @@ function getMemoryPromoState(
   if (!globalForPromos.__scholonixPromotionMemory[schoolId]) {
     const finalGrade = grades[grades.length - 1] || "Class XII";
     globalForPromos.__scholonixPromotionMemory[schoolId] = {
-      rules: grades.map((g, i) => {
-        const next = defaultNextGrade(grades, g, finalGrade);
-        return {
-          id: `rule-${i}-${g}`,
-          schoolId,
-          academicYear,
-          ruleName: defaultRuleName(g, i),
-          fromGrade: g,
-          toGrade: next.toGrade,
-          markAsAlumni: next.markAsAlumni,
-          defaultSectionMode: "KEEP_SAME",
-          targetSection: null,
-          minResultPct: 40,
-          minAttendancePct: 75,
-          maxFailedSubjects: 0,
-          criteriaSummary: defaultCriteriaSummary(40),
-          requireAssessmentsCompleted: true,
-          requireResultPublished: true,
-          requireFeeClearance: false,
-          gradeCriteria: DEFAULT_PROMOTION_GRADE_BANDS.map((b) => ({ ...b })),
-          isActive: true,
-        };
-      }),
+      rules: [],
       batches: [],
       decisionsByKey: {},
       settings: {
@@ -311,7 +288,7 @@ export class StudentPromotionRepository extends BaseTenantRepository {
         ? filters.academicYear
         : academicYears[0] || "2025 – 2026";
 
-      const mem = getMemoryPromoState(schoolId, grades, activeAy);
+      const mem = getMemoryPromoState(schoolId, grades);
       let rules = mem.rules;
       let batches = mem.batches;
       let schoolStaff: Array<{ id: string; name: string; role: string }> = [
@@ -352,33 +329,31 @@ export class StudentPromotionRepository extends BaseTenantRepository {
           }));
         }
 
-        if (dbData.ruleRows.length > 0) {
-          rules = dbData.ruleRows.map((r: any, idx: number) => ({
-            id: String(r.id),
-            schoolId: String(r.schoolId),
-            academicYear: String(r.academicYear),
-            ruleName: r.ruleName ? String(r.ruleName) : defaultRuleName(String(r.fromGrade), idx),
-            fromGrade: String(r.fromGrade),
-            toGrade: String(r.toGrade),
-            markAsAlumni: Boolean(r.markAsAlumni),
-            defaultSectionMode: r.defaultSectionMode,
-            targetSection: r.targetSection ?? null,
-            minResultPct: Number(r.minResultPct),
-            minAttendancePct: Number(r.minAttendancePct),
-            maxFailedSubjects: Number(r.maxFailedSubjects),
-            criteriaSummary: r.criteriaSummary
-              ? String(r.criteriaSummary)
-              : defaultCriteriaSummary(Number(r.minResultPct)),
-            requireAssessmentsCompleted:
-              typeof r.requireAssessmentsCompleted === "boolean" ? r.requireAssessmentsCompleted : true,
-            requireResultPublished:
-              typeof r.requireResultPublished === "boolean" ? r.requireResultPublished : true,
-            requireFeeClearance:
-              typeof r.requireFeeClearance === "boolean" ? r.requireFeeClearance : false,
-            gradeCriteria: parseGradeCriteria(r.gradeCriteria),
-            isActive: Boolean(r.isActive),
-          }));
-        }
+        rules = dbData.ruleRows.map((r: any, idx: number) => ({
+          id: String(r.id),
+          schoolId: String(r.schoolId),
+          academicYear: String(r.academicYear),
+          ruleName: r.ruleName ? String(r.ruleName) : defaultRuleName(String(r.fromGrade), idx),
+          fromGrade: String(r.fromGrade),
+          toGrade: String(r.toGrade),
+          markAsAlumni: Boolean(r.markAsAlumni),
+          defaultSectionMode: r.defaultSectionMode,
+          targetSection: r.targetSection ?? null,
+          minResultPct: Number(r.minResultPct),
+          minAttendancePct: Number(r.minAttendancePct),
+          maxFailedSubjects: Number(r.maxFailedSubjects),
+          criteriaSummary: r.criteriaSummary
+            ? String(r.criteriaSummary)
+            : defaultCriteriaSummary(Number(r.minResultPct)),
+          requireAssessmentsCompleted:
+            typeof r.requireAssessmentsCompleted === "boolean" ? r.requireAssessmentsCompleted : true,
+          requireResultPublished:
+            typeof r.requireResultPublished === "boolean" ? r.requireResultPublished : true,
+          requireFeeClearance:
+            typeof r.requireFeeClearance === "boolean" ? r.requireFeeClearance : false,
+          gradeCriteria: parseGradeCriteria(r.gradeCriteria),
+          isActive: Boolean(r.isActive),
+        }));
 
         batches = dbData.batchRows.map((b: any) => ({
           id: String(b.id),
@@ -700,7 +675,7 @@ export class StudentPromotionRepository extends BaseTenantRepository {
         });
       });
     } else {
-      const mem = getMemoryPromoState(schoolId, snapshot.grades, input.academicYear);
+      const mem = getMemoryPromoState(schoolId, snapshot.grades);
       mem.batches.unshift({
         id: batchId,
         schoolId,
@@ -760,7 +735,7 @@ export class StudentPromotionRepository extends BaseTenantRepository {
     const schoolId = this.getSchoolId(explicitSchoolId);
     const asPlatformAdmin = Boolean(options?.asPlatformAdmin);
     const snapshot = await studentRepository.getSnapshot(schoolId, { asPlatformAdmin });
-    const mem = getMemoryPromoState(schoolId, snapshot.grades, input.academicYear);
+    const mem = getMemoryPromoState(schoolId, snapshot.grades);
 
     if (input.settings || input.settingsSuite) {
       if (input.settings) {
@@ -787,39 +762,41 @@ export class StudentPromotionRepository extends BaseTenantRepository {
       );
     }
 
-    if (input.rules && input.rules.length > 0) {
+    if (input.rules !== undefined) {
       const caps = await getPromotionSchemaCaps(db as unknown as Prisma.TransactionClient);
       if (caps.hasTables) {
         await this.runTx(schoolId, asPlatformAdmin, async (tx) => {
           await (tx as any).studentPromotionRule.deleteMany({
             where: { schoolId, academicYear: input.academicYear },
           });
-          await (tx as any).studentPromotionRule.createMany({
-            data: input.rules!.map((r, idx) => ({
-              schoolId,
-              academicYear: input.academicYear,
-              fromGrade: r.fromGrade,
-              toGrade: r.toGrade,
-              markAsAlumni: r.markAsAlumni,
-              defaultSectionMode: r.defaultSectionMode,
-              targetSection: r.targetSection ?? null,
-              minResultPct: r.minResultPct,
-              minAttendancePct: r.minAttendancePct,
-              maxFailedSubjects: r.maxFailedSubjects,
-              isActive: r.isActive,
-              ...(caps.hasRuleMetadataCols
-                ? {
-                    ruleName: r.ruleName || defaultRuleName(r.fromGrade, idx),
-                    criteriaSummary: r.criteriaSummary || defaultCriteriaSummary(r.minResultPct),
-                    requireAssessmentsCompleted: r.requireAssessmentsCompleted,
-                    requireResultPublished: r.requireResultPublished,
-                    requireFeeClearance: r.requireFeeClearance,
-                    gradeCriteria:
-                      r.gradeCriteria ?? DEFAULT_PROMOTION_GRADE_BANDS.map((b) => ({ ...b })),
-                  }
-                : {}),
-            })),
-          });
+          if (input.rules!.length > 0) {
+            await (tx as any).studentPromotionRule.createMany({
+              data: input.rules!.map((r, idx) => ({
+                schoolId,
+                academicYear: input.academicYear,
+                fromGrade: r.fromGrade,
+                toGrade: r.toGrade,
+                markAsAlumni: r.markAsAlumni,
+                defaultSectionMode: r.defaultSectionMode,
+                targetSection: r.targetSection ?? null,
+                minResultPct: r.minResultPct,
+                minAttendancePct: r.minAttendancePct,
+                maxFailedSubjects: r.maxFailedSubjects,
+                isActive: r.isActive,
+                ...(caps.hasRuleMetadataCols
+                  ? {
+                      ruleName: r.ruleName || defaultRuleName(r.fromGrade, idx),
+                      criteriaSummary: r.criteriaSummary || defaultCriteriaSummary(r.minResultPct),
+                      requireAssessmentsCompleted: r.requireAssessmentsCompleted,
+                      requireResultPublished: r.requireResultPublished,
+                      requireFeeClearance: r.requireFeeClearance,
+                      gradeCriteria:
+                        r.gradeCriteria ?? DEFAULT_PROMOTION_GRADE_BANDS.map((b) => ({ ...b })),
+                    }
+                  : {}),
+              })),
+            });
+          }
         });
       } else {
         mem.rules = input.rules.map((r, idx) => ({
@@ -1025,7 +1002,7 @@ export class StudentPromotionRepository extends BaseTenantRepository {
     schoolId: string,
     entry: Omit<PromotionAuditLogEntry, "id" | "createdAt">,
   ): void {
-    const mem = getMemoryPromoState(schoolId, [...DEFAULT_ADMISSION_GRADES], "2025-2026");
+    const mem = getMemoryPromoState(schoolId, [...DEFAULT_ADMISSION_GRADES]);
     mem.auditLogs.unshift({
       ...entry,
       id: `log-${randomUUID().slice(0, 8)}`,
@@ -1050,7 +1027,7 @@ export class StudentPromotionRepository extends BaseTenantRepository {
   ): Promise<PromotionAuditLogsResponse> {
     const schoolId = this.getSchoolId(explicitSchoolId);
     const asPlatformAdmin = Boolean(options?.asPlatformAdmin);
-    const mem = getMemoryPromoState(schoolId, [...DEFAULT_ADMISSION_GRADES], "2025-2026");
+    const mem = getMemoryPromoState(schoolId, [...DEFAULT_ADMISSION_GRADES]);
 
     let allLogs: PromotionAuditLogEntry[] = mem.auditLogs;
 

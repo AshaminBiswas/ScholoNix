@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   Activity,
   Award,
@@ -38,6 +40,8 @@ export function TabProfileOverview({
   const [taskTitle, setTaskTitle] = useState("");
   const [addingTask, setAddingTask] = useState(false);
 
+  const params = useParams<{ schoolSlug?: string }>();
+  const schoolSlug = typeof params?.schoolSlug === "string" ? params.schoolSlug : null;
   const s = dossier.student;
   const ext = dossier.extendedProfile;
 
@@ -302,6 +306,16 @@ export function TabProfileOverview({
               <dd className="font-semibold text-[#08093B] dark:text-[#F3F5FF]">{activeGuardian.occupation}</dd>
             </div>
           </dl>
+          {schoolSlug && (
+            <div className="pt-2 border-t border-[#DFE3F5] dark:border-[#232746] flex justify-end">
+              <Link
+                href={`/${encodeURIComponent(schoolSlug)}/parents`}
+                className="text-[11px] font-bold text-[#663CF6] hover:underline dark:text-[#C4B5FD]"
+              >
+                Open Parents &amp; Guardians Directory &rarr;
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

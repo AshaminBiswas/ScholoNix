@@ -237,6 +237,7 @@ class StudentRepository extends BaseTenantRepository {
   async invalidateCaches(schoolId: string): Promise<void> {
     await Promise.all([
       tenantCache.del(schoolId, STUDENTS_CACHE_KEY).catch(() => {}),
+      tenantCache.del(schoolId, "parents:snapshot:v1").catch(() => {}),
       platformCache.invalidateSchool(schoolId),
       systemCache.del("platform:students:global:v1").catch(() => {}),
     ]);
@@ -729,6 +730,58 @@ class StudentRepository extends BaseTenantRepository {
               summary: `${input.studentName} added to ${input.grade} - ${input.section}.`,
             },
           });
+
+          // Sync canonical Guardian + StudentGuardianLink if tables exist
+          const cleanPhone = input.guardianPhone.trim().replace(/[^0-9+]/g, "");
+          if (cleanPhone.length >= 6) {
+            const gCheck = (await tx.$queryRaw`
+              SELECT to_regclass('public.guardians') IS NOT NULL AS ready
+            `) as Array<{ ready: boolean }>;
+            if (gCheck[0]?.ready) {
+              let guardianRow = await (tx as any).guardian.findFirst({
+                where: { schoolId, normalizedPhone: cleanPhone },
+              });
+              if (!guardianRow) {
+                guardianRow = await (tx as any).guardian.create({
+                  data: {
+                    schoolId,
+                    fullName: input.guardianName,
+                    phone: input.guardianPhone,
+                    normalizedPhone: cleanPhone,
+                    email: input.guardianEmail || null,
+                    addressJson: input.address ?? null,
+                    status: "ACTIVE",
+                    portalStatus: "NOT_INVITED",
+                  },
+                });
+              }
+              await (tx as any).studentGuardianLink.upsert({
+                where: {
+                  schoolId_studentId_guardianId: {
+                    schoolId,
+                    studentId: row.id,
+                    guardianId: guardianRow.id,
+                  },
+                },
+                create: {
+                  schoolId,
+                  studentId: row.id,
+                  guardianId: guardianRow.id,
+                  relation: input.guardianRelation || "Parent",
+                  isPrimary: true,
+                  isEmergencyContact: true,
+                  canPickup: true,
+                  isFeePayer: true,
+                  isActive: true,
+                },
+                update: {
+                  isPrimary: true,
+                  isActive: true,
+                  unlinkedAt: null,
+                },
+              });
+            }
+          }
 
           return mapStudentRow({ ...row, enrollments: [enrollment], transfers: [] }, []);
         },
