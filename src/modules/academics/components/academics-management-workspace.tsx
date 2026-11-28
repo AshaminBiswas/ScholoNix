@@ -82,6 +82,8 @@ export function AcademicsManagementWorkspace({
   const [newSubjectCategory, setNewSubjectCategory] = useState<
     "CORE" | "ELECTIVE" | "LAB" | "CO_SCHOLASTIC"
   >("CORE");
+  const [newSubjectClassTarget, setNewSubjectClassTarget] = useState<string>("NONE");
+  const [newSubjectMultiClassIds, setNewSubjectMultiClassIds] = useState<string[]>([]);
   const [mapSubjectId, setMapSubjectId] = useState(initialSnapshot.subjects[0]?.id ?? "");
   const [newSessionName, setNewSessionName] = useState("");
 
@@ -739,77 +741,178 @@ export function AcademicsManagementWorkspace({
               Subject Catalog
             </h2>
             {permissions.canWrite && (
-              <div className="flex flex-wrap gap-2">
-                <input
-                  type="text"
-                  value={newSubjectCode}
-                  onChange={(e) => setNewSubjectCode(e.target.value)}
-                  placeholder="Code (PHY)"
-                  className={`${CONTROL_INPUT} w-24`}
-                />
-                <input
-                  type="text"
-                  value={newSubjectName}
-                  onChange={(e) => setNewSubjectName(e.target.value)}
-                  placeholder="Subject Name (Physics)"
-                  className={`${CONTROL_INPUT} flex-1 min-w-[140px]`}
-                />
-                <select
-                  value={newSubjectCategory}
-                  onChange={(e) =>
-                    setNewSubjectCategory(e.target.value as typeof newSubjectCategory)
-                  }
-                  className={CONTROL_INPUT}
-                >
-                  <option value="CORE">Core</option>
-                  <option value="ELECTIVE">Elective</option>
-                  <option value="LAB">Lab</option>
-                  <option value="CO_SCHOLASTIC">Co-Scholastic</option>
-                </select>
-                <button
-                  type="button"
-                  disabled={busy || !newSubjectCode.trim() || !newSubjectName.trim()}
-                  onClick={() => {
-                    runMutation(
-                      {
-                        action: "CREATE_SUBJECT",
-                        code: newSubjectCode.trim(),
-                        name: newSubjectName.trim(),
-                        category: newSubjectCategory,
-                        defaultMaxMarks: 100,
-                        defaultPassMarks: 33,
-                      },
-                      `Subject "${newSubjectName.trim()}" added.`,
-                    );
-                    setNewSubjectCode("");
-                    setNewSubjectName("");
-                  }}
-                  className="inline-flex items-center gap-1 rounded-[10px] bg-[#663CF6] px-3.5 py-1.5 text-xs font-bold text-white cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Add Subject
-                </button>
+              <div className="space-y-2.5 rounded-xl border border-[#DFE3F5] bg-[#FAF8FE]/60 p-3 dark:border-[#272B4D] dark:bg-[#10142C]/60">
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    type="text"
+                    value={newSubjectCode}
+                    onChange={(e) => setNewSubjectCode(e.target.value)}
+                    placeholder="Code (PHY)"
+                    className={`${CONTROL_INPUT} w-24`}
+                  />
+                  <input
+                    type="text"
+                    value={newSubjectName}
+                    onChange={(e) => setNewSubjectName(e.target.value)}
+                    placeholder="Subject Name (Physics)"
+                    className={`${CONTROL_INPUT} flex-1 min-w-[140px]`}
+                  />
+                  <select
+                    aria-label="Subject category"
+                    value={newSubjectCategory}
+                    onChange={(e) =>
+                      setNewSubjectCategory(e.target.value as typeof newSubjectCategory)
+                    }
+                    className={CONTROL_INPUT}
+                  >
+                    <option value="CORE">Core</option>
+                    <option value="ELECTIVE">Elective</option>
+                    <option value="LAB">Lab</option>
+                    <option value="CO_SCHOLASTIC">Co-Scholastic</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    aria-label="Select class for subject"
+                    value={newSubjectClassTarget}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewSubjectClassTarget(val);
+                      if (val !== "MULTI") {
+                        setNewSubjectMultiClassIds([]);
+                      }
+                    }}
+                    className={`${CONTROL_INPUT} flex-1 min-w-[180px]`}
+                  >
+                    <option value="NONE">Catalog Only (Assign Class Later)</option>
+                    <option value="ALL">All Classes ({snapshot.classes.length})</option>
+                    <option value="MULTI">Select Multiple Classes...</option>
+                    {snapshot.classes.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    disabled={busy || !newSubjectCode.trim() || !newSubjectName.trim()}
+                    onClick={() => {
+                      const selectedClasses =
+                        newSubjectClassTarget === "ALL"
+                          ? snapshot.classes
+                          : newSubjectClassTarget === "MULTI"
+                            ? snapshot.classes.filter((c) => newSubjectMultiClassIds.includes(c.id))
+                            : newSubjectClassTarget !== "NONE"
+                              ? snapshot.classes.filter((c) => c.id === newSubjectClassTarget)
+                              : [];
+
+                      runMutation(
+                        {
+                          action: "CREATE_SUBJECT",
+                          code: newSubjectCode.trim(),
+                          name: newSubjectName.trim(),
+                          category: newSubjectCategory,
+                          defaultMaxMarks: 100,
+                          defaultPassMarks: 33,
+                          academicYear: snapshot.activeAcademicYear,
+                          ...(selectedClasses.length > 0
+                            ? {
+                                classIds: selectedClasses.map((c) => c.id),
+                                classNames: selectedClasses.map((c) => c.name),
+                              }
+                            : {}),
+                        },
+                        selectedClasses.length > 0
+                          ? `Subject "${newSubjectName.trim()}" added & assigned to ${selectedClasses.length} class(es).`
+                          : `Subject "${newSubjectName.trim()}" added.`,
+                      );
+                      setNewSubjectCode("");
+                      setNewSubjectName("");
+                      setNewSubjectClassTarget("NONE");
+                      setNewSubjectMultiClassIds([]);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-[10px] bg-[#663CF6] px-3.5 py-1.5 text-xs font-bold text-white cursor-pointer disabled:opacity-60"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add Subject
+                  </button>
+                </div>
+
+                {newSubjectClassTarget === "MULTI" && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {snapshot.classes.map((cls) => {
+                      const checked = newSubjectMultiClassIds.includes(cls.id);
+                      return (
+                        <label
+                          key={cls.id}
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold cursor-pointer transition ${
+                            checked
+                              ? "border-[#663CF6] bg-[#EDE7FF] text-[#663CF6] dark:border-[#8B5CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]"
+                              : "border-[#D6DBF0] bg-white text-[#4D5072] dark:border-[#313761] dark:bg-[#141731] dark:text-[#9DA6CC]"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setNewSubjectMultiClassIds((prev) =>
+                                e.target.checked
+                                  ? [...prev, cls.id]
+                                  : prev.filter((id) => id !== cls.id),
+                              );
+                            }}
+                            className="rounded accent-[#663CF6]"
+                          />
+                          <span>{cls.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
             <div className="space-y-2">
-              {snapshot.subjects.map((sub) => (
-                <div
-                  key={sub.id}
-                  className="flex items-center justify-between rounded-xl border border-[#DFE3F5] bg-[#FAF8FE]/70 px-3 py-2 text-xs dark:border-[#272B4D] dark:bg-[#10142C]"
-                >
-                  <div>
-                    <p className="font-black text-[#08093B] dark:text-[#F3F5FF]">
-                      {sub.name}{" "}
-                      <span className="font-mono text-[10px] text-[#663CF6] dark:text-[#C4B5FD]">
-                        ({sub.code})
-                      </span>
-                    </p>
-                    <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
-                      {sub.category} &middot; Pass {sub.defaultPassMarks}/{sub.defaultMaxMarks}
-                    </p>
+              {snapshot.subjects.map((sub) => {
+                const mappedClasses = snapshot.classes.filter((c) =>
+                  c.subjects.some((cs) => cs.subjectId === sub.id),
+                );
+                return (
+                  <div
+                    key={sub.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#DFE3F5] bg-[#FAF8FE]/70 px-3 py-2 text-xs dark:border-[#272B4D] dark:bg-[#10142C]"
+                  >
+                    <div>
+                      <p className="font-black text-[#08093B] dark:text-[#F3F5FF]">
+                        {sub.name}{" "}
+                        <span className="font-mono text-[10px] text-[#663CF6] dark:text-[#C4B5FD]">
+                          ({sub.code})
+                        </span>
+                      </p>
+                      <p className="text-[10px] text-[#76799C] dark:text-[#9DA6CC]">
+                        {sub.category} &middot; Pass {sub.defaultPassMarks}/{sub.defaultMaxMarks}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {mappedClasses.length === 0 ? (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-[#76799C] dark:bg-[#1B1F3F] dark:text-[#9DA6CC]">
+                          Unassigned
+                        </span>
+                      ) : (
+                        mappedClasses.map((mc) => (
+                          <span
+                            key={mc.id}
+                            className="rounded-full bg-[#EDE7FF] px-2 py-0.5 text-[10px] font-bold text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]"
+                          >
+                            {mc.name}
+                          </span>
+                        ))
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

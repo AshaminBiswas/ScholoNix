@@ -152,6 +152,9 @@ describe("AcademicsManagementWorkspace Tree Explorer & Light/Dark mode", () => {
     // Switch across tabs
     fireEvent.click(screen.getByRole("button", { name: "Classes & Subjects" }));
     expect(screen.getByText("Subject Catalog")).toBeInTheDocument();
+    const classSelect = screen.getByLabelText("Select class for subject") as HTMLSelectElement;
+    expect(classSelect).toBeInTheDocument();
+    expect(Array.from(classSelect.options).map((o) => o.text)).toContain("Class V");
 
     fireEvent.click(screen.getByRole("button", { name: "Sections & Teachers" }));
     expect(screen.getByText(/Sections & Class Teachers/i)).toBeInTheDocument();

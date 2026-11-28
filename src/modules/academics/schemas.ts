@@ -54,6 +54,9 @@ export const createAcademicSubjectSchema = z.object({
   category: z.enum(["CORE", "ELECTIVE", "LAB", "CO_SCHOLASTIC"]).default("CORE"),
   defaultMaxMarks: z.number().int().min(1).max(1000).default(100),
   defaultPassMarks: z.number().int().min(0).max(1000).default(33),
+  academicYear: OPT_TEXT(30),
+  classIds: z.array(CLEAN_TEXT(80)).max(50).optional(),
+  classNames: z.array(CLEAN_TEXT(60)).max(50).optional(),
 });
 
 export const assignClassSubjectSchema = z.object({

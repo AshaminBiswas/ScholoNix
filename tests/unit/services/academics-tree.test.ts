@@ -102,6 +102,21 @@ describe("Academics Tree Explorer service, RBAC & tenant isolation", () => {
     const node = snap.classes.find((c) => c.name === "Class V")!;
     expect(node.subjects.map((s) => s.subjectCode)).toContain("MATH");
 
+    // Creating a subject with pre-selected classIds immediately maps it to that class
+    const afterDirectSubject = await academicsService.mutate(principalA, {
+      action: "CREATE_SUBJECT",
+      code: "PHY",
+      name: "Physics",
+      category: "CORE",
+      defaultMaxMarks: 100,
+      defaultPassMarks: 35,
+      academicYear: "2026-2027",
+      classIds: [clsV.id],
+      classNames: [clsV.name],
+    });
+    const clsVUpdated = afterDirectSubject.classes.find((c) => c.id === clsV.id)!;
+    expect(clsVUpdated.subjects.map((s) => s.subjectCode)).toContain("PHY");
+
     const secA = node.sections.find((s) => s.name === "A")!;
     expect(secA.students.length).toBe(1);
     expect(secA.students[0]?.studentName).toBe("Demo Pupil A");

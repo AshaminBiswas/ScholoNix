@@ -731,7 +731,7 @@ class AcademicsRepository extends BaseTenantRepository {
                 where: { schoolId, code: input.code.toUpperCase() },
               });
               if (dup) throw new ConflictError(`Subject code "${input.code}" already exists.`);
-              await (tx as any).academicSubject.create({
+              const createdSub = await (tx as any).academicSubject.create({
                 data: {
                   schoolId,
                   code: input.code.toUpperCase(),
@@ -742,6 +742,66 @@ class AcademicsRepository extends BaseTenantRepository {
                   status: "ACTIVE",
                 },
               });
+
+              const targetPairs: Array<{ id?: string; name?: string }> = [];
+              if (input.classIds?.length) {
+                input.classIds.forEach((cid, idx) =>
+                  targetPairs.push({ id: cid, name: input.classNames?.[idx] }),
+                );
+              } else if (input.classNames?.length) {
+                input.classNames.forEach((cname) => targetPairs.push({ name: cname }));
+              }
+
+              if (targetPairs.length > 0) {
+                const year = input.academicYear || "2026-2027";
+                for (const pair of targetPairs) {
+                  let cls = pair.id
+                    ? await (tx as any).academicClass.findFirst({ where: { schoolId, id: pair.id } })
+                    : null;
+                  if (!cls && pair.name) {
+                    cls = await (tx as any).academicClass.upsert({
+                      where: {
+                        schoolId_academicYear_name: {
+                          schoolId,
+                          academicYear: year,
+                          name: pair.name,
+                        },
+                      },
+                      create: {
+                        schoolId,
+                        academicYear: year,
+                        name: pair.name,
+                        displayOrder: 1,
+                        status: "ACTIVE",
+                      },
+                      update: {},
+                    });
+                  }
+                  if (cls) {
+                    await (tx as any).classSubjectAssignment.upsert({
+                      where: {
+                        schoolId_classId_subjectId: {
+                          schoolId,
+                          classId: cls.id,
+                          subjectId: createdSub.id,
+                        },
+                      },
+                      create: {
+                        schoolId,
+                        classId: cls.id,
+                        subjectId: createdSub.id,
+                        academicYear: cls.academicYear,
+                        weeklyPeriods: 5,
+                        maxMarks: input.defaultMaxMarks,
+                        passMarks: input.defaultPassMarks,
+                        isCompulsory: input.category === "CORE",
+                        isActive: true,
+                      },
+                      update: { isActive: true },
+                    });
+                  }
+                }
+              }
               return true;
             }
             case "ASSIGN_CLASS_SUBJECT": {
@@ -953,7 +1013,7 @@ class AcademicsRepository extends BaseTenantRepository {
         if (mem.subjects.some((s) => s.code === upperCode)) {
           throw new ConflictError(`Subject code "${upperCode}" already exists.`);
         }
-        mem.subjects.push({
+        const newSub: AcademicSubjectRecord = {
           id: randomUUID(),
           schoolId,
           code: upperCode,
@@ -962,7 +1022,59 @@ class AcademicsRepository extends BaseTenantRepository {
           defaultMaxMarks: input.defaultMaxMarks,
           defaultPassMarks: input.defaultPassMarks,
           status: "ACTIVE",
-        });
+        };
+        mem.subjects.push(newSub);
+
+        const targetPairs: Array<{ id?: string; name?: string }> = [];
+        if (input.classIds?.length) {
+          input.classIds.forEach((cid, idx) =>
+            targetPairs.push({ id: cid, name: input.classNames?.[idx] }),
+          );
+        } else if (input.classNames?.length) {
+          input.classNames.forEach((cname) => targetPairs.push({ name: cname }));
+        }
+
+        if (targetPairs.length > 0) {
+          const year = input.academicYear || "2026-2027";
+          for (const pair of targetPairs) {
+            let cls = pair.id
+              ? mem.classes.find((c) => c.id === pair.id)
+              : undefined;
+            if (!cls && pair.name) {
+              cls = mem.classes.find((c) => c.academicYear === year && c.name === pair.name);
+              if (!cls) {
+                cls = {
+                  id: pair.id && UUID_REGEX.test(pair.id) ? pair.id : randomUUID(),
+                  academicYear: year,
+                  name: pair.name,
+                  code: null,
+                  department: "General",
+                  displayOrder: mem.classes.length + 1,
+                  status: "ACTIVE",
+                };
+                mem.classes.push(cls);
+              }
+            }
+            if (cls && !mem.assignments.some((a) => a.classId === cls!.id && a.subjectId === newSub.id)) {
+              mem.assignments.push({
+                id: randomUUID(),
+                schoolId,
+                classId: cls.id,
+                subjectId: newSub.id,
+                subjectCode: newSub.code,
+                subjectName: newSub.name,
+                subjectCategory: newSub.category,
+                academicYear: cls.academicYear,
+                teacherName: null,
+                weeklyPeriods: 5,
+                maxMarks: newSub.defaultMaxMarks,
+                passMarks: newSub.defaultPassMarks,
+                isCompulsory: newSub.category === "CORE",
+                isActive: true,
+              });
+            }
+          }
+        }
         break;
       }
       case "ASSIGN_CLASS_SUBJECT": {
