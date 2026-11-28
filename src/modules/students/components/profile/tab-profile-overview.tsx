@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import {
   Activity,
   Award,
@@ -40,8 +39,12 @@ export function TabProfileOverview({
   const [taskTitle, setTaskTitle] = useState("");
   const [addingTask, setAddingTask] = useState(false);
 
-  const params = useParams<{ schoolSlug?: string }>();
-  const schoolSlug = typeof params?.schoolSlug === "string" ? params.schoolSlug : null;
+  const pathSlug =
+    typeof window !== "undefined"
+      ? window.location.pathname.split("/").filter(Boolean)[0] ?? null
+      : null;
+  const schoolSlug =
+    pathSlug && pathSlug !== "admin" && pathSlug !== "company-admin-pannel" ? pathSlug : null;
   const s = dossier.student;
   const ext = dossier.extendedProfile;
 

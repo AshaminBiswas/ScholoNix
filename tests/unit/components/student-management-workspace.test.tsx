@@ -190,8 +190,18 @@ describe("StudentManagementWorkspace UI & Dark Mode parity", () => {
       />,
     );
 
-    // Dashboard layout & Light/Dark mode tokens (no top section tab strip)
+    // Dashboard layout & Light/Dark mode tokens + 6 horizontal Student Section tabs
     expect(screen.getByRole("heading", { name: /Student Dashboard/i })).toBeTruthy();
+    for (const tabLabel of [
+      "Student Dashboard",
+      "Student List",
+      "Student Promotion",
+      "Student Inactive",
+      "Alumni",
+      "Student Settings",
+    ]) {
+      expect(screen.getByRole("tab", { name: tabLabel })).toBeTruthy();
+    }
     expect(screen.queryByRole("button", { name: /^Overview$/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Enrolment$/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Add Student$/i })).toBeNull();

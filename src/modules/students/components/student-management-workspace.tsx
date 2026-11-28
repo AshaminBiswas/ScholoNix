@@ -503,6 +503,48 @@ export function StudentManagementWorkspace({
         </div>
       )}
 
+      {/* Horizontal Section Tabs replacing sidebar Student dropdown */}
+      {!(activeSection === "profile" && selectedProfileStudent) && (
+        <div
+          role="tablist"
+          aria-label="Student Sections"
+          className="flex flex-wrap gap-2"
+        >
+          {(
+            [
+              { id: "dashboard", label: "Student Dashboard" },
+              { id: "list", label: "Student List" },
+              { id: "promotion", label: "Student Promotion" },
+              { id: "inactive", label: "Student Inactive" },
+              { id: "alumni", label: "Alumni" },
+              { id: "settings", label: "Student Settings" },
+            ] as Array<{ id: StudentNavSection; label: string }>
+          ).map((tab) => {
+            const effectiveSection =
+              activeSection === "enrolment" || activeSection === "profile"
+                ? "list"
+                : activeSection;
+            const isTabActive = effectiveSection === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isTabActive}
+                onClick={() => navigateSection(tab.id, null)}
+                className={`inline-flex items-center rounded-[14px] px-3.5 py-2 text-xs font-extrabold transition cursor-pointer ${
+                  isTabActive
+                    ? "bg-gradient-to-r from-[#663CF6] to-[#7C5CFC] text-white shadow-md"
+                    : "border border-[#D6DBF0] bg-white/90 text-[#4D5072] hover:border-[#663CF6] hover:text-[#663CF6] dark:border-[#272B4D] dark:bg-[#141731] dark:text-[#B4BDD9]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {feedback && (
         <div
           role="status"

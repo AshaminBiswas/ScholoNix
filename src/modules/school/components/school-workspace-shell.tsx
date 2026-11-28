@@ -87,9 +87,6 @@ export function SchoolWorkspaceShell({
   activeNav,
   activeAdmissionsTab,
   onSelectAdmissionsTab,
-  activeAcademicSection,
-  activeStudentSection,
-  activeParentSection,
   noticeCount = 0,
   onOpenSearch,
   children,
@@ -98,9 +95,9 @@ export function SchoolWorkspaceShell({
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [admissionsOpen, setAdmissionsOpen] = useState(activeNav === "admissions");
-  const [academicsOpen, setAcademicsOpen] = useState(activeNav === "academics");
-  const [studentsOpen, setStudentsOpen] = useState(activeNav === "students");
-  const [parentsOpen, setParentsOpen] = useState(activeNav === "parents");
+  const [academicsOpen, setAcademicsOpen] = useState(
+    activeNav === "academics" || activeNav === "students" || activeNav === "parents",
+  );
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [portalModal, setPortalModal] = useState<"support" | "feedback" | null>(null);
 
@@ -522,154 +519,16 @@ export function SchoolWorkspaceShell({
                 )}
               </div>
 
-              {/* Students Accordion Menu */}
+              {/* Expandable Academics Accordion (Classes & Subjects, Students, Parents & Guardians) */}
               <div className="pt-1">
                 <button
-                  id="students-dropdown-btn"
-                  type="button"
-                  onClick={() => setStudentsOpen((prev) => !prev)}
-                  aria-expanded={studentsOpen}
-                  aria-controls="students-submenu"
-                  className={`flex w-full items-center justify-between rounded-[12px] px-3.5 py-2.5 text-xs font-bold cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
-                    activeNav === "students"
-                      ? "bg-[#663CF6] text-white shadow-md"
-                      : studentsOpen
-                        ? "bg-[#FAF8FE] text-[#663CF6] dark:bg-[#1C1A3D] dark:text-[#C4B5FD]"
-                        : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:bg-[#191D3D] dark:hover:text-[#D9CEFF]"
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <Users className="h-4 w-4" aria-hidden="true" />
-                    <span>Students</span>
-                  </span>
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${
-                      studentsOpen
-                        ? `rotate-180 ${activeNav === "students" ? "text-white" : "text-[#663CF6] dark:text-[#A78BFA]"}`
-                        : `rotate-0 ${activeNav === "students" ? "text-white" : "text-[#76799C] dark:text-[#9DA6CC]"}`
-                    }`}
-                    aria-hidden="true"
-                  />
-                </button>
-                {studentsOpen && (
-                  <div
-                    id="students-submenu"
-                    className="mt-1 ml-4 space-y-0.5 rounded-[12px] border border-[#EDE7FF] bg-[#FAF8FE]/80 p-1.5 text-[11px] font-medium text-[#4D5072] dark:border-[#2C285A] dark:bg-[#151836] dark:text-[#B4BDD9]"
-                  >
-                    {(
-                      [
-                        { label: "Student Dashboard", section: "dashboard", subPath: "students" },
-                        { label: "Student List", section: "list", subPath: "students/list" },
-                        { label: "Student Promotion", section: "promotion", subPath: "students/promotion" },
-                        { label: "Student Inactive", section: "inactive", subPath: "students/inactive" },
-                        { label: "Alumni", section: "alumni", subPath: "students/alumni" },
-                        { label: "Student Settings", section: "settings", subPath: "students/settings" },
-                      ] as Array<{ label: string; section: StudentNavSection; subPath: string }>
-                    ).map((subItem) => {
-                      const effectiveSection =
-                        activeStudentSection === "profile" || activeStudentSection === "enrolment"
-                          ? "list"
-                          : activeStudentSection ?? "dashboard";
-                      const isSubActive =
-                        activeNav === "students" && effectiveSection === subItem.section;
-                      const href = buildSchoolRoute(school.slug, subItem.subPath);
-                      return (
-                        <Link
-                          key={subItem.section}
-                          href={href}
-                          prefetch={false}
-                          aria-current={isSubActive ? "page" : undefined}
-                          onClick={() => setMobileSidebarOpen(false)}
-                          className={`flex w-full items-center rounded-[8px] border-l-2 px-2.5 py-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
-                            isSubActive
-                              ? "border-[#663CF6] bg-white font-bold text-[#663CF6] shadow-2xs dark:border-[#8B5CF6] dark:bg-[#221D4C] dark:text-[#E2D9FF]"
-                              : "border-transparent text-[#4D5072] hover:border-[#663CF6] hover:bg-white hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1E2245] dark:hover:text-[#D9CEFF]"
-                          }`}
-                        >
-                          {subItem.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Expandable Parents & Guardians Submenu */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setParentsOpen((prev) => !prev)}
-                  aria-expanded={parentsOpen}
-                  aria-controls="parents-submenu"
-                  className={`flex w-full items-center justify-between rounded-[12px] px-3.5 py-2.5 text-xs font-bold cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
-                    activeNav === "parents"
-                      ? "bg-[#663CF6] text-white shadow-md"
-                      : parentsOpen
-                        ? "bg-[#FAF8FE] text-[#663CF6] dark:bg-[#1C1A3D] dark:text-[#C4B5FD]"
-                        : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:bg-[#191D3D] dark:hover:text-[#D9CEFF]"
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <Users className="h-4 w-4" aria-hidden="true" />
-                    <span>Parents &amp; Guardians</span>
-                  </span>
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${
-                      parentsOpen
-                        ? `rotate-180 ${activeNav === "parents" ? "text-white" : "text-[#663CF6] dark:text-[#A78BFA]"}`
-                        : `rotate-0 ${activeNav === "parents" ? "text-white" : "text-[#76799C] dark:text-[#9DA6CC]"}`
-                    }`}
-                    aria-hidden="true"
-                  />
-                </button>
-                {parentsOpen && (
-                  <div
-                    id="parents-submenu"
-                    className="mt-1 ml-4 space-y-0.5 rounded-[12px] border border-[#EDE7FF] bg-[#FAF8FE]/80 p-1.5 text-[11px] font-medium text-[#4D5072] dark:border-[#2C285A] dark:bg-[#151836] dark:text-[#B4BDD9]"
-                  >
-                    {(
-                      [
-                        { label: "Guardian Directory", section: "directory", subPath: "parents" },
-                        { label: "Households & Siblings", section: "households", subPath: "parents/households" },
-                        { label: "Portal & Consents", section: "portal", subPath: "parents/portal" },
-                        { label: "Communications", section: "communications", subPath: "parents/communications" },
-                      ] as Array<{ label: string; section: ParentNavSection; subPath: string }>
-                    ).map((subItem) => {
-                      const effectiveSection =
-                        activeParentSection === "profile" ? "directory" : activeParentSection ?? "directory";
-                      const isSubActive =
-                        activeNav === "parents" && effectiveSection === subItem.section;
-                      const href = buildSchoolRoute(school.slug, subItem.subPath);
-                      return (
-                        <Link
-                          key={subItem.section}
-                          href={href}
-                          prefetch={false}
-                          aria-current={isSubActive ? "page" : undefined}
-                          onClick={() => setMobileSidebarOpen(false)}
-                          className={`flex w-full items-center rounded-[8px] border-l-2 px-2.5 py-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
-                            isSubActive
-                              ? "border-[#663CF6] bg-white font-bold text-[#663CF6] shadow-2xs dark:border-[#8B5CF6] dark:bg-[#221D4C] dark:text-[#E2D9FF]"
-                              : "border-transparent text-[#4D5072] hover:border-[#663CF6] hover:bg-white hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1E2245] dark:hover:text-[#D9CEFF]"
-                          }`}
-                        >
-                          {subItem.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Expandable Academics Submenu (Academic Tree -> Classes -> Sections -> Years) */}
-              <div>
-                <button
+                  id="academics-dropdown-btn"
                   type="button"
                   onClick={() => setAcademicsOpen((prev) => !prev)}
                   aria-expanded={academicsOpen}
                   aria-controls="academics-submenu"
                   className={`flex w-full items-center justify-between rounded-[12px] px-3.5 py-2.5 text-xs font-bold cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
-                    activeNav === "academics"
+                    activeNav === "academics" || activeNav === "students" || activeNav === "parents"
                       ? "bg-[#663CF6] text-white shadow-md"
                       : academicsOpen
                         ? "bg-[#FAF8FE] text-[#663CF6] dark:bg-[#1C1A3D] dark:text-[#C4B5FD]"
@@ -683,8 +542,20 @@ export function SchoolWorkspaceShell({
                   <ChevronDown
                     className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${
                       academicsOpen
-                        ? `rotate-180 ${activeNav === "academics" ? "text-white" : "text-[#663CF6] dark:text-[#A78BFA]"}`
-                        : `rotate-0 ${activeNav === "academics" ? "text-white" : "text-[#76799C] dark:text-[#9DA6CC]"}`
+                        ? `rotate-180 ${
+                            activeNav === "academics" ||
+                            activeNav === "students" ||
+                            activeNav === "parents"
+                              ? "text-white"
+                              : "text-[#663CF6] dark:text-[#A78BFA]"
+                          }`
+                        : `rotate-0 ${
+                            activeNav === "academics" ||
+                            activeNav === "students" ||
+                            activeNav === "parents"
+                              ? "text-white"
+                              : "text-[#76799C] dark:text-[#9DA6CC]"
+                          }`
                     }`}
                     aria-hidden="true"
                   />
@@ -696,19 +567,20 @@ export function SchoolWorkspaceShell({
                   >
                     {(
                       [
-                        { label: "Academic Explorer (Tree)", section: "explorer", subPath: "academics" },
-                        { label: "Classes & Subjects", section: "classes", subPath: "academics/classes" },
-                        { label: "Sections & Teachers", section: "sections", subPath: "academics/sections" },
-                        { label: "Academic Years", section: "years", subPath: "academics/years" },
-                      ] as Array<{ label: string; section: AcademicNavSection; subPath: string }>
+                        { label: "Classes & Subjects", navKey: "academics", subPath: "academics" },
+                        { label: "Students", navKey: "students", subPath: "students" },
+                        { label: "Parents & Guardians", navKey: "parents", subPath: "parents" },
+                      ] as Array<{
+                        label: string;
+                        navKey: "academics" | "students" | "parents";
+                        subPath: string;
+                      }>
                     ).map((subItem) => {
-                      const isSubActive =
-                        activeNav === "academics" &&
-                        (activeAcademicSection ?? "explorer") === subItem.section;
+                      const isSubActive = activeNav === subItem.navKey;
                       const href = buildSchoolRoute(school.slug, subItem.subPath);
                       return (
                         <Link
-                          key={subItem.section}
+                          key={subItem.navKey}
                           href={href}
                           prefetch={false}
                           aria-current={isSubActive ? "page" : undefined}

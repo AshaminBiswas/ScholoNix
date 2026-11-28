@@ -182,4 +182,32 @@ describe("SchoolWorkspaceShell single-tenant & in-portal help links", () => {
     await userActor.click(toggle);
     expect(document.documentElement.classList.contains("dark")).toBe(false);
   });
+
+  it("renders Students and Parents & Guardians under the Academics dropdown instead of multi-item sub-dropdowns", async () => {
+    const userActor = userEvent.setup();
+    render(
+      <SchoolWorkspaceShell school={school} user={user} activeNav="dashboard">
+        <div>Workspace Content</div>
+      </SchoolWorkspaceShell>,
+    );
+
+    expect(document.querySelector("#students-dropdown-btn")).toBeNull();
+    expect(document.querySelector("#parents-submenu")).toBeNull();
+
+    const academicsBtn = document.querySelector("#academics-dropdown-btn") as HTMLButtonElement;
+    expect(academicsBtn).not.toBeNull();
+    expect(academicsBtn.getAttribute("aria-expanded")).toBe("false");
+
+    await userActor.click(academicsBtn);
+    expect(academicsBtn.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("link", { name: "Classes & Subjects" }).getAttribute("href")).toBe(
+      "/synthetic-demo-academy/academics",
+    );
+    expect(screen.getByRole("link", { name: "Students" }).getAttribute("href")).toBe(
+      "/synthetic-demo-academy/students",
+    );
+    expect(screen.getByRole("link", { name: "Parents & Guardians" }).getAttribute("href")).toBe(
+      "/synthetic-demo-academy/parents",
+    );
+  });
 });
