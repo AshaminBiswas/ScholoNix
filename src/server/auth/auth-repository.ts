@@ -215,9 +215,9 @@ storeMemory = isServerlessRuntime() ? storeMemory : loadStore();
 const globalForAuthRepo = globalThis as unknown as {
   authRepoPrismaUnavailableUntil?: number;
 };
-const PRISMA_RETRY_COOLDOWN_MS = 30_000;
-const PRISMA_DEV_OP_TIMEOUT_MS = 10_000;
-const PRISMA_SERVERLESS_OP_TIMEOUT_MS = 10_000;
+const PRISMA_RETRY_COOLDOWN_MS = 10_000;
+const PRISMA_DEV_OP_TIMEOUT_MS = 25_000;
+const PRISMA_SERVERLESS_OP_TIMEOUT_MS = 20_000;
 
 function isTransientConnectionError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
@@ -226,9 +226,11 @@ function isTransientConnectionError(err: unknown): boolean {
   return (
     code === "P1001" ||
     code === "P1002" ||
+    code === "P1008" ||
     code === "P1017" ||
     code === "P2024" ||
     message.includes("Can't reach database server") ||
+    message.includes("timeout after") ||
     message.includes("ECONNRESET") ||
     message.includes("ETIMEDOUT") ||
     message.includes("Connection terminated")

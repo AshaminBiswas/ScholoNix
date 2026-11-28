@@ -207,10 +207,28 @@ describe("StudentManagementWorkspace UI & Dark Mode parity", () => {
     expect(screen.getByRole("button", { name: /^ID Cards$/i })).toBeTruthy();
     expect(screen.getByText(/Recent Student Activities/i)).toBeTruthy();
 
-    // Open Aarav Sharma Profile dossier
+    // Open Aarav Sharma Profile 360 dossier
     fireEvent.click(screen.getByRole("button", { name: /View Aarav Sharma/i }));
-    expect(screen.getByText(/Guardian & Contact/i)).toBeTruthy();
+    expect(screen.getByText(/Parent \/ Guardian Information/i)).toBeTruthy();
     expect(screen.getByText(/Emerald House/i)).toBeTruthy();
-    expect(screen.getByText(/Student Activity Audit Trail/i)).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Academic/i })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Attendance/i })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Fees/i })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Documents/i })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Communication/i })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /Activities/i })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /History/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("tab", { name: /Academic/i }));
+    expect(screen.getByText(/Academic Overview/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("tab", { name: /Fees/i }));
+    expect(screen.getByText(/Fee Structure/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("tab", { name: /Documents/i }));
+    expect(screen.getByText(/Document Compliance/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("tab", { name: /History/i }));
+    expect(screen.getByText(/Promotion & Class History/i)).toBeTruthy();
   });
 });

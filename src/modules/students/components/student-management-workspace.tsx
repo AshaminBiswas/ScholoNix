@@ -1342,6 +1342,7 @@ export function StudentManagementWorkspace({
       {/* PROFILE DOSSIER */}
       {activeSection === "profile" && (
         <StudentProfileDossier
+          mode={mode}
           student={selectedProfileStudent}
           groups={snapshot.groups}
           activities={snapshot.activities}

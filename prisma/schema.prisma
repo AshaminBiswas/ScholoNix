@@ -134,6 +134,13 @@ model School {
   studentGroups                 StudentGroup[]
   studentActivities             StudentActivity[]
   studentSetting                StudentSetting?
+  studentAttendanceRecords      StudentAttendanceRecord[]
+  studentExamResults            StudentExamResult[]
+  studentDocuments              StudentDocument[]
+  studentCommunications         StudentCommunication[]
+  studentHomeworkItems          StudentHomeworkItem[]
+  studentCoCurricularActivities StudentCoCurricularActivity[]
+  studentNoteRemarks            StudentNoteRemark[]
 
   @@index([status])
   @@index([plan])
@@ -725,16 +732,24 @@ model Student {
   currentRollNumber   String?                @map("current_roll_number") @db.VarChar(30)
   graduationYear      String?                @map("graduation_year") @db.VarChar(30)
   inactiveReason      String?                @map("inactive_reason") @db.VarChar(255)
+  profileExtended     Json?                  @map("profile_extended") @db.JsonB
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  application  AdmissionApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
-  enrollments  StudentEnrollment[]
-  transfers    StudentTransfer[]
-  groupMembers StudentGroupMember[]
-  activities   StudentActivity[]
+  school                 School                        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  application            AdmissionApplication?         @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  enrollments            StudentEnrollment[]
+  transfers              StudentTransfer[]
+  groupMembers           StudentGroupMember[]
+  activities             StudentActivity[]
+  attendanceRecords      StudentAttendanceRecord[]
+  examResults            StudentExamResult[]
+  studentDocuments       StudentDocument[]
+  communications         StudentCommunication[]
+  homeworkItems          StudentHomeworkItem[]
+  coCurricularActivities StudentCoCurricularActivity[]
+  notesRemarks           StudentNoteRemark[]
 
   @@unique([schoolId, admissionNumber])
   @@index([schoolId, status, currentGrade, currentSection])
@@ -864,6 +879,159 @@ model StudentSetting {
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@map("student_settings")
+}
+
+model StudentAttendanceRecord {
+  id             String   @id @default(uuid()) @db.Uuid
+  schoolId       String   @map("school_id") @db.Uuid
+  studentId      String   @map("student_id") @db.Uuid
+  academicYear   String   @map("academic_year") @db.VarChar(30)
+  attendanceDate DateTime @map("attendance_date") @db.Date
+  status         String   @db.VarChar(20) // PRESENT | ABSENT | LEAVE | HOLIDAY
+  remarks        String?  @db.VarChar(255)
+  markedByName   String   @map("marked_by_name") @db.VarChar(150)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, studentId, attendanceDate])
+  @@index([schoolId, studentId, academicYear, attendanceDate])
+  @@map("student_attendance_records")
+}
+
+model StudentExamResult {
+  id            String   @id @default(uuid()) @db.Uuid
+  schoolId      String   @map("school_id") @db.Uuid
+  studentId     String   @map("student_id") @db.Uuid
+  academicYear  String   @map("academic_year") @db.VarChar(30)
+  term          String   @db.VarChar(40)
+  subject       String   @db.VarChar(100)
+  maxMarks      Int      @map("max_marks")
+  marksObtained Float    @map("marks_obtained")
+  grade         String   @db.VarChar(10)
+  classRank     Int?     @map("class_rank")
+  schoolRank    Int?     @map("school_rank")
+  remarks       String?  @db.VarChar(255)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, studentId, academicYear, term, subject])
+  @@index([schoolId, studentId, academicYear, term])
+  @@map("student_exam_results")
+}
+
+model StudentDocument {
+  id             String    @id @default(uuid()) @db.Uuid
+  schoolId       String    @map("school_id") @db.Uuid
+  studentId      String    @map("student_id") @db.Uuid
+  documentName   String    @map("document_name") @db.VarChar(150)
+  documentType   String    @map("document_type") @db.VarChar(60)
+  isRequired     Boolean   @default(false) @map("is_required")
+  fileName       String    @map("file_name") @db.VarChar(255)
+  fileKey        String    @map("file_key") @db.VarChar(500)
+  fileSizeBytes  Int       @default(0) @map("file_size_bytes")
+  mimeType       String    @default("application/pdf") @map("mime_type") @db.VarChar(100)
+  status         String    @default("PENDING") @db.VarChar(20) // PENDING | VERIFIED | REJECTED
+  uploadedByName String    @map("uploaded_by_name") @db.VarChar(150)
+  verifiedByName String?   @map("verified_by_name") @db.VarChar(150)
+  verifiedAt     DateTime? @map("verified_at") @db.Timestamptz(6)
+  remarks        String?   @db.VarChar(255)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, studentId, status])
+  @@map("student_documents")
+}
+
+model StudentCommunication {
+  id            String   @id @default(uuid()) @db.Uuid
+  schoolId      String   @map("school_id") @db.Uuid
+  studentId     String   @map("student_id") @db.Uuid
+  channel       String   @db.VarChar(20) // MESSAGE | EMAIL | SMS | APP
+  direction     String   @default("OUTBOUND") @db.VarChar(20) // OUTBOUND | INBOUND
+  senderName    String   @map("sender_name") @db.VarChar(150)
+  recipientName String   @map("recipient_name") @db.VarChar(150)
+  subject       String?  @db.VarChar(255)
+  body          String   @db.Text
+  status        String   @default("SENT") @db.VarChar(20) // SENT | PENDING | FAILED
+  attachmentKey String?  @map("attachment_key") @db.VarChar(500)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, studentId, createdAt])
+  @@map("student_communications")
+}
+
+model StudentHomeworkItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  schoolId   String   @map("school_id") @db.Uuid
+  studentId  String   @map("student_id") @db.Uuid
+  subject    String   @db.VarChar(100)
+  title      String   @db.VarChar(255)
+  assignedOn DateTime @map("assigned_on") @db.Date
+  dueDate    DateTime @map("due_date") @db.Date
+  status     String   @default("PENDING") @db.VarChar(20) // PENDING | SUBMITTED
+  remarks    String?  @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, studentId, dueDate])
+  @@map("student_homework_items")
+}
+
+model StudentCoCurricularActivity {
+  id             String   @id @default(uuid()) @db.Uuid
+  schoolId       String   @map("school_id") @db.Uuid
+  studentId      String   @map("student_id") @db.Uuid
+  title          String   @db.VarChar(200)
+  category       String   @db.VarChar(60)
+  eventDate      DateTime @map("event_date") @db.Date
+  status         String   @db.VarChar(60) // Participated | 1st Prize | Upcoming
+  achievement    String?  @db.VarChar(150)
+  remarks        String?  @db.VarChar(255)
+  certificateKey String?  @map("certificate_key") @db.VarChar(500)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, studentId, eventDate])
+  @@map("student_co_curricular_activities")
+}
+
+model StudentNoteRemark {
+  id          String    @id @default(uuid()) @db.Uuid
+  schoolId    String    @map("school_id") @db.Uuid
+  studentId   String    @map("student_id") @db.Uuid
+  tabScope    String    @db.VarChar(30) // PROFILE | ACADEMIC | ATTENDANCE | FEES | DOCUMENTS | ACTIVITIES | HISTORY
+  kind        String    @default("REMARK") @db.VarChar(30) // REMARK | TASK | ACHIEVEMENT
+  title       String?   @db.VarChar(200)
+  body        String    @db.Text
+  isCompleted Boolean   @default(false) @map("is_completed")
+  dueDate     DateTime? @map("due_date") @db.Date
+  authorName  String    @map("author_name") @db.VarChar(150)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, studentId, tabScope, createdAt])
+  @@map("student_notes_remarks")
 }
 
 // =============================================================================
