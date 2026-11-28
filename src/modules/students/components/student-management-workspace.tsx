@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import type { Route } from "next";
 import {
+  ArrowLeft,
   ArrowRight,
   ArrowRightLeft,
   ArrowUpDown,
@@ -18,7 +17,6 @@ import {
   GraduationCap,
   IdCard,
   Layers,
-  Settings,
   ShieldAlert,
   TrendingUp,
   UserCheck,
@@ -112,20 +110,6 @@ const SECTION_META: Record<
   },
 };
 
-const TOP_PILL_TABS: Array<{
-  section: StudentNavSection;
-  label: string;
-  icon: React.ReactNode;
-}> = [
-  { section: "dashboard", label: "Overview", icon: <Users className="h-3.5 w-3.5" /> },
-  { section: "list", label: "Student List", icon: <CheckSquare className="h-3.5 w-3.5" /> },
-  { section: "enrolment", label: "Enrolment", icon: <UserPlus className="h-3.5 w-3.5" /> },
-  { section: "promotion", label: "Promotion", icon: <GraduationCap className="h-3.5 w-3.5" /> },
-  { section: "transfer", label: "Transfer", icon: <ArrowRightLeft className="h-3.5 w-3.5" /> },
-  { section: "alumni", label: "Alumni", icon: <Award className="h-3.5 w-3.5" /> },
-  { section: "settings", label: "Settings", icon: <Settings className="h-3.5 w-3.5" /> },
-];
-
 function statusPillClasses(status: StudentRecord["status"]): string {
   switch (status) {
     case "ACTIVE":
@@ -149,7 +133,6 @@ export function StudentManagementWorkspace({
   initialSection = "dashboard",
   initialStudentId = null,
   permissions,
-  sectionHrefBuilder,
   onSelectedStudentUrlChange,
 }: {
   mode: "school" | "platform";
@@ -542,44 +525,17 @@ export function StudentManagementWorkspace({
             </h1>
             <p className="text-xs text-[#4D5072] dark:text-[#9DA6CC]">{meta.subtitle}</p>
           </div>
-        </div>
-      )}
 
-      {/* Horizontal Section Pill Tabs (hidden on Student Profile 360 details page) */}
-      {!(activeSection === "profile" && selectedProfileStudent) && (
-        <div className={`${STUDENT_CARD_SURFACE} p-1.5 flex flex-wrap items-center gap-1.5`}>
-          {TOP_PILL_TABS.map((tab) => {
-            const active = activeSection === tab.section;
-            const cls = `inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer ${
-              active
-                ? "bg-gradient-to-r from-[#7C5CFC] to-[#5B35F5] text-white shadow-sm"
-                : "text-[#4D5072] hover:bg-[#F3EFFF] hover:text-[#663CF6] dark:text-[#A9B2D8] dark:hover:bg-[#1F2248] dark:hover:text-[#F3F5FF]"
-            }`;
-            if (sectionHrefBuilder) {
-              return (
-                <Link
-                  key={tab.section}
-                  href={sectionHrefBuilder(tab.section) as Route}
-                  onClick={() => navigateSection(tab.section)}
-                  className={cls}
-                >
-                  {tab.icon}
-                  <span>{tab.label}</span>
-                </Link>
-              );
-            }
-            return (
-              <button
-                key={tab.section}
-                type="button"
-                onClick={() => navigateSection(tab.section)}
-                className={cls}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+          {mode === "platform" && activeSection !== "dashboard" && (
+            <button
+              type="button"
+              onClick={() => navigateSection("dashboard", null)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#CAD0EB] bg-white px-3.5 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to Student Dashboard</span>
+            </button>
+          )}
         </div>
       )}
 

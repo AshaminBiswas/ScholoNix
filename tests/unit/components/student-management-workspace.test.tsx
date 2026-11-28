@@ -190,8 +190,10 @@ describe("StudentManagementWorkspace UI & Dark Mode parity", () => {
       />,
     );
 
-    // Dashboard layout & Light/Dark mode tokens
+    // Dashboard layout & Light/Dark mode tokens (no top section tab strip)
     expect(screen.getByRole("heading", { name: /Student Dashboard/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Overview$/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Enrolment$/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Add Student$/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Download Report$/i })).toBeNull();
     expect(screen.getByText(/Student Enrolment Trend/i)).toBeTruthy();
@@ -202,8 +204,8 @@ describe("StudentManagementWorkspace UI & Dark Mode parity", () => {
     expect(screen.getByRole("heading", { name: /Important Actions/i })).toBeTruthy();
     expect(container.innerHTML).toContain("dark:bg-[#141731]");
 
-    // Switch to Student List tab
-    fireEvent.click(screen.getByRole("button", { name: /^Student List$/i }));
+    // Switch to Student List via Students by Grade -> View Details
+    fireEvent.click(screen.getByRole("button", { name: /View Details/i }));
     expect(screen.getByRole("button", { name: /Bulk Actions/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Student Groups/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /^ID Cards$/i })).toBeTruthy();
