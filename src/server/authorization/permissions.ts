@@ -28,6 +28,9 @@ export type Permission =
   | "parents:portal"
   | "parents:communicate"
   | "parents:export"
+  | "academics:read"
+  | "academics:write"
+  | "academics:settings"
   | "admissions:read"
   | "admissions:write"
   | "admissions:verify"
@@ -57,6 +60,9 @@ const ADMIN_PERMISSIONS: readonly Permission[] = [
   "parents:portal",
   "parents:communicate",
   "parents:export",
+  "academics:read",
+  "academics:write",
+  "academics:settings",
   "admissions:read",
   "admissions:write",
   "admissions:verify",
@@ -80,19 +86,22 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "students:read",
     "parents:read",
     "parents:communicate",
+    "academics:read",
     "attendance:read",
     "attendance:write",
     "exams:read",
     "exams:write",
     "reports:view",
   ],
-  ACCOUNTANT: ["students:read", "parents:read", "parents:export", "fees:read", "fees:write", "reports:view"],
+  ACCOUNTANT: ["students:read", "parents:read", "parents:export", "academics:read", "fees:read", "fees:write", "reports:view"],
   STAFF: [
     "students:read",
     "parents:read",
     "parents:write",
     "parents:link",
     "parents:communicate",
+    "academics:read",
+    "academics:write",
     "admissions:read",
     "admissions:write",
     "admissions:verify",

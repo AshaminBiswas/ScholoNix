@@ -332,6 +332,8 @@ describe("CompanyAdminPanel Command Center Redesign", () => {
     expect(screen.getByTitle("Clients")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }));
     expect(screen.getByTitle("Schools")).toBeTruthy();
+    expect(screen.getByTitle("Academics & Tree")).toBeTruthy();
+    expect(screen.getByTitle("Parents & Guardians")).toBeTruthy();
     expect(screen.getByTitle("Global Users")).toBeTruthy();
 
     // Clients dropdown toggles cleanly; clicking Schools opens All Schools List and updates URL
@@ -354,7 +356,13 @@ describe("CompanyAdminPanel Command Center Redesign", () => {
     fireEvent.click(screen.getByRole("button", { name: /Users & Sessions/i }));
     expect(window.location.pathname).toBe("/admin/clients/schools/s-1/users");
 
-    fireEvent.click(screen.getByRole("button", { name: /Students & Parents/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /^Academics & Tree$/i }).at(-1)!);
+    expect(window.location.pathname).toBe("/admin/clients/schools/s-1/academics");
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^Parents & Guardians$/i }).at(-1)!);
+    expect(window.location.pathname).toBe("/admin/clients/schools/s-1/parents");
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^Students$/i }).at(-1)!);
     expect(window.location.pathname).toBe("/admin/clients/schools/s-1/students");
     expect(screen.getByPlaceholderText(/Search student, parent, phone, class/i)).toBeTruthy();
 
@@ -420,5 +428,26 @@ describe("CompanyAdminPanel Command Center Redesign", () => {
         studentId: "app-1",
       }),
     ).toBe("/company-admin-pannel/clients/schools/school-1/students/app-1");
+
+    expect(parsePlatformSubSegments(["clients", "academics"])).toEqual({
+      tab: "academics",
+      schoolId: null,
+      schoolSubTab: "all",
+      studentId: null,
+    });
+    expect(parsePlatformSubSegments(["clients", "parents"])).toEqual({
+      tab: "parents",
+      schoolId: null,
+      schoolSubTab: "all",
+      studentId: null,
+    });
+    expect(
+      buildPlatformRouteUrl("/admin", {
+        tab: "schools",
+        schoolId: "school-1",
+        schoolSubTab: "academics",
+        studentId: null,
+      }),
+    ).toBe("/admin/clients/schools/school-1/academics");
   });
 });

@@ -147,6 +147,11 @@ model School {
   guardians                     Guardian[]
   studentGuardianLinks          StudentGuardianLink[]
   guardianCommunications        GuardianCommunication[]
+  academicSessions              AcademicSession[]
+  academicClasses               AcademicClass[]
+  academicSections              AcademicSection[]
+  academicSubjects              AcademicSubject[]
+  classSubjectAssignments       ClassSubjectAssignment[]
 
   @@index([status])
   @@index([plan])
@@ -1217,6 +1222,114 @@ model GuardianCommunication {
 
   @@index([schoolId, guardianId, createdAt])
   @@map("guardian_communications")
+}
+
+// =============================================================================
+// ACADEMICS: SESSIONS, CLASSES, SECTIONS & SUBJECTS TREE
+// =============================================================================
+
+model AcademicSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  schoolId  String   @map("school_id") @db.Uuid
+  name      String   @db.VarChar(30)
+  startDate DateTime? @map("start_date") @db.Date
+  endDate   DateTime? @map("end_date") @db.Date
+  isCurrent Boolean  @default(false) @map("is_current")
+  status    String   @default("ACTIVE") @db.VarChar(30) // UPCOMING | ACTIVE | ARCHIVED
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, name])
+  @@index([schoolId, isCurrent, status])
+  @@map("academic_sessions")
+}
+
+model AcademicClass {
+  id           String   @id @default(uuid()) @db.Uuid
+  schoolId     String   @map("school_id") @db.Uuid
+  academicYear String   @map("academic_year") @db.VarChar(30)
+  name         String   @db.VarChar(60)
+  code         String?  @db.VarChar(30)
+  department   String?  @default("General") @db.VarChar(60)
+  displayOrder Int      @default(1) @map("display_order")
+  status       String   @default("ACTIVE") @db.VarChar(30) // ACTIVE | ARCHIVED
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school             School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  sections           AcademicSection[]
+  subjectAssignments ClassSubjectAssignment[]
+
+  @@unique([schoolId, academicYear, name])
+  @@index([schoolId, academicYear, displayOrder])
+  @@map("academic_classes")
+}
+
+model AcademicSection {
+  id               String   @id @default(uuid()) @db.Uuid
+  schoolId         String   @map("school_id") @db.Uuid
+  classId          String   @map("class_id") @db.Uuid
+  academicYear     String   @map("academic_year") @db.VarChar(30)
+  name             String   @db.VarChar(20)
+  capacity         Int      @default(40)
+  roomNumber       String?  @map("room_number") @db.VarChar(40)
+  classTeacherName String?  @map("class_teacher_name") @db.VarChar(150)
+  status           String   @default("ACTIVE") @db.VarChar(30)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school        School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicClass AcademicClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, classId, name])
+  @@index([schoolId, academicYear, classId])
+  @@map("academic_sections")
+}
+
+model AcademicSubject {
+  id              String   @id @default(uuid()) @db.Uuid
+  schoolId        String   @map("school_id") @db.Uuid
+  code            String   @db.VarChar(30)
+  name            String   @db.VarChar(120)
+  category        String   @default("CORE") @db.VarChar(30) // CORE | ELECTIVE | LAB | CO_SCHOLASTIC
+  defaultMaxMarks Int      @default(100) @map("default_max_marks")
+  defaultPassMarks Int     @default(33) @map("default_pass_marks")
+  status          String   @default("ACTIVE") @db.VarChar(30)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school           School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classAssignments ClassSubjectAssignment[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId, status, category])
+  @@map("academic_subjects")
+}
+
+model ClassSubjectAssignment {
+  id           String   @id @default(uuid()) @db.Uuid
+  schoolId     String   @map("school_id") @db.Uuid
+  classId      String   @map("class_id") @db.Uuid
+  subjectId    String   @map("subject_id") @db.Uuid
+  academicYear String   @map("academic_year") @db.VarChar(30)
+  teacherName  String?  @map("teacher_name") @db.VarChar(150)
+  weeklyPeriods Int     @default(5) @map("weekly_periods")
+  maxMarks     Int      @default(100) @map("max_marks")
+  passMarks    Int      @default(33) @map("pass_marks")
+  isCompulsory Boolean  @default(true) @map("is_compulsory")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school        School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicClass AcademicClass   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject       AcademicSubject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, classId, subjectId])
+  @@index([schoolId, academicYear, classId])
+  @@map("class_subject_assignments")
 }
 
 // =============================================================================

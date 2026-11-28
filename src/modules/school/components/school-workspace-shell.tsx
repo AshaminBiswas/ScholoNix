@@ -37,6 +37,7 @@ import {
 import type { AdmissionsTab } from "@/modules/school/admissions/types";
 import type { StudentNavSection } from "@/modules/students/types";
 import type { ParentNavSection } from "@/modules/parents/types";
+import type { AcademicNavSection } from "@/modules/academics/types";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export interface SchoolShellSchool {
@@ -62,9 +63,17 @@ export interface SchoolShellUser {
 interface SchoolWorkspaceShellProps {
   school: SchoolShellSchool;
   user: SchoolShellUser;
-  activeNav: "dashboard" | "admissions" | "students" | "parents" | "profile" | "help";
+  activeNav:
+    | "dashboard"
+    | "admissions"
+    | "academics"
+    | "students"
+    | "parents"
+    | "profile"
+    | "help";
   activeAdmissionsTab?: AdmissionsTab;
   onSelectAdmissionsTab?: (tab: AdmissionsTab) => void;
+  activeAcademicSection?: AcademicNavSection;
   activeStudentSection?: StudentNavSection;
   activeParentSection?: ParentNavSection;
   noticeCount?: number;
@@ -78,6 +87,7 @@ export function SchoolWorkspaceShell({
   activeNav,
   activeAdmissionsTab,
   onSelectAdmissionsTab,
+  activeAcademicSection,
   activeStudentSection,
   activeParentSection,
   noticeCount = 0,
@@ -88,6 +98,7 @@ export function SchoolWorkspaceShell({
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [admissionsOpen, setAdmissionsOpen] = useState(activeNav === "admissions");
+  const [academicsOpen, setAcademicsOpen] = useState(activeNav === "academics");
   const [studentsOpen, setStudentsOpen] = useState(activeNav === "students");
   const [parentsOpen, setParentsOpen] = useState(activeNav === "parents");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -650,9 +661,74 @@ export function SchoolWorkspaceShell({
                 )}
               </div>
 
+              {/* Expandable Academics Submenu (Academic Tree -> Classes -> Sections -> Years) */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setAcademicsOpen((prev) => !prev)}
+                  aria-expanded={academicsOpen}
+                  aria-controls="academics-submenu"
+                  className={`flex w-full items-center justify-between rounded-[12px] px-3.5 py-2.5 text-xs font-bold cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
+                    activeNav === "academics"
+                      ? "bg-[#663CF6] text-white shadow-md"
+                      : academicsOpen
+                        ? "bg-[#FAF8FE] text-[#663CF6] dark:bg-[#1C1A3D] dark:text-[#C4B5FD]"
+                        : "text-[#4D5072] hover:bg-[#FAF8FE] hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:bg-[#191D3D] dark:hover:text-[#D9CEFF]"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <GraduationCap className="h-4 w-4" aria-hidden="true" />
+                    <span>Academics</span>
+                  </span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${
+                      academicsOpen
+                        ? `rotate-180 ${activeNav === "academics" ? "text-white" : "text-[#663CF6] dark:text-[#A78BFA]"}`
+                        : `rotate-0 ${activeNav === "academics" ? "text-white" : "text-[#76799C] dark:text-[#9DA6CC]"}`
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+                {academicsOpen && (
+                  <div
+                    id="academics-submenu"
+                    className="mt-1 ml-4 space-y-0.5 rounded-[12px] border border-[#EDE7FF] bg-[#FAF8FE]/80 p-1.5 text-[11px] font-medium text-[#4D5072] dark:border-[#2C285A] dark:bg-[#151836] dark:text-[#B4BDD9]"
+                  >
+                    {(
+                      [
+                        { label: "Academic Explorer (Tree)", section: "explorer", subPath: "academics" },
+                        { label: "Classes & Subjects", section: "classes", subPath: "academics/classes" },
+                        { label: "Sections & Teachers", section: "sections", subPath: "academics/sections" },
+                        { label: "Academic Years", section: "years", subPath: "academics/years" },
+                      ] as Array<{ label: string; section: AcademicNavSection; subPath: string }>
+                    ).map((subItem) => {
+                      const isSubActive =
+                        activeNav === "academics" &&
+                        (activeAcademicSection ?? "explorer") === subItem.section;
+                      const href = buildSchoolRoute(school.slug, subItem.subPath);
+                      return (
+                        <Link
+                          key={subItem.section}
+                          href={href}
+                          prefetch={false}
+                          aria-current={isSubActive ? "page" : undefined}
+                          onClick={() => setMobileSidebarOpen(false)}
+                          className={`flex w-full items-center rounded-[8px] border-l-2 px-2.5 py-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#663CF6] ${
+                            isSubActive
+                              ? "border-[#663CF6] bg-white font-bold text-[#663CF6] shadow-2xs dark:border-[#8B5CF6] dark:bg-[#221D4C] dark:text-[#E2D9FF]"
+                              : "border-transparent text-[#4D5072] hover:border-[#663CF6] hover:bg-white hover:text-[#663CF6] dark:text-[#B4BDD9] dark:hover:border-[#8B5CF6] dark:hover:bg-[#1E2245] dark:hover:text-[#D9CEFF]"
+                          }`}
+                        >
+                          {subItem.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Standard Menu Items */}
               {[
-                { icon: GraduationCap, label: "Academics" },
                 { icon: Clock, label: "Attendance" },
                 { icon: Calendar, label: "Timetable" },
                 { icon: Users, label: "Staff" },

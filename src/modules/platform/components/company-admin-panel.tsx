@@ -8,6 +8,7 @@ import {
   ArrowRight,
   BarChart3,
   Bell,
+  BookOpen,
   Briefcase,
   Building2,
   CalendarCheck,
@@ -59,6 +60,10 @@ import { PlatformOverviewTab } from "./platform-overview-tab";
 import { PlatformSchoolsTab } from "./platform-schools-tab";
 import { PlatformStudentsGlobalTab } from "./platform-students-global-tab";
 import { PlatformPromotionsGlobalTab } from "./platform-promotions-global-tab";
+import {
+  PlatformAcademicsGlobalTab,
+  PlatformParentsGlobalTab,
+} from "./platform-academics-parents-tabs";
 import { PlatformAdminsTab } from "./platform-admins-tab";
 import { PlatformSettingsTab } from "./platform-settings-tab";
 import { PlatformProvisionSchoolModal } from "./platform-provision-modal";
@@ -464,7 +469,14 @@ export function CompanyAdminPanel({
                   setClientsMenuOpen((v) => !v);
                 }
               }}
-              className={navBtnCls(activeTab === "schools" || activeTab === "users" || activeTab === "students" || activeTab === "promotions")}
+              className={navBtnCls(
+                activeTab === "schools" ||
+                  activeTab === "academics" ||
+                  activeTab === "users" ||
+                  activeTab === "students" ||
+                  activeTab === "parents" ||
+                  activeTab === "promotions",
+              )}
             >
               <span className="flex items-center gap-2.5 min-w-0">
                 <Briefcase className="h-4 w-4 shrink-0" />
@@ -475,7 +487,12 @@ export function CompanyAdminPanel({
                   {schools.length > 0 && (
                     <span
                       className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
-                        activeTab === "schools" || activeTab === "users" || activeTab === "students" || activeTab === "promotions"
+                        activeTab === "schools" ||
+                        activeTab === "academics" ||
+                        activeTab === "users" ||
+                        activeTab === "students" ||
+                        activeTab === "parents" ||
+                        activeTab === "promotions"
                           ? "bg-white/20 text-white"
                           : "bg-[#EDE7FF] text-[#663CF6] dark:bg-[#251D4A] dark:text-[#CBB8FF]"
                       }`}
@@ -517,17 +534,17 @@ export function CompanyAdminPanel({
 
                 <button
                   type="button"
-                  title="Global Users"
-                  aria-current={activeTab === "users" ? "page" : undefined}
-                  onClick={() => navigateTab("users")}
+                  title="Academics & Tree"
+                  aria-current={activeTab === "academics" ? "page" : undefined}
+                  onClick={() => navigateTab("academics")}
                   className={`w-full flex items-center gap-1.5 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
-                    activeTab === "users"
+                    activeTab === "academics"
                       ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
                       : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
                   }`}
                 >
-                  <Users className="h-3 w-3 shrink-0" />
-                  <span className="truncate">Global Users</span>
+                  <BookOpen className="h-3 w-3 shrink-0" />
+                  <span className="truncate">Academics &amp; Tree</span>
                 </button>
 
                 <button
@@ -547,6 +564,21 @@ export function CompanyAdminPanel({
 
                 <button
                   type="button"
+                  title="Parents & Guardians"
+                  aria-current={activeTab === "parents" ? "page" : undefined}
+                  onClick={() => navigateTab("parents")}
+                  className={`w-full flex items-center gap-1.5 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
+                    activeTab === "parents"
+                      ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
+                      : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
+                  }`}
+                >
+                  <Users className="h-3 w-3 shrink-0" />
+                  <span className="truncate">Parents &amp; Guardians</span>
+                </button>
+
+                <button
+                  type="button"
                   title="Promotions"
                   aria-current={activeTab === "promotions" ? "page" : undefined}
                   onClick={() => navigateTab("promotions")}
@@ -558,6 +590,21 @@ export function CompanyAdminPanel({
                 >
                   <TrendingUp className="h-3 w-3 shrink-0" />
                   <span className="truncate">Promotions</span>
+                </button>
+
+                <button
+                  type="button"
+                  title="Global Users"
+                  aria-current={activeTab === "users" ? "page" : undefined}
+                  onClick={() => navigateTab("users")}
+                  className={`w-full flex items-center gap-1.5 text-left rounded-lg px-2 py-1.5 text-[11px] font-bold cursor-pointer ${
+                    activeTab === "users"
+                      ? "text-[#663CF6] bg-[#EDE7FF]/75 dark:text-[#CBB8FF] dark:bg-[#251D4A]"
+                      : "text-[#4D5072] hover:text-[#08093B] dark:text-[#B4BDD9] dark:hover:text-[#F3F5FF]"
+                  }`}
+                >
+                  <Users className="h-3 w-3 shrink-0" />
+                  <span className="truncate">Global Users</span>
                 </button>
               </div>
             )}
@@ -1090,6 +1137,44 @@ export function CompanyAdminPanel({
                   schoolId: targetSchoolId,
                   schoolSubTab: "students",
                   studentId: targetStudentId ?? null,
+                });
+              }}
+            />
+          )}
+
+          {activeTab === "academics" && (
+            <PlatformAcademicsGlobalTab
+              onToast={showToast}
+              onOpenSchoolAcademics={(targetSchoolId) => {
+                setActiveTab("schools");
+                setSelectedSchoolId(targetSchoolId);
+                setSchoolSubTab("academics");
+                setSelectedStudentId(null);
+                setClientsMenuOpen(true);
+                syncBrowserRoute({
+                  tab: "schools",
+                  schoolId: targetSchoolId,
+                  schoolSubTab: "academics",
+                  studentId: null,
+                });
+              }}
+            />
+          )}
+
+          {activeTab === "parents" && (
+            <PlatformParentsGlobalTab
+              onToast={showToast}
+              onOpenSchoolParents={(targetSchoolId) => {
+                setActiveTab("schools");
+                setSelectedSchoolId(targetSchoolId);
+                setSchoolSubTab("parents");
+                setSelectedStudentId(null);
+                setClientsMenuOpen(true);
+                syncBrowserRoute({
+                  tab: "schools",
+                  schoolId: targetSchoolId,
+                  schoolSubTab: "parents",
+                  studentId: null,
                 });
               }}
             />

@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   Building2,
   Calendar,
   Check,
@@ -71,6 +72,8 @@ import type {
   ParentDashboardAnalytics,
   ParentWorkspaceSnapshot,
 } from "@/modules/parents/types";
+import { AcademicsManagementWorkspace } from "@/modules/academics/components/academics-management-workspace";
+import type { AcademicWorkspaceSnapshot } from "@/modules/academics/types";
 
 const CARD_SURFACE =
   "rounded-[18px] border border-white/80 bg-white/85 backdrop-blur-md shadow-[0_8px_24px_rgba(79,39,232,0.06)] dark:border-[#272B4D] dark:bg-[#141731]/95 dark:shadow-[0_10px_28px_rgba(3,5,18,0.45)]";
@@ -195,6 +198,9 @@ export function PlatformSchoolsTab({
     analytics: ParentDashboardAnalytics;
     households: HouseholdCluster[];
   } | null>(null);
+  const [academicsSuiteData, setAcademicsSuiteData] = useState<AcademicWorkspaceSnapshot | null>(
+    null,
+  );
 
   // Deep data & audit sub-tabs state
   const [schoolData, setSchoolData] = useState<PlatformSchoolDataInspectResult | null>(null);
@@ -234,6 +240,7 @@ export function PlatformSchoolsTab({
     setSchoolData(null);
     setStudentSuiteData(null);
     setParentSuiteData(null);
+    setAcademicsSuiteData(null);
     setDataError(null);
     setSchoolAuditLogs([]);
     setUserSearch("");
@@ -257,6 +264,7 @@ export function PlatformSchoolsTab({
           analytics: ParentDashboardAnalytics;
           households: HouseholdCluster[];
         };
+        academicsSuite?: AcademicWorkspaceSnapshot;
         users?: PlatformSchoolUserItem[];
         logs?: PlatformAuditLogRecord[];
         cachedAt: number;
@@ -299,6 +307,9 @@ export function PlatformSchoolsTab({
     if (cached?.parentSuite) {
       setParentSuiteData(cached.parentSuite);
     }
+    if (cached?.academicsSuite) {
+      setAcademicsSuiteData(cached.academicsSuite);
+    }
     if (cached?.users) {
       setSchoolUsers(cached.users);
     }
@@ -337,8 +348,11 @@ export function PlatformSchoolsTab({
       fetch(`/api/platform/schools/${selectedSchoolKey}/parents`, { cache: "no-store" }).then((r) =>
         r.ok ? r.json().catch(() => null) : null,
       ),
+      fetch(`/api/platform/schools/${selectedSchoolKey}/academics`, { cache: "no-store" }).then(
+        (r) => (r.ok ? r.json().catch(() => null) : null),
+      ),
     ])
-      .then(([dataRes, usersRes, auditRes, studentsSuiteRes, parentsSuiteRes]) => {
+      .then(([dataRes, usersRes, auditRes, studentsSuiteRes, parentsSuiteRes, academicsRes]) => {
         if (!active) return;
         const entry = { ...(schoolClientCacheRef.current.get(selectedSchoolKey) ?? {}), cachedAt: Date.now() };
         if (dataRes.status === "fulfilled" && dataRes.value?.data) {
@@ -393,6 +407,10 @@ export function PlatformSchoolsTab({
           };
           setParentSuiteData(pPayload);
           entry.parentSuite = pPayload;
+        }
+        if (academicsRes.status === "fulfilled" && academicsRes.value?.success && academicsRes.value?.snapshot) {
+          setAcademicsSuiteData(academicsRes.value.snapshot as AcademicWorkspaceSnapshot);
+          entry.academicsSuite = academicsRes.value.snapshot as AcademicWorkspaceSnapshot;
         }
         schoolClientCacheRef.current.set(selectedSchoolKey, entry);
       })
@@ -1191,7 +1209,9 @@ export function PlatformSchoolsTab({
                   { id: "profile", label: "Profile & Lifecycle", icon: Building2 },
                   { id: "plan", label: "Plan & Modules", icon: Settings2 },
                   { id: "users", label: "Users & Sessions", icon: Users },
-                  { id: "students", label: "Students & Parents", icon: GraduationCap },
+                  { id: "academics", label: "Academics & Tree", icon: BookOpen },
+                  { id: "students", label: "Students", icon: GraduationCap },
+                  { id: "parents", label: "Parents & Guardians", icon: Users },
                   { id: "promotions", label: "Promotions", icon: TrendingUp },
                   { id: "admissions", label: "Admissions Data", icon: Database },
                   { id: "fees", label: "Fee Ledgers", icon: IndianRupee },
@@ -3044,26 +3064,6 @@ export function PlatformSchoolsTab({
                       </div>
                     )}
 
-                    {parentSuiteData && (
-                      <div className="rounded-[18px] border border-[#DDD6FE] bg-[#FAF8FE]/70 p-4 sm:p-5 dark:border-[#2E2A5C] dark:bg-[#10142C]/80">
-                        <ParentsManagementWorkspace
-                          mode="platform"
-                          schoolId={selectedEntry.school.id}
-                          initialSnapshot={parentSuiteData.snapshot}
-                          initialAnalytics={parentSuiteData.analytics}
-                          initialHouseholds={parentSuiteData.households}
-                          initialSection="directory"
-                          permissions={{
-                            canWrite: true,
-                            canLink: true,
-                            canPortal: true,
-                            canCommunicate: true,
-                            canExport: true,
-                          }}
-                        />
-                      </div>
-                    )}
-
                     <div className="space-y-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -3264,6 +3264,52 @@ export function PlatformSchoolsTab({
                     </div>
                   </div>
                 )
+              )}
+
+              {/* SUB-TAB 4A: ACADEMICS TREE EXPLORER */}
+              {subTab === "academics" && (
+                <div className="rounded-[18px] border border-[#DDD6FE] bg-[#FAF8FE]/70 p-4 sm:p-5 dark:border-[#2E2A5C] dark:bg-[#10142C]/80">
+                  {academicsSuiteData ? (
+                    <AcademicsManagementWorkspace
+                      mode="platform"
+                      schoolId={selectedEntry.school.id}
+                      initialSnapshot={academicsSuiteData}
+                      initialSection="explorer"
+                      permissions={{ canWrite: true, canManageSettings: true }}
+                    />
+                  ) : (
+                    <div className="py-6 text-center text-xs text-[#76799C]">
+                      Loading school Academics &amp; Curriculum Tree...
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SUB-TAB 4C: PARENTS & GUARDIANS */}
+              {subTab === "parents" && (
+                <div className="rounded-[18px] border border-[#DDD6FE] bg-[#FAF8FE]/70 p-4 sm:p-5 dark:border-[#2E2A5C] dark:bg-[#10142C]/80">
+                  {parentSuiteData ? (
+                    <ParentsManagementWorkspace
+                      mode="platform"
+                      schoolId={selectedEntry.school.id}
+                      initialSnapshot={parentSuiteData.snapshot}
+                      initialAnalytics={parentSuiteData.analytics}
+                      initialHouseholds={parentSuiteData.households}
+                      initialSection="directory"
+                      permissions={{
+                        canWrite: true,
+                        canLink: true,
+                        canPortal: true,
+                        canCommunicate: true,
+                        canExport: true,
+                      }}
+                    />
+                  ) : (
+                    <div className="py-6 text-center text-xs text-[#76799C]">
+                      Loading school Parents &amp; Guardians workspace...
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* SUB-TAB 4B: TENANT PROMOTION SUITE */}

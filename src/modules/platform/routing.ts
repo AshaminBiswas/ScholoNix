@@ -5,7 +5,9 @@ export type SchoolSubTab =
   | "profile"
   | "plan"
   | "users"
+  | "academics"
   | "students"
+  | "parents"
   | "promotions"
   | "admissions"
   | "fees"
@@ -44,7 +46,9 @@ function normalizeSchoolSubTab(raw?: string): SchoolSubTab {
   if (s === "profile") return "profile";
   if (s === "plan" || s === "subscription" || s === "modules") return "plan";
   if (s === "users" || s === "user") return "users";
+  if (s === "academics" || s === "academic" || s === "classes") return "academics";
   if (s === "students" || s === "student") return "students";
+  if (s === "parents" || s === "parent" || s === "guardians") return "parents";
   if (s === "promotions" || s === "promotion") return "promotions";
   if (s === "admissions" || s === "admission") return "admissions";
   if (s === "fees" || s === "fee") return "fees";
@@ -74,8 +78,14 @@ export function parsePlatformSubSegments(segments?: string[]): PlatformRouteStat
     if (second === "users" || second === "user") {
       return { tab: "users", schoolId: null, schoolSubTab: "all", studentId: null };
     }
+    if (second === "academics" || second === "academic" || second === "classes") {
+      return { tab: "academics", schoolId: null, schoolSubTab: "all", studentId: null };
+    }
     if (second === "students" || second === "student") {
       return { tab: "students", schoolId: null, schoolSubTab: "all", studentId: null };
+    }
+    if (second === "parents" || second === "parent" || second === "guardians") {
+      return { tab: "parents", schoolId: null, schoolSubTab: "all", studentId: null };
     }
     if (second === "promotions" || second === "promotion") {
       return { tab: "promotions", schoolId: null, schoolSubTab: "all", studentId: null };
@@ -131,7 +141,9 @@ export function buildPlatformRouteUrl(basePath: string, state: PlatformRouteStat
   const base = normalizePlatformBasePath(basePath);
   if (state.tab === "overview") return base;
   if (state.tab === "users") return `${base}/clients/users`;
+  if (state.tab === "academics") return `${base}/clients/academics`;
   if (state.tab === "students") return `${base}/clients/students`;
+  if (state.tab === "parents") return `${base}/clients/parents`;
   if (state.tab === "promotions") return `${base}/clients/promotions`;
   if (state.tab === "schools") {
     if (!state.schoolId) return `${base}/clients/schools`;
