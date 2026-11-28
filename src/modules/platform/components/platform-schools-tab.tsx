@@ -2469,6 +2469,42 @@ export function PlatformSchoolsTab({
               {/* SUB-TAB 4: STUDENTS & PARENTS DIRECTORY / STUDENT DETAILS DOSSIER */}
               {subTab === "students" && (
                 activeStudentId ? (
+                  (() => {
+                    const matchedSuiteStu = studentSuiteData?.snapshot.students.find(
+                      (s) => s.id === activeStudentId || s.applicationId === activeStudentId,
+                    );
+                    if (studentSuiteData && matchedSuiteStu) {
+                      return (
+                        <div className="space-y-4">
+                          <div className="rounded-[18px] border border-[#DDD6FE] bg-[#FAF8FE]/70 p-4 sm:p-5 dark:border-[#2E2A5C] dark:bg-[#10142C]/80">
+                            <StudentManagementWorkspace
+                              mode="platform"
+                              schoolId={selectedEntry.school.id}
+                              initialSnapshot={studentSuiteData.snapshot}
+                              initialAnalytics={studentSuiteData.analytics}
+                              initialSection="profile"
+                              initialStudentId={matchedSuiteStu.id}
+                              onSelectedStudentUrlChange={(sec, stuId) => {
+                                if (sec === "profile" && stuId) {
+                                  setActiveStudentId(stuId);
+                                } else if (sec !== "profile") {
+                                  setActiveStudentId(null);
+                                }
+                              }}
+                              permissions={{
+                                canCreate: true,
+                                canEdit: true,
+                                canPromote: true,
+                                canTransfer: true,
+                                canExport: true,
+                                canManageSettings: true,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <button
@@ -2939,6 +2975,8 @@ export function PlatformSchoolsTab({
                       })()
                     )}
                   </div>
+                    );
+                  })()
                 ) : (
                   <div className="space-y-6">
                     {studentSuiteData && (
@@ -2949,6 +2987,11 @@ export function PlatformSchoolsTab({
                           initialSnapshot={studentSuiteData.snapshot}
                           initialAnalytics={studentSuiteData.analytics}
                           initialSection="dashboard"
+                          onSelectedStudentUrlChange={(sec, stuId) => {
+                            if (sec === "profile" && stuId) {
+                              setActiveStudentId(stuId);
+                            }
+                          }}
                           permissions={{
                             canCreate: true,
                             canEdit: true,

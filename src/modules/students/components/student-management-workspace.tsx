@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import {
@@ -174,10 +174,27 @@ export function StudentManagementWorkspace({
 }) {
   const [snapshot, setSnapshot] = useState<StudentWorkspaceSnapshot>(initialSnapshot);
   const [activeSection, setActiveSection] = useState<StudentNavSection>(initialSection);
+  const [returnSection, setReturnSection] = useState<StudentNavSection>(
+    initialSection === "profile" ? "list" : initialSection,
+  );
   const [listSubTab, setListSubTab] = useState<StudentListSubTab>("list");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(
     initialStudentId || initialSnapshot.students[0]?.id || null,
   );
+
+  useEffect(() => {
+    setSnapshot(initialSnapshot);
+  }, [initialSnapshot]);
+
+  useEffect(() => {
+    if (initialStudentId !== undefined && initialStudentId !== null) {
+      setSelectedStudentId(initialStudentId);
+    }
+  }, [initialStudentId]);
+
+  useEffect(() => {
+    setActiveSection(initialSection);
+  }, [initialSection]);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [filters, setFilters] = useState<StudentFilterParams>({
     page: 1,
@@ -217,9 +234,14 @@ export function StudentManagementWorkspace({
   };
 
   const navigateSection = (section: StudentNavSection, stuId?: string | null) => {
+    if (section === "profile" && activeSection !== "profile") {
+      setReturnSection(activeSection);
+    }
     setActiveSection(section);
     if (stuId !== undefined) {
-      setSelectedStudentId(stuId);
+      setSelectedStudentId(stuId ?? snapshot.students[0]?.id ?? null);
+    } else if (section === "profile" && !selectedStudentId && snapshot.students[0]?.id) {
+      setSelectedStudentId(snapshot.students[0].id);
     }
     if (section === "inactive") {
       setFilters((f) => ({ ...f, status: "INACTIVE", page: 1 }));
@@ -509,56 +531,58 @@ export function StudentManagementWorkspace({
 
   return (
     <div className="space-y-5">
-      {/* Header Row matching reference designs */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold text-[#76799C] dark:text-[#9DA6CC]">
-            <span>Students</span>
-            <span className="mx-1.5">&gt;</span>
-            <span className="text-[#663CF6] dark:text-[#C4B5FD]">{meta.label}</span>
-          </p>
-          <h1 className="mt-0.5 text-xl sm:text-2xl font-black tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
-            {meta.title}
-          </h1>
-          <p className="text-xs text-[#4D5072] dark:text-[#9DA6CC]">{meta.subtitle}</p>
-        </div>
+      {/* Header Row matching reference designs (hidden when full Student Profile header is shown) */}
+      {!(activeSection === "profile" && selectedProfileStudent) && (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-bold text-[#76799C] dark:text-[#9DA6CC]">
+              <span>Students</span>
+              <span className="mx-1.5">&gt;</span>
+              <span className="text-[#663CF6] dark:text-[#C4B5FD]">{meta.label}</span>
+            </p>
+            <h1 className="mt-0.5 text-xl sm:text-2xl font-black tracking-tight text-[#08093B] dark:text-[#F3F5FF]">
+              {meta.title}
+            </h1>
+            <p className="text-xs text-[#4D5072] dark:text-[#9DA6CC]">{meta.subtitle}</p>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {permissions.canCreate && (
-            <>
+          <div className="flex flex-wrap items-center gap-2">
+            {permissions.canCreate && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingStudent(null);
+                    setModalMode("create");
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#7C5CFC] to-[#5B35F5] px-4 py-2 text-xs font-extrabold text-white shadow-[0_8px_18px_rgba(91,53,245,0.28)] hover:opacity-95 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add Student</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowImportModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#CAD0EB] bg-white px-3.5 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
+                >
+                  <Upload className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#C4B5FD]" />
+                  <span>Import Students</span>
+                </button>
+              </>
+            )}
+            {permissions.canExport && (
               <button
                 type="button"
-                onClick={() => {
-                  setEditingStudent(null);
-                  setModalMode("create");
-                }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#7C5CFC] to-[#5B35F5] px-4 py-2 text-xs font-extrabold text-white shadow-[0_8px_18px_rgba(91,53,245,0.28)] hover:opacity-95 cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Add Student</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowImportModal(true)}
+                onClick={handleExportCsv}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-[#CAD0EB] bg-white px-3.5 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
               >
-                <Upload className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#C4B5FD]" />
-                <span>Import Students</span>
+                <Download className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#C4B5FD]" />
+                <span>Download Report</span>
               </button>
-            </>
-          )}
-          {permissions.canExport && (
-            <button
-              type="button"
-              onClick={handleExportCsv}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[#CAD0EB] bg-white px-3.5 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
-            >
-              <Download className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#C4B5FD]" />
-              <span>Download Report</span>
-            </button>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Horizontal Section Pill Tabs */}
       <div className={`${STUDENT_CARD_SURFACE} p-1.5 flex flex-wrap items-center gap-1.5`}>
@@ -985,9 +1009,10 @@ export function StudentManagementWorkspace({
                     return (
                       <tr
                         key={student.id}
-                        className="hover:bg-[#FAF8FE]/90 dark:hover:bg-[#191E3D]"
+                        onClick={() => navigateSection("profile", student.id)}
+                        className="hover:bg-[#FAF8FE]/90 cursor-pointer transition dark:hover:bg-[#191E3D]"
                       >
-                        <td className="p-2.5">
+                        <td className="p-2.5" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             aria-label={`Select ${student.studentName}`}
@@ -1007,7 +1032,10 @@ export function StudentManagementWorkspace({
                         <td className="p-2.5 font-mono font-bold text-[#663CF6] dark:text-[#C4B5FD]">
                           <button
                             type="button"
-                            onClick={() => navigateSection("profile", student.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigateSection("profile", student.id);
+                            }}
                             className="hover:underline cursor-pointer"
                           >
                             {student.admissionNumber}
@@ -1019,9 +1047,16 @@ export function StudentManagementWorkspace({
                               {student.studentName.slice(0, 2).toUpperCase()}
                             </span>
                             <div className="min-w-0">
-                              <p className="font-bold text-[#08093B] truncate dark:text-[#F3F5FF]">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigateSection("profile", student.id);
+                                }}
+                                className="font-bold text-[#08093B] hover:text-[#663CF6] hover:underline truncate text-left cursor-pointer dark:text-[#F3F5FF] dark:hover:text-[#C4B5FD]"
+                              >
                                 {student.studentName}
-                              </p>
+                              </button>
                               <p className="text-[10px] text-[#76799C] truncate dark:text-[#9DA6CC]">
                                 {student.guardianName} • {student.guardianPhone}
                               </p>
@@ -1059,7 +1094,7 @@ export function StudentManagementWorkspace({
                             {student.status}
                           </span>
                         </td>
-                        <td className="p-2.5 text-right">
+                        <td className="p-2.5 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="inline-flex items-center gap-1.5">
                             <button
                               type="button"
@@ -1349,7 +1384,7 @@ export function StudentManagementWorkspace({
           allStudents={snapshot.students}
           canEdit={permissions.canEdit}
           onSelectStudent={(id) => navigateSection("profile", id)}
-          onBackToList={() => navigateSection("list", null)}
+          onBackToList={() => navigateSection(returnSection === "profile" ? "list" : returnSection, null)}
           onEditStudent={(stu) => {
             setEditingStudent(stu);
             setModalMode("edit");

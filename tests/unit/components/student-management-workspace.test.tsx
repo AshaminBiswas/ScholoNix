@@ -230,5 +230,10 @@ describe("StudentManagementWorkspace UI & Dark Mode parity", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: /History/i }));
     expect(screen.getByText(/Promotion & Class History/i)).toBeTruthy();
+
+    // Clicking Back to List returns to Student List, and clicking any student name opens their profile
+    fireEvent.click(screen.getByRole("button", { name: /Back to List/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Diya Verma$/i }));
+    expect(screen.getByRole("heading", { name: /^Diya Verma$/i })).toBeTruthy();
   });
 });
