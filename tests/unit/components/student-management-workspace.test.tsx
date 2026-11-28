@@ -192,6 +192,8 @@ describe("StudentManagementWorkspace UI & Dark Mode parity", () => {
 
     // Dashboard layout & Light/Dark mode tokens
     expect(screen.getByRole("heading", { name: /Student Dashboard/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Add Student$/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Download Report$/i })).toBeNull();
     expect(screen.getByText(/Student Enrolment Trend/i)).toBeTruthy();
     expect(screen.getByText(/Students by Status/i)).toBeTruthy();
     expect(screen.getByText(/Students by Grade/i)).toBeTruthy();
@@ -207,8 +209,10 @@ describe("StudentManagementWorkspace UI & Dark Mode parity", () => {
     expect(screen.getByRole("button", { name: /^ID Cards$/i })).toBeTruthy();
     expect(screen.getByText(/Recent Student Activities/i)).toBeTruthy();
 
-    // Open Aarav Sharma Profile 360 dossier
+    // Open Aarav Sharma Profile 360 dossier (outer section tabs must be hidden)
     fireEvent.click(screen.getByRole("button", { name: /View Aarav Sharma/i }));
+    expect(screen.queryByRole("button", { name: /^Overview$/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Promotion$/i })).toBeNull();
     expect(screen.getByText(/Parent \/ Guardian Information/i)).toBeTruthy();
     expect(screen.getByText(/Emerald House/i)).toBeTruthy();
     expect(screen.getByRole("tab", { name: /Academic/i })).toBeTruthy();

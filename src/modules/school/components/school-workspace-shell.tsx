@@ -545,8 +545,6 @@ export function SchoolWorkspaceShell({
                       [
                         { label: "Student Dashboard", section: "dashboard", subPath: "students" },
                         { label: "Student List", section: "list", subPath: "students/list" },
-                        { label: "Student Profile", section: "profile", subPath: "students/profile" },
-                        { label: "Student Enrolment", section: "enrolment", subPath: "students/enrolment" },
                         { label: "Student Promotion", section: "promotion", subPath: "students/promotion" },
                         { label: "Student Transfer", section: "transfer", subPath: "students/transfer" },
                         { label: "Student Inactive", section: "inactive", subPath: "students/inactive" },
@@ -554,9 +552,12 @@ export function SchoolWorkspaceShell({
                         { label: "Student Settings", section: "settings", subPath: "students/settings" },
                       ] as Array<{ label: string; section: StudentNavSection; subPath: string }>
                     ).map((subItem) => {
+                      const effectiveSection =
+                        activeStudentSection === "profile" || activeStudentSection === "enrolment"
+                          ? "list"
+                          : activeStudentSection ?? "dashboard";
                       const isSubActive =
-                        activeNav === "students" &&
-                        (activeStudentSection ?? "dashboard") === subItem.section;
+                        activeNav === "students" && effectiveSection === subItem.section;
                       const href = buildSchoolRoute(school.slug, subItem.subPath);
                       return (
                         <Link

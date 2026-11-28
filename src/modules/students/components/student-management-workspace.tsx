@@ -12,18 +12,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Download,
   Edit3,
   Eye,
   FileSpreadsheet,
   GraduationCap,
   IdCard,
   Layers,
-  Plus,
   Settings,
   ShieldAlert,
   TrendingUp,
-  Upload,
   UserCheck,
   UserMinus,
   UserPlus,
@@ -545,80 +542,46 @@ export function StudentManagementWorkspace({
             </h1>
             <p className="text-xs text-[#4D5072] dark:text-[#9DA6CC]">{meta.subtitle}</p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {permissions.canCreate && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingStudent(null);
-                    setModalMode("create");
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#7C5CFC] to-[#5B35F5] px-4 py-2 text-xs font-extrabold text-white shadow-[0_8px_18px_rgba(91,53,245,0.28)] hover:opacity-95 cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Add Student</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowImportModal(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#CAD0EB] bg-white px-3.5 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
-                >
-                  <Upload className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#C4B5FD]" />
-                  <span>Import Students</span>
-                </button>
-              </>
-            )}
-            {permissions.canExport && (
-              <button
-                type="button"
-                onClick={handleExportCsv}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-[#CAD0EB] bg-white px-3.5 py-2 text-xs font-bold text-[#08093B] hover:border-[#663CF6] cursor-pointer dark:border-[#343B6B] dark:bg-[#141731] dark:text-[#F3F5FF]"
-              >
-                <Download className="h-3.5 w-3.5 text-[#663CF6] dark:text-[#C4B5FD]" />
-                <span>Download Report</span>
-              </button>
-            )}
-          </div>
         </div>
       )}
 
-      {/* Horizontal Section Pill Tabs */}
-      <div className={`${STUDENT_CARD_SURFACE} p-1.5 flex flex-wrap items-center gap-1.5`}>
-        {TOP_PILL_TABS.map((tab) => {
-          const active = activeSection === tab.section;
-          const cls = `inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer ${
-            active
-              ? "bg-gradient-to-r from-[#7C5CFC] to-[#5B35F5] text-white shadow-sm"
-              : "text-[#4D5072] hover:bg-[#F3EFFF] hover:text-[#663CF6] dark:text-[#A9B2D8] dark:hover:bg-[#1F2248] dark:hover:text-[#F3F5FF]"
-          }`;
-          if (sectionHrefBuilder) {
+      {/* Horizontal Section Pill Tabs (hidden on Student Profile 360 details page) */}
+      {!(activeSection === "profile" && selectedProfileStudent) && (
+        <div className={`${STUDENT_CARD_SURFACE} p-1.5 flex flex-wrap items-center gap-1.5`}>
+          {TOP_PILL_TABS.map((tab) => {
+            const active = activeSection === tab.section;
+            const cls = `inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer ${
+              active
+                ? "bg-gradient-to-r from-[#7C5CFC] to-[#5B35F5] text-white shadow-sm"
+                : "text-[#4D5072] hover:bg-[#F3EFFF] hover:text-[#663CF6] dark:text-[#A9B2D8] dark:hover:bg-[#1F2248] dark:hover:text-[#F3F5FF]"
+            }`;
+            if (sectionHrefBuilder) {
+              return (
+                <Link
+                  key={tab.section}
+                  href={sectionHrefBuilder(tab.section) as Route}
+                  onClick={() => navigateSection(tab.section)}
+                  className={cls}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </Link>
+              );
+            }
             return (
-              <Link
+              <button
                 key={tab.section}
-                href={sectionHrefBuilder(tab.section) as Route}
+                type="button"
                 onClick={() => navigateSection(tab.section)}
                 className={cls}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
-              </Link>
+              </button>
             );
-          }
-          return (
-            <button
-              key={tab.section}
-              type="button"
-              onClick={() => navigateSection(tab.section)}
-              className={cls}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+          })}
+        </div>
+      )}
 
       {feedback && (
         <div
